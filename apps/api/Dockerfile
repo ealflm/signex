@@ -21,6 +21,7 @@ WORKDIR /app
 RUN apk add --no-cache openssl
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
 # Generate the Prisma client + the linux-musl-openssl-3.0.x engine into packages/db/generated/client.
 RUN npm run generate --workspace @signex/db
