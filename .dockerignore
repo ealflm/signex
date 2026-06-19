@@ -1,0 +1,44 @@
+# ---- VCS / docs / tooling ----
+.git
+.gitignore
+.turbo
+**/.turbo
+docs
+README.md
+**/README.md
+
+# ---- dependencies (always reinstalled inside the image from the root lockfile) ----
+node_modules
+**/node_modules
+
+# ---- Next.js build artifacts (regenerated in the builder stage) ----
+**/.next
+**/out
+**/build
+
+# ---- NestJS build artifacts (regenerated in the builder stage) ----
+apps/api/dist
+
+# ---- Prisma generated client + engine (MUST be generated inside the Linux build stage) ----
+packages/db/generated
+
+# ---- TS / Next incremental ----
+**/*.tsbuildinfo
+**/next-env.d.ts
+
+# ---- env (never bake secrets into the image; Compose injects env at runtime) ----
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
+# ---- editor / OS noise ----
+.vscode
+.idea
+**/.DS_Store
+
+# ---- docker meta (don't recurse the compose/dockerfiles into the context build) ----
+docker-compose.yml
+**/Dockerfile
+.dockerignore

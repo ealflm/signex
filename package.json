@@ -1,0 +1,24 @@
+{
+  "name": "signex",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "start": "turbo run start",
+    "db:generate": "turbo run generate --filter=@signex/db",
+    "db:migrate": "npm run migrate --workspace @signex/db"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  },
+  "packageManager": "npm@10.9.0",
+  "engines": {
+    "node": ">=18"
+  }
+}

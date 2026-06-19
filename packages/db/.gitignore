@@ -1,0 +1,8 @@
+# Prisma generated client (build artifact — regenerate with `prisma generate`)
+/generated/
+
+# Local env (real DATABASE_URL); .env.example is committed at the repo root
+.env
+
+# npm
+node_modules/

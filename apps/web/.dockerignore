@@ -1,0 +1,29 @@
+# Keep the build context small + reproducible. Everything the build needs (app/, public/,
+# proxy.ts, package*.json, *.config.*) is NOT listed here so it stays in context.
+node_modules
+.next
+out
+build
+.git
+.gitignore
+.vercel
+
+# tooling / local / docs — not needed to build the image
+docs
+Dockerfile
+.dockerignore
+docker-compose.yml
+README.md
+*.tsbuildinfo
+
+# secrets / local env — never bake into the image
+.env*
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+coverage

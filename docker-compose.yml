@@ -1,0 +1,115 @@
+# Signex monorepo — multi-container stack.
+# Run: docker compose up -d --build
+# Env comes from the root .env (see .env.example). Host ports overridable via *_PORT vars.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: signex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-signex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-signex}
+      POSTGRES_DB: ${POSTGRES_DB:-signex}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-signex} -d ${POSTGRES_DB:-signex}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - signex-net
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: signex-api:latest
+    container_name: signex-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_PORT: ${API_PORT:-4000}
+      # Inside the Compose network the DB host is the service name "postgres", not localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-signex}:${POSTGRES_PASSWORD:-signex}@postgres:5432/${POSTGRES_DB:-signex}?schema=public
+    ports:
+      - "${API_PORT:-4000}:4000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    networks:
+      - signex-net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: signex-web:latest
+    container_name: signex-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 2051
+      HOSTNAME: 0.0.0.0
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Server-side calls use the Compose service DNS; client-side uses the public placeholder.
+      API_URL: ${API_URL:-http://api:4000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    ports:
+      - "${WEB_PORT:-2051}:2051"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:2051/en"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - signex-net
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    image: signex-admin:latest
+    container_name: signex-admin
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 2052
+      HOSTNAME: 0.0.0.0
+      NEXT_TELEMETRY_DISABLED: "1"
+      API_URL: ${API_URL:-http://api:4000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    ports:
+      - "${ADMIN_PORT:-2052}:2052"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:2052/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - signex-net
+
+volumes:
+  pgdata:
+
+networks:
+  signex-net:
+    driver: bridge

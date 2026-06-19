@@ -1,0 +1,370 @@
+{
+  "hero": {
+    "titleTop": "Sản Xuất Sản Phẩm",
+    "titleBottom": "Nhận Diện Thương Hiệu",
+    "subtitle": "Chuyên sản xuất logo, emblem, nhãn mác, badge và các chi tiết nhận diện theo yêu cầu cho ngành may mặc và thời trang.",
+    "imageAlt": "Nhà trên vách đá lúc hoàng hôn"
+  },
+  "form": {
+    "name": "Tên",
+    "namePlaceholder": "Họ và tên",
+    "email": "Email",
+    "emailPlaceholder": "your.email@company.com",
+    "phone": "Số Điện Thoại",
+    "phonePlaceholder": "+84 xxx xxx xxxx",
+    "quantity": "Số Lượng",
+    "quantityPlaceholder": "vd: 1000 cái",
+    "standard": "Tiêu Chuẩn",
+    "standardPlaceholder": "Chọn tiêu chuẩn",
+    "standardOptions": ["OEKO-TEX Standard 100", "ISO 9001", "GRS (Tái chế)", "GOTS (Hữu cơ)", "Khác / Tùy chỉnh"],
+    "height": "Dài (mm)",
+    "heightPlaceholder": "vd: 50",
+    "width": "Rộng (mm)",
+    "widthPlaceholder": "vd: 100",
+    "thickness": "Dày (mm)",
+    "thicknessPlaceholder": "vd: 2",
+    "upload": "Tải Mẫu Sản Phẩm",
+    "uploadHelp": "JPG, PNG, hoặc PDF (tối đa 10MB)",
+    "message": "Lời Nhắn",
+    "messagePlaceholder": "Mô tả yêu cầu sản phẩm...",
+    "submit": "Gửi Thông Tin",
+    "success": "Cảm ơn bạn — chúng tôi đã nhận được yêu cầu và sẽ phản hồi trong vòng 24 giờ.",
+    "fail": "Rất tiếc — đã xảy ra lỗi khi gửi biểu mẫu. Vui lòng thử lại."
+  },
+  "features": {
+    "eyebrow": "Xuất Sắc Trong Sản Xuất Từ Năm 2003",
+    "titleTop": "Vì Sao Các Thương Hiệu",
+    "titleBottom": "Chọn Chúng Tôi",
+    "cta": "Yêu Cầu Báo Giá",
+    "videoTitle": "Bên Trong Xưởng Sản Xuất",
+    "videoText": "Tìm hiểu cách chúng tôi giữ vững dung sai từ mẫu thử đến lô hàng hoàn thiện.",
+    "featured": {
+      "title": "Chất Lượng Sản Xuất Ổn Định",
+      "desc": "Chất lượng đồng nhất qua từng lô sản xuất."
+    },
+    "cards": [
+      { "title": "Quy Trình Sản Xuất Minh Bạch", "desc": "Quy trình rõ ràng, kiểm soát chặt chẽ." },
+      { "title": "Định Hướng Hợp Tác Lâu Dài", "desc": "Xây dựng quan hệ hợp tác bền vững theo thời gian." },
+      { "title": "Tôn Trọng Tính Toàn Vẹn Thương Hiệu", "desc": "Tuân thủ nghiêm ngặt tiêu chuẩn thương hiệu." }
+    ]
+  },
+  "about": {
+    "eyebrow": "Chúng Tôi Là Ai",
+    "title": "Về ",
+    "titleAccent": "SIGNEX",
+    "body": "Với kinh nghiệm sản xuất từ năm 2003, tiền thân SIGNEX là đơn vị tại Việt Nam chuyên sản xuất các sản phẩm nhận diện thương hiệu bằng nhựa dẻo đạt tiêu chuẩn xuất khẩu, không mùi, không độc hại, có độ bền cao và chi tiết sắc nét, phục vụ cho ngành may mặc, và quảng cáo. Từ năm 2016, sản phẩm của SIGNEX đã có mặt tại các thị trường quốc tế như Châu Âu, Nhật Bản và Hoa Kỳ.",
+    "mission": {
+      "title": "Sứ Mệnh",
+      "body": "Sản xuất sản phẩm nhựa dẻo nhận diện thương hiệu giúp doanh nghiệp thể hiện hình ảnh thương hiệu một cách rõ ràng và nhất quán trên sản phẩm và thị trường.",
+      "items": [
+        "Đảm bảo chất lượng sản xuất đồng nhất qua từng lô",
+        "Cung cấp giải pháp sản xuất OEM đáng tin cậy cho các thương hiệu",
+        "Duy trì tiêu chuẩn nhận diện chính xác trong từng sản phẩm",
+        "Xây dựng quan hệ hợp tác sản xuất lâu dài với khách hàng"
+      ]
+    },
+    "vision": {
+      "title": "Tầm Nhìn",
+      "body": "Trở thành đối tác sản xuất đáng tin cậy của các thương hiệu toàn cầu, cung cấp các chi tiết nhận diện với độ chính xác, tính ổn định và sự hợp tác bền vững."
+    },
+    "values": {
+      "title": "Giá Trị Cốt Lõi",
+      "body": "Lấy uy tín, đạo đức và chất lượng làm nền tảng phát triển bền vững cho mọi hoạt động sản xuất của SIGNEX."
+    }
+  },
+  "products": {
+    "eyebrow": "Sản Phẩm Của Chúng Tôi",
+    "title": "Những Gì Chúng Tôi ",
+    "titleAccent": "Sản Xuất",
+    "body": "Sản xuất từ PVC, TPU, silicone và vật liệu composite cao cấp, đảm bảo độ bền, màu sắc ổn định và thể hiện chính xác nhận diện thương hiệu.",
+    "statLabels": { "products": "Sản phẩm", "materials": "Vật liệu" },
+    "detail": {"listTitle": "Khám phá ", "listTitleAccent": "bộ sản phẩm"},
+    "product": {"categoryLabel": "Danh mục", "materialLabel": "Vật liệu", "cta": "Yêu cầu báo giá", "back": "Quay lại ", "zoomHint": "Nhấn để phóng to"},
+    "categories": [
+      {
+        "tag": "PVC · Silicone", "title": "Logo & biểu tượng nhựa", "slug": "plastic-logos-emblems", "products": 18, "materials": 4,
+        "intro": "Logo và biểu tượng nhựa được đúc và in nhằm giữ nét logo sắc sảo cùng màu sắc ổn định qua nhiều lần giặt và sử dụng. Từ nhãn PVC mềm, logo ép nhiệt silicone đến biểu tượng nổi 3D, mỗi chi tiết đều được làm khuôn theo thông số thương hiệu và hoàn thiện cho hàng may mặc, giày dép, túi xách và phụ kiện.",
+        "items": [
+          {"slug": "soft-pvc-logo-patch", "title": "Nhãn logo PVC mềm", "tag": "PVC mềm", "desc": "Nhãn PVC mềm 2D hoặc 3D với chi tiết đúc sắc nét, mặt sau may hoặc ép nhiệt, dùng cho quần áo và mũ nón."},
+          {"slug": "silicone-heat-transfer-logo", "title": "Logo ép nhiệt silicone", "tag": "Silicone", "desc": "Logo silicone mỏng, co giãn, ép nhiệt trực tiếp lên vải, cho bề mặt thương hiệu sạch và không cần nhãn may."},
+          {"slug": "3d-domed-resin-emblem", "title": "Biểu tượng nổi phủ keo PU", "tag": "Phủ keo nổi", "desc": "Tem in được phủ lớp keo PU bóng nổi, tạo biểu tượng cộm chống trầy cho túi xách và phụ kiện."},
+          {"slug": "rubberized-pu-badge", "title": "Logo cao su PU", "tag": "Cao su PU", "desc": "Logo cao su PU nhiều lớp với viền dập nổi, cho cảm giác mềm tay và độ tương phản màu cao."},
+          {"slug": "injection-molded-logo-trim", "title": "Logo nhựa ép phun", "tag": "TPU ép phun", "desc": "Logo TPU ép phun cứng với cạnh sắc nét và chấu gắn, dùng cho giày dép và túi có cấu trúc."},
+          {"slug": "embossed-pvc-label", "title": "Nhãn PVC dập nổi", "tag": "PVC dập nổi", "desc": "Nhãn PVC dập nổi cùng tông, chữ nổi và rãnh may sẵn, tạo dấu hiệu thương hiệu tinh tế và bền."}
+        ]
+      },
+      {
+        "tag": "Dệt · In", "title": "Nhãn, phù hiệu & bảng tên", "slug": "labels-badges-nameplates", "products": 24, "materials": 6,
+        "intro": "Các loại nhãn dệt, nhãn in và nhãn ép mang logo, thông tin bảo quản và size ngay trên sản phẩm — gia công đúng quy cách, đồng nhất qua từng lô hàng.",
+        "items": [
+          {"slug": "woven-damask-brand-label", "title": "Nhãn dệt damask", "tag": "Dệt damask", "desc": "Nhãn dệt damask mật độ cao cho logo sắc nét, mềm tay, dùng làm nhãn chính và nhãn gáy cổ áo."},
+          {"slug": "printed-satin-care-label", "title": "Nhãn in satin", "tag": "In satin", "desc": "Dải satin mịn in ký hiệu giặt là, thành phần sợi và xuất xứ, dùng làm nhãn bảo quản."},
+          {"slug": "folded-size-care-tab", "title": "Nhãn size gấp biên", "tag": "Cotton / Polyester", "desc": "Nhãn size, nhãn bảo quản gấp giữa hoặc gấp một biên, bo mép gọn, may vào đường ráp hoặc sườn áo."},
+          {"slug": "heat-transfer-label", "title": "Nhãn ép nhiệt", "tag": "Ép nhiệt", "desc": "Nhãn ép nhiệt không cấn cổ, ép trực tiếp lên vải cho cảm giác mềm mại, êm da."},
+          {"slug": "engraved-metal-nameplate", "title": "Bảng tên kim loại", "tag": "Kẽm / Đồng", "desc": "Bảng tên kim loại kẽm hoặc đồng, khắc hoặc ăn mòn, mạ điện hoàn thiện, gắn trên túi xách và áo khoác."},
+          {"slug": "embroidered-badge", "title": "Phù hiệu thêu", "tag": "Thêu vi tính", "desc": "Phù hiệu thêu vi tính dày, viền vắt sổ hoặc cắt laser, đế ép keo hoặc may đính."}
+        ]
+      },
+      {
+        "tag": "Đặt riêng", "title": "Linh kiện nhận diện tùy chỉnh", "slug": "custom-identity-components", "products": 15, "materials": 5,
+        "intro": "Phụ liệu kim loại và đúc khuôn đặt riêng theo đúng yêu cầu thương hiệu, từ tay kéo khóa đến đinh tán và nút bấm. Mỗi chi tiết được làm khuôn theo đơn bằng hợp kim kẽm, đồng thau, TPU hoặc PVC mềm với lớp hoàn thiện, logo và khắc tùy chỉnh, giữ nhận diện đồng nhất trên từng sản phẩm.",
+        "items": [
+          {"slug": "branded-zipper-pulls", "title": "Tay kéo khóa khắc logo", "tag": "Hợp kim kẽm", "desc": "Tay kéo đúc hợp kim kẽm tạo hình theo logo, mạ điện hoặc hoàn thiện mờ, dùng cho áo khoác, túi và đồ mặc ngoài."},
+          {"slug": "engraved-metal-buttons", "title": "Nút kim loại khắc nhãn", "tag": "Đồng thau", "desc": "Nút cài và nút tán bằng đồng thau khắc laser hoặc dập nổi nhãn hiệu, mạ giả cổ, niken hoặc xám súng."},
+          {"slug": "custom-logo-buckles", "title": "Khóa cài dập logo", "tag": "Kẽm · Acetal", "desc": "Khóa nhả nhanh và khóa trượt làm theo quy cách, đúc kẽm hoặc ép acetal, dập chìm nhãn hiệu cho dây đai và dây dệt."},
+          {"slug": "logo-rivets-studs", "title": "Đinh tán khắc logo", "tag": "Đầu đồng thau", "desc": "Đinh tán hai đầu và đinh trang trí dập logo trên đầu, hoàn thiện đồng thau, đồng đỏ hoặc niken đen cho hàng jeans và đồ da."},
+          {"slug": "branded-cord-stoppers", "title": "Chốt chặn dây logo nổi", "tag": "PVC mềm", "desc": "Chốt chặn dây lò xo và đầu bọc dây ép phun bằng PVC mềm hoặc TPU, logo nổi 3D và pha màu khớp Pantone thương hiệu."},
+          {"slug": "logo-eyelets-snaps", "title": "Ô-dê & nút bấm khắc nhãn", "tag": "Kim loại mạ", "desc": "Khoen xỏ tự đột, ô-dê và nút bấm bốn phần khắc logo, mạ niken, đồng thau hoặc đen mờ."}
+        ]
+      },
+      {
+        "tag": "Chuẩn OEM", "title": "Linh kiện thương hiệu OEM", "slug": "oem-brand-parts", "products": 12, "materials": 3,
+        "intro": "Linh kiện thương hiệu OEM sản xuất theo đúng spec sheet của bạn — bộ phụ liệu phát triển chung, nhãn private-label và bộ phụ kiện gắn logo theo chuẩn nhận diện thương hiệu. Chúng tôi làm theo bản vẽ, màu sắc và dung sai, đảm bảo đồng nhất ở quy mô sản xuất hàng loạt.",
+        "items": [
+          {"slug": "spec-matched-trim-set", "title": "Bộ phụ liệu theo spec", "tag": "Đa vật liệu", "desc": "Bộ phụ liệu đồng bộ gồm nhãn, tag treo và phụ kiện kim loại được phát triển chung và đồng màu theo spec sheet thương hiệu cho từng chương trình hàng."},
+          {"slug": "private-label-woven-label", "title": "Nhãn dệt private-label", "tag": "Dệt damask", "desc": "Nhãn chính dệt damask sản xuất dưới thương hiệu riêng của bạn, khóa màu, font và kiểu gấp theo đúng tech pack."},
+          {"slug": "branded-hardware-kit", "title": "Bộ phụ kiện gắn logo", "tag": "Hợp kim kẽm", "desc": "Bộ phụ kiện đóng gói gồm đầu khóa kéo, đinh tán và nút bấm gắn logo, đúc và mạ điện theo chuẩn logo và bề mặt của bạn."},
+          {"slug": "co-developed-leather-patch", "title": "Nhãn da phát triển chung", "tag": "Da thật", "desc": "Nhãn da dập chìm phát triển cùng đội thiết kế của bạn, cố định loại da, xử lý cạnh và quy cách đường may theo bản vẽ."},
+          {"slug": "oem-heat-transfer-label", "title": "Nhãn ép nhiệt OEM", "tag": "Phim TPU", "desc": "Nhãn ép nhiệt thông tin và thương hiệu làm theo phim TPU, tiêu chuẩn kiểm tra giặt và vị trí ép cho đơn hàng số lượng lớn."},
+          {"slug": "custom-metal-logo-plate", "title": "Nhãn logo kim loại riêng", "tag": "Đồng ăn mòn", "desc": "Nhãn logo bằng đồng ăn mòn sản xuất theo file CAD, tông mạ và phương thức gắn của bạn như một linh kiện OEM riêng biệt."}
+        ]
+      }
+    ]
+  },
+  "contact": {
+    "eyebrow": "Kết Nối",
+    "title": "Liên Hệ ",
+    "titleAccent": "Với Chúng Tôi",
+    "subtitle": "Bạn có thắc mắc? Chúng tôi luôn sẵn sàng hỗ trợ.",
+    "cards": [
+      { "title": "Email", "lines": ["core@signex.vn", "nhuadeo@gmail.com"] },
+      { "title": "Số điện thoại", "lines": ["Tel: (+84) 979 700 072", "Zalo: (+84) 94 9999 326"] },
+      { "title": "Địa chỉ", "lines": ["Office: 25/88/13 Bùi Quang Là, phường An Hội Tây, TP.HCM, Việt Nam.", "Factory: 85/45 Dương Thị Mười, phường Trung Mỹ Tây, TP.HCM, Việt Nam."] }
+    ]
+  },
+  "footer": {
+    "brand": "SIGNEX – Sản Xuất Sản Phẩm Nhận Diện Thương Hiệu",
+    "tagline": ["Chúng tôi không tạo ra thương hiệu.", "Chúng tôi tạo ra những giá trị mà thương hiệu đại diện."],
+    "contactHeading": "Liên hệ",
+    "company": "CÔNG TY TNHH SẢN XUẤT SẢN PHẨM NHẬN DIỆN THƯƠNG HIỆU SIGNEX",
+    "email": "core@signex.vn",
+    "tel": "(+84) 979 700 072",
+    "zalo": "(+84) 94 9999 326",
+    "tax": "0319401172",
+    "office": "25/88/13 Bùi Quang Là, phường An Hội Tây, TP.HCM, Việt Nam.",
+    "factory": "85/45 Dương Thị Mười, phường Trung Mỹ Tây, TP.HCM, Việt Nam.",
+    "quickHeading": "Truy cập nhanh",
+    "links": [
+      { "label": "Trang chủ", "href": "/" },
+      { "label": "Về chúng tôi", "href": "/about" },
+      { "label": "Liên hệ", "href": "/contact" }
+    ],
+    "shipLabel": "Hình thức giao hàng:",
+    "payLabel": "Phương thức thanh toán:",
+    "payments": ["VISA", "COD", "Napas"]
+  },
+  "nav": {
+    "skip": "Bỏ qua đến nội dung",
+    "cta": "Nhận báo giá",
+    "links": [
+      { "label": "Trang chủ", "href": "/" },
+      { "label": "Về chúng tôi", "href": "/about" },
+      { "label": "Liên hệ", "href": "/contact" }
+    ]
+  },
+  "aboutPage": {
+    "hero": {
+      "title": "Về ",
+      "titleAccent": "Signex",
+      "subtitle": "Xuất sắc trong sản xuất nhận diện thương hiệu từ ngày đầu thành lập"
+    },
+    "testimonial": {
+      "eyebrow": "Signex",
+      "title": "Chúng Tôi Là ",
+      "titleAccent": "Ai",
+      "body": [
+        "SIGNEX là nhà sản xuất hàng đầu chuyên về các sản phẩm nhận diện thương hiệu. Chúng tôi không chỉ tạo ra thương hiệu – chúng tôi tạo ra những giá trị mà thương hiệu đại diện.",
+        "Với hệ thống nhà xưởng hiện đại cùng đội ngũ chuyên gia tận tâm, chúng tôi mang đến các sản phẩm logo nhựa, emblem, nhãn mác, phù hiệu, bảng tên và linh kiện nhận diện tùy chỉnh được gia công với độ chính xác cao cho các thương hiệu toàn cầu.",
+        "Sự tận tâm với chất lượng, đổi mới và sự hài lòng của khách hàng đã đưa chúng tôi trở thành đối tác đáng tin cậy của các doanh nghiệp hướng đến sự xuất sắc trong nhận diện thương hiệu.",
+        "Từ linh kiện OEM đến các giải pháp tùy chỉnh, chúng tôi hiện thực hóa nhận diện thương hiệu của bạn bằng quy trình sản xuất vượt trội và sự tỉ mỉ trong từng chi tiết."
+      ]
+    },
+    "approach": [
+      {
+        "title": "Sản Xuất Trực Tiếp",
+        "body": [
+          "SIGNEX là nhà sản xuất trực tiếp, toàn bộ quy trình sản xuất được quản lý nội bộ.",
+          "Điều này đảm bảo trao đổi kỹ thuật rõ ràng, kiểm soát sản xuất toàn diện và chất lượng ổn định qua từng lô sản xuất."
+        ]
+      },
+      {
+        "title": "Sản Xuất Hướng Thương Hiệu",
+        "body": [
+          "Chúng tôi hiểu rằng linh kiện nhận diện thương hiệu không phải là những bộ phận đại trà.",
+          "Vì vậy, cách tiếp cận sản xuất của chúng tôi luôn bám sát yêu cầu thương hiệu, đảm bảo mỗi linh kiện tuân thủ đúng quy chuẩn thương hiệu và duy trì sự đồng nhất qua các đợt sản xuất khác nhau."
+        ]
+      },
+      {
+        "title": "OEM & Bảo Mật",
+        "body": [
+          "Chúng tôi tin vào việc xây dựng mối quan hệ lâu dài với khách hàng. Cách hợp tác của chúng tôi đảm bảo chất lượng ổn định, giao hàng đáng tin cậy và cải tiến liên tục.",
+          "Chúng tôi duy trì trao đổi minh bạch với đối tác để đảm bảo sự tin cậy, rõ ràng trong yêu cầu kỹ thuật và sự ổn định sản xuất lâu dài."
+        ]
+      }
+    ],
+    "intro": {
+      "eyebrow": "Vì Sao Chọn SIGNEX",
+      "title": "Vì Sao Chọn ",
+      "titleAccent": "Signex",
+      "body": "Xuất sắc trong từng chi tiết, chất lượng trong từng sản phẩm"
+    },
+    "capability": {
+      "eyebrow": "Chuyên Môn Của Chúng Tôi",
+      "title": "Năng Lực ",
+      "titleAccent": "Sản Xuất",
+      "body": "SIGNEX tập trung vào sản xuất OEM và gia công nhận diện thương hiệu theo yêu cầu, với năng lực sản xuất được thiết kế để đáp ứng cả tiêu chuẩn kỹ thuật lẫn yêu cầu thương hiệu.",
+      "groups": [
+        {
+          "title": "Sản Phẩm Chính",
+          "items": [
+            "Logo và biểu tượng nhựa",
+            "Nhãn, phù hiệu và bảng tên thương hiệu",
+            "Linh kiện nhận diện tùy chỉnh cho sản phẩm và bao bì",
+            "Linh kiện thương hiệu OEM gia công theo yêu cầu"
+          ]
+        },
+        {
+          "title": "Vật Liệu",
+          "items": ["PVC", "TPU", "Silicone", "Nhựa composite", "Công thức vật liệu tùy chỉnh theo yêu cầu"]
+        },
+        {
+          "title": "Thế Mạnh Sản Xuất",
+          "items": [
+            "Tạo hình bằng khuôn và định hình chính xác",
+            "Hoàn thiện bề mặt đồng nhất và kiểm soát màu sắc",
+            "Ổn định và lặp lại giữa các lô",
+            "Linh hoạt cho sản lượng nhỏ đến vừa"
+          ]
+        }
+      ],
+      "closing": [
+        "Chúng tôi không chạy theo sản xuất hàng loạt mà đánh đổi khả năng kiểm soát.",
+        "Trọng tâm của chúng tôi là độ chính xác và sự ổn định trong sản xuất, qua từng lô."
+      ]
+    },
+    "process": {
+      "eyebrow": "Quy Trình",
+      "title": "Phương Pháp ",
+      "titleAccent": "Sản Xuất",
+      "body": "Xuất sắc trong từng chi tiết, chất lượng trong từng sản phẩm",
+      "steps": [
+        {
+          "title": "Chọn Lọc & Pha Chế Vật Liệu",
+          "body": "Vật liệu được chọn lọc và chuẩn bị theo yêu cầu về hiệu năng và thông số sản phẩm."
+        },
+        {
+          "title": "Phát Triển Khuôn & Gia Công",
+          "body": "Khuôn chính xác được phát triển để đảm bảo tái tạo hình dạng chuẩn xác và sản xuất ổn định lâu dài."
+        },
+        {
+          "title": "Sản Xuất & Định Hình",
+          "body": "Linh kiện được sản xuất dưới các thông số kiểm soát để duy trì hình dạng, chất lượng bề mặt và màu sắc đồng nhất."
+        },
+        {
+          "title": "Kiểm Tra Chất Lượng",
+          "body": "Mỗi lô đều trải qua kiểm tra ngoại quan và kích thước để đảm bảo đạt các tiêu chuẩn đã định."
+        }
+      ]
+    },
+    "timeline": {
+      "eyebrow": "Từng Bước",
+      "title": "Tổng Quan Quy Trình ",
+      "titleAccent": "Sản Xuất",
+      "body": "Quy trình sản xuất của chúng tôi tuân theo một luồng công việc có cấu trúc và lặp lại được",
+      "intro": [
+        "SIGNEX hoạt động như một công ty sản xuất trực tiếp, với các hoạt động sản xuất được thực hiện trong điều kiện kiểm soát để đảm bảo tính nhất quán và sự ổn định về chất lượng.",
+        "Hệ thống nhà xưởng của chúng tôi tập trung vào tạo hình chính xác, xử lý vật liệu và sản xuất lặp lại được, thay vì sản lượng hàng loạt.",
+        "Chúng tôi đầu tư vào kiểm soát quy trình, không chạy theo quy mô chỉ để có quy mô."
+      ],
+      "milestones": [
+        {
+          "num": "01",
+          "title": "Chọn Lọc & Chuẩn Bị Vật Liệu",
+          "body": "Vật liệu được lựa chọn dựa trên yêu cầu về hiệu năng, độ bền và ứng dụng thương hiệu, bao gồm PVC, TPU, silicone và nhựa composite."
+        },
+        {
+          "num": "02",
+          "title": "Phát Triển Khuôn & Gia Công",
+          "body": "Khuôn được phát triển hoặc tinh chỉnh để đảm bảo:",
+          "items": ["Tái tạo hình dạng chính xác", "Sản lượng lô ổn định", "Độ bền khuôn lâu dài"]
+        },
+        {
+          "num": "03",
+          "title": "Sản Xuất & Định Hình",
+          "body": "Sản xuất được thực hiện với các thông số kiểm soát để đảm bảo:",
+          "items": ["Hình dạng đồng nhất", "Chất lượng bề mặt", "Độ chính xác màu sắc"]
+        },
+        {
+          "num": "04",
+          "title": "Kiểm Tra Chất Lượng",
+          "body": "Kiểm tra chất lượng được tích hợp xuyên suốt quá trình sản xuất:",
+          "items": ["Kiểm tra ngoại quan", "Xác minh kích thước", "So sánh giữa các lô"],
+          "note": "Chất lượng được kiểm soát trong quá trình sản xuất, không phải khắc phục sau đó."
+        },
+        {
+          "num": "05",
+          "title": "Hoàn Thiện & Đóng Gói",
+          "body": "Sản phẩm cuối được hoàn thiện và đóng gói để bảo vệ:",
+          "items": ["Tính toàn vẹn vật lý", "Chất lượng bề mặt", "Hình ảnh thương hiệu"]
+        }
+      ]
+    }
+  },
+  "contactPage": {
+    "hero": {
+      "title": "Liên Hệ ",
+      "titleAccent": "Với Chúng Tôi",
+      "subtitle": "Hãy cùng trao đổi để hiện thực hóa nhận diện thương hiệu của bạn"
+    },
+    "cards": [
+      { "title": "Email", "lines": ["core@signex.vn", "nhuadeo@gmail.com"] },
+      { "title": "Số điện thoại", "lines": ["Tel: (+84) 979 700 072", "Zalo: (+84) 94 9999 326"] },
+      {
+        "title": "Địa chỉ",
+        "company": "CÔNG TY TNHH SẢN XUẤT SẢN PHẨM NHẬN DIỆN THƯƠNG HIỆU SIGNEX",
+        "details": [
+          { "label": "Office", "value": "25/88/13 Bùi Quang Là, phường An Hội Tây, TP.HCM, Việt Nam." },
+          { "label": "Factory", "value": "85/45 Dương Thị Mười, phường Trung Mỹ Tây, TP.HCM, Việt Nam." },
+          { "label": "Tax", "value": "0319401172" }
+        ]
+      }
+    ],
+    "map": {
+      "eyebrow": "Bản đồ",
+      "title": "Vị trí ",
+      "titleAccent": "Signex"
+    }
+  },
+  "notFound": {
+    "eyebrow": "404",
+    "title": "Có vẻ bạn đã ",
+    "titleAccent": "đi lạc đường",
+    "body": "Trang bạn tìm kiếm đã được di chuyển hoặc không còn tồn tại. Hãy quay lại — Signex luôn sẵn sàng hiện thực hóa nhận diện thương hiệu của bạn.",
+    "cta": "Về trang chủ",
+    "imageAlt": "Xưởng sản xuất Signex"
+  },
+  "meta": {
+    "siteName": "SIGNEX",
+    "title": "SIGNEX — Sản Xuất Sản Phẩm Nhận Diện Thương Hiệu",
+    "description": "SIGNEX sản xuất các sản phẩm nhận diện thương hiệu tại Việt Nam — logo và emblem nhựa, nhãn dệt và in, huy hiệu, bảng tên cùng linh kiện OEM theo yêu cầu cho các thương hiệu thời trang và lifestyle. Chất lượng đồng nhất qua từng lô hàng.",
+    "ogImageAlt": "SIGNEX — Sản Xuất Nhận Diện Thương Hiệu",
+    "about": {
+      "title": "Về Chúng Tôi",
+      "description": "Bên trong SIGNEX — năng lực, cách tiếp cận và quy trình sản xuất các sản phẩm nhận diện thương hiệu chất lượng, đồng nhất: logo, emblem, nhãn, huy hiệu, bảng tên và linh kiện OEM theo yêu cầu."
+    },
+    "contact": {
+      "title": "Liên Hệ",
+      "description": "Liên hệ SIGNEX để nhận báo giá sản xuất sản phẩm nhận diện thương hiệu — logo nhựa, nhãn dệt, huy hiệu, bảng tên và linh kiện OEM theo yêu cầu. Văn phòng và nhà máy tại TP.HCM, Việt Nam."
+    }
+  }
+}

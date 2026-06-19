@@ -1,0 +1,370 @@
+{
+  "hero": {
+    "titleTop": "Manufacturing",
+    "titleBottom": "Brand Identity",
+    "subtitle": "Specialized in manufacturing logos, emblems, labels, badges, and custom identity components for the garment and fashion industry.",
+    "imageAlt": "Contemporary cliffside house at twilight"
+  },
+  "form": {
+    "name": "Name",
+    "namePlaceholder": "Your full name",
+    "email": "Email",
+    "emailPlaceholder": "your.email@company.com",
+    "phone": "Phone Number",
+    "phonePlaceholder": "+84 xxx xxx xxxx",
+    "quantity": "Quantity",
+    "quantityPlaceholder": "e.g., 1000 pieces",
+    "standard": "Standard",
+    "standardPlaceholder": "Select standard",
+    "standardOptions": ["OEKO-TEX Standard 100", "ISO 9001", "GRS (Recycled)", "GOTS (Organic)", "Other / Custom"],
+    "height": "Height (mm)",
+    "heightPlaceholder": "e.g., 50",
+    "width": "Width (mm)",
+    "widthPlaceholder": "e.g., 100",
+    "thickness": "Thickness (mm)",
+    "thicknessPlaceholder": "e.g., 2",
+    "upload": "Upload Sample",
+    "uploadHelp": "JPG, PNG, or PDF (max 10MB)",
+    "message": "Message",
+    "messagePlaceholder": "Describe your product requirements...",
+    "submit": "Send Message",
+    "success": "Thank you — we've received your request and will get back to you within 24 hours.",
+    "fail": "Oops! Something went wrong while submitting the form. Please try again."
+  },
+  "features": {
+    "eyebrow": "Excellence in Manufacturing Since 2003",
+    "titleTop": "Why Brands",
+    "titleBottom": "Choose Us",
+    "cta": "Request a Quote",
+    "videoTitle": "Inside Our Workshop",
+    "videoText": "See how we hold tolerances from sample to finished batch.",
+    "featured": {
+      "title": "Consistent Production Quality",
+      "desc": "Stable, repeatable quality across every production batch."
+    },
+    "cards": [
+      { "title": "Transparent Manufacturing Processes", "desc": "Clean, controlled processes with full accountability." },
+      { "title": "Long-Term Cooperation Mindset", "desc": "Manufacturing partnerships built for the long term." },
+      { "title": "Respect for Brand Integrity", "desc": "Strict adherence to brand standards and specifications." }
+    ]
+  },
+  "about": {
+    "eyebrow": "Who We Are",
+    "title": "About ",
+    "titleAccent": "SIGNEX",
+    "body": "Founded in 2003, SIGNEX specializes in manufacturing soft plastic brand identity components made from export-standard materials that are odorless, non-toxic, highly durable, and precisely detailed for the garment, consumer goods, and advertising industries. Since 2016, SIGNEX products have been supplied to international markets, including Europe, Japan, and the United States.",
+    "mission": {
+      "title": "Our Mission",
+      "body": "To manufacture reliable brand identity components that help businesses present their brand clearly and consistently across products and markets.",
+      "items": [
+        "Delivering consistent manufacturing quality across every production batch",
+        "Supporting brands with reliable OEM manufacturing solutions",
+        "Maintaining precise brand standards in every component produced",
+        "Building long-term manufacturing partnerships with our clients"
+      ]
+    },
+    "vision": {
+      "title": "Our Vision",
+      "body": "To become a trusted manufacturing partner for global brands, delivering consistent brand identity components with reliability, precision, and long-term cooperation."
+    },
+    "values": {
+      "title": "Our Values",
+      "body": "Integrity, ethics, and quality form the foundation for sustainable growth in all of SIGNEX's manufacturing activities."
+    }
+  },
+  "products": {
+    "eyebrow": "Our Products",
+    "title": "What We ",
+    "titleAccent": "Manufacture",
+    "body": "Produced with premium-grade PVC, TPU, silicone, and composite materials, ensuring durability, color stability, and accurate brand representation.",
+    "statLabels": { "products": "Products", "materials": "Materials" },
+    "detail": {"listTitle": "Explore the ", "listTitleAccent": "collection"},
+    "product": {"categoryLabel": "Category", "materialLabel": "Material", "cta": "Request a Quote", "back": "Back to ", "zoomHint": "Click to zoom"},
+    "categories": [
+      {
+        "tag": "PVC · Silicone", "title": "Plastic logos & emblems", "slug": "plastic-logos-emblems", "products": 18, "materials": 4,
+        "intro": "Molded and printed plastic brand marks engineered to hold crisp logo geometry and stable color through repeated wash and wear. From soft-PVC patches to silicone heat-transfers and 3D domed emblems, each piece is tooled to your brand spec and finished for apparel, footwear, bags, and accessories.",
+        "items": [
+          {"slug": "soft-pvc-logo-patch", "title": "Soft-PVC logo patch", "tag": "Soft PVC", "desc": "Flexible 2D or 3D soft-PVC patch with sharp molded detail and a sew-on or heat-seal backing for garments and caps."},
+          {"slug": "silicone-heat-transfer-logo", "title": "Silicone heat-transfer logo", "tag": "Silicone", "desc": "Thin, stretchable silicone mark heat-pressed directly onto fabric for a clean, tagless branded finish."},
+          {"slug": "3d-domed-resin-emblem", "title": "3D domed resin emblem", "tag": "Domed Resin", "desc": "Printed insert sealed under a glossy doming resin for a raised, scratch-resistant emblem on bags and accessories."},
+          {"slug": "rubberized-pu-badge", "title": "Rubberized PU badge", "tag": "PU Rubber", "desc": "Multi-layer rubberized PU badge with embossed edges, giving a soft-touch feel and strong color contrast."},
+          {"slug": "injection-molded-logo-trim", "title": "Injection-molded logo trim", "tag": "Molded TPU", "desc": "Hard injection-molded TPU logo with precise edges and fixing posts for footwear and structured bags."},
+          {"slug": "embossed-pvc-label", "title": "Embossed PVC label", "tag": "Embossed PVC", "desc": "Tonal embossed PVC label with raised lettering and stitch channels for a subtle, durable brand mark."}
+        ]
+      },
+      {
+        "tag": "Woven · Printed", "title": "Labels, badges, nameplates", "slug": "labels-badges-nameplates", "products": 24, "materials": 6,
+        "intro": "Woven, printed and heat-pressed identity trims that carry your brand mark, care information and sizing directly on the garment — produced to consistent specification, batch after batch.",
+        "items": [
+          {"slug": "woven-damask-brand-label", "title": "Woven Damask Brand Label", "tag": "Woven Damask", "desc": "High-density damask weave with crisp logo definition and a soft hand-feel for main and neck labels."},
+          {"slug": "printed-satin-care-label", "title": "Printed Satin Care Label", "tag": "Printed Satin", "desc": "Smooth satin ribbon printed with wash-care symbols, fiber content and country of origin."},
+          {"slug": "folded-size-care-tab", "title": "Folded Size & Care Tab", "tag": "Cotton / Polyester", "desc": "Center-fold or end-fold size and care tabs with clean cut edges, sewn into seams or side panels."},
+          {"slug": "heat-transfer-label", "title": "Heat-Transfer Label", "tag": "Heat-Transfer", "desc": "Tagless heat-transfer labels pressed directly onto the fabric for soft, irritation-free care marking."},
+          {"slug": "engraved-metal-nameplate", "title": "Engraved Metal Nameplate", "tag": "Zinc / Brass", "desc": "Engraved or etched zinc and brass nameplates with electroplated finish for bags and outerwear."},
+          {"slug": "embroidered-badge", "title": "Embroidered Badge", "tag": "Embroidered", "desc": "Dense machine-embroidered badges with merrowed or laser-cut borders and iron-on or sew-on backing."}
+        ]
+      },
+      {
+        "tag": "Bespoke", "title": "Custom identity components", "slug": "custom-identity-components", "products": 15, "materials": 5,
+        "intro": "Bespoke metal and molded trims engineered to your brand specification, from zipper pulls to rivets and snaps. Each component is tooled to order in zinc alloy, brass, TPU, or soft PVC with custom finishes, logos, and engraving for a consistent identity across every garment.",
+        "items": [
+          {"slug": "branded-zipper-pulls", "title": "Branded zipper pulls", "tag": "Zinc Alloy", "desc": "Die-cast zinc-alloy pulls shaped to your logo with electroplated or matte finishes for jackets, bags, and outerwear."},
+          {"slug": "engraved-metal-buttons", "title": "Engraved metal buttons", "tag": "Brass", "desc": "Solid brass shank and tack buttons with laser-engraved or embossed brand marks in antique, nickel, or gunmetal plating."},
+          {"slug": "custom-logo-buckles", "title": "Custom logo buckles", "tag": "Zinc · Acetal", "desc": "Made-to-spec side-release and slide buckles cast in zinc or molded in acetal, debossed with your mark for straps and webbing."},
+          {"slug": "logo-rivets-studs", "title": "Logo rivets & studs", "tag": "Brass Cap", "desc": "Double-cap rivets and decorative studs with a stamped logo head, finished in brass, copper, or black nickel for denim and leather goods."},
+          {"slug": "branded-cord-stoppers", "title": "Branded cord stoppers", "tag": "Soft PVC", "desc": "Injection-molded spring cord stoppers and aglets in soft PVC or TPU, raised with a 3D logo and matched to brand Pantone colors."},
+          {"slug": "logo-eyelets-snaps", "title": "Logo eyelets & snaps", "tag": "Plated Metal", "desc": "Self-piercing eyelets, grommets, and ring-spring snap fasteners engraved with your logo in nickel, brass, or matte-black plating."}
+        ]
+      },
+      {
+        "tag": "OEM Spec", "title": "OEM brand parts", "slug": "oem-brand-parts", "products": 12, "materials": 3,
+        "intro": "OEM brand parts produced to your exact spec sheet — co-developed trim sets, private-label labels, and branded hardware kits matched to your brand standards. We build to drawing, color, and tolerance, then deliver consistently at production scale.",
+        "items": [
+          {"slug": "spec-matched-trim-set", "title": "Spec-matched trim set", "tag": "Mixed materials", "desc": "A coordinated set of labels, tags, and hardware co-developed and color-matched to your brand spec sheet for a single garment program."},
+          {"slug": "private-label-woven-label", "title": "Private-label woven label", "tag": "Woven damask", "desc": "A damask-woven main label produced under your own private label, with brand-locked colors, fonts, and folding to your tech pack."},
+          {"slug": "branded-hardware-kit", "title": "Branded hardware kit", "tag": "Zinc alloy", "desc": "A packaged kit of branded zipper pullers, rivets, and snaps die-cast and electroplated to your logo and finish standard."},
+          {"slug": "co-developed-leather-patch", "title": "Co-developed leather patch", "tag": "Genuine leather", "desc": "A debossed leather patch developed jointly with your design team, with hide grade, edge finish, and stitch spec fixed to drawing."},
+          {"slug": "oem-heat-transfer-label", "title": "OEM heat-transfer label", "tag": "TPU film", "desc": "A heat-transferred care and brand label built to your TPU film, wash-test, and placement spec for high-volume runs."},
+          {"slug": "custom-metal-logo-plate", "title": "Custom metal logo plate", "tag": "Etched brass", "desc": "An etched brass logo plate manufactured to your CAD file, plating tone, and mounting method as a dedicated OEM component."}
+        ]
+      }
+    ]
+  },
+  "contact": {
+    "eyebrow": "Reach Out",
+    "title": "Get In ",
+    "titleAccent": "Touch",
+    "subtitle": "Have questions? We're here to help you succeed.",
+    "cards": [
+      { "title": "Email", "lines": ["core@signex.vn", "nhuadeo@gmail.com"] },
+      { "title": "Phone", "lines": ["Tel: (+84) 979 700 072", "Zalo: (+84) 94 9999 326"] },
+      { "title": "Address", "lines": ["Office: 25/88/13 Bui Quang La, An Hoi Tay ward, Ho Chi Minh city, Viet Nam.", "Factory: 85/45 Duong Thi Muoi, Trung My Tay ward, Ho Chi Minh city, Viet Nam."] }
+    ]
+  },
+  "footer": {
+    "brand": "SIGNEX – Manufacturing Brand Identity",
+    "tagline": ["We don't create brands.", "We manufacture what brands stand for."],
+    "contactHeading": "Contact us",
+    "company": "SIGNEX BRAND IDENTITY PRODUCTS MANUFACTURING CO., LTD",
+    "email": "core@signex.vn",
+    "tel": "(+84) 979 700 072",
+    "zalo": "(+84) 94 9999 326",
+    "tax": "0319401172",
+    "office": "25/88/13 Bui Quang La, An Hoi Tay ward, Ho Chi Minh city, Viet Nam.",
+    "factory": "85/45 Duong Thi Muoi, Trung My Tay ward, Ho Chi Minh city, Viet Nam.",
+    "quickHeading": "Quick links",
+    "links": [
+      { "label": "Home", "href": "/" },
+      { "label": "About", "href": "/about" },
+      { "label": "Contact", "href": "/contact" }
+    ],
+    "shipLabel": "We ship with:",
+    "payLabel": "Payment options:",
+    "payments": ["VISA", "JCB", "Napas"]
+  },
+  "nav": {
+    "skip": "Skip to content",
+    "cta": "Quote Now",
+    "links": [
+      { "label": "Home", "href": "/" },
+      { "label": "About", "href": "/about" },
+      { "label": "Contact", "href": "/contact" }
+    ]
+  },
+  "aboutPage": {
+    "hero": {
+      "title": "About ",
+      "titleAccent": "Signex",
+      "subtitle": "Manufacturing Brand Identity Excellence Since Inception"
+    },
+    "testimonial": {
+      "eyebrow": "Signex",
+      "title": "Who We ",
+      "titleAccent": "Are",
+      "body": [
+        "SIGNEX is a leading manufacturer specializing in brand identity products. We don't just create brands – we manufacture what brands stand for.",
+        "With state-of-the-art manufacturing facilities and a dedicated team of experts, we deliver precision-crafted plastic logos, emblems, labels, badges, nameplates, and custom identity components for global brands.",
+        "Our commitment to quality, innovation, and customer satisfaction has made us a trusted partner for businesses seeking excellence in brand representation.",
+        "From OEM parts to custom solutions, we bring your brand identity to life through superior manufacturing processes and attention to detail."
+      ]
+    },
+    "approach": [
+      {
+        "title": "Direct Manufacturing",
+        "body": [
+          "SIGNEX operates as a direct manufacturer with production managed entirely in-house.",
+          "This ensures clear technical communication, full production control, and stable quality across manufacturing batches."
+        ]
+      },
+      {
+        "title": "Brand-Oriented Manufacturing",
+        "body": [
+          "We understand that brand components are not generic parts.",
+          "Our manufacturing approach is therefore aligned with brand requirements, ensuring that each component respects established brand guidelines and maintains a consistent appearance across different production runs."
+        ]
+      },
+      {
+        "title": "OEM & Confidentiality",
+        "body": [
+          "We believe in building lasting relationships with our clients. Our partnership approach ensures consistent quality, reliable delivery, and continuous improvement.",
+          "We maintain transparent communication with our partners to ensure reliability, clarity in technical requirements, and long-term manufacturing stability."
+        ]
+      }
+    ],
+    "intro": {
+      "eyebrow": "Why SIGNEX",
+      "title": "Why Choose ",
+      "titleAccent": "Signex",
+      "body": "Excellence in every detail, quality in every product"
+    },
+    "capability": {
+      "eyebrow": "Our Expertise",
+      "title": "Manufacturing ",
+      "titleAccent": "Capability",
+      "body": "SIGNEX focuses on OEM and custom brand identity manufacturing, with production capabilities designed to meet both technical specifications and brand requirements.",
+      "groups": [
+        {
+          "title": "Core Products",
+          "items": [
+            "Plastic logos and emblems",
+            "Brand labels, badges, and nameplates",
+            "Custom identity components for products and packaging",
+            "OEM brand parts made to specification"
+          ]
+        },
+        {
+          "title": "Materials",
+          "items": ["PVC", "TPU", "Silicone", "Composite plastics", "Custom material formulations upon request"]
+        },
+        {
+          "title": "Production Strengths",
+          "items": [
+            "Mold-based forming and precision shaping",
+            "Consistent surface finishing and color control",
+            "Batch stability and repeatability",
+            "Adaptability for small to medium production volumes"
+          ]
+        }
+      ],
+      "closing": [
+        "We do not pursue mass production at the expense of control.",
+        "Our focus is manufacturing accuracy and stability, batch after batch."
+      ]
+    },
+    "process": {
+      "eyebrow": "Our Process",
+      "title": "Manufacturing ",
+      "titleAccent": "Approach",
+      "body": "Excellence in every detail, quality in every product",
+      "steps": [
+        {
+          "title": "Material Selection & Formulation",
+          "body": "Materials are selected and prepared according to performance requirements and product specifications."
+        },
+        {
+          "title": "Mold Development & Tooling",
+          "body": "Precision molds are developed to ensure accurate form reproduction and stable long-term production."
+        },
+        {
+          "title": "Production & Forming",
+          "body": "Components are manufactured under controlled parameters to maintain consistent shape, surface quality, and color."
+        },
+        {
+          "title": "Quality Inspection",
+          "body": "Each batch undergoes visual and dimensional inspection to ensure it meets defined standards."
+        }
+      ]
+    },
+    "timeline": {
+      "eyebrow": "Step by Step",
+      "title": "Manufacturing Process ",
+      "titleAccent": "Overview",
+      "body": "Our manufacturing process follows a structured, repeatable workflow",
+      "intro": [
+        "SIGNEX operates as a direct manufacturing company, with production activities conducted under controlled conditions to ensure consistency and quality stability.",
+        "Our factory setup focuses on precision forming, material handling, and repeatable production, rather than mass output.",
+        "We invest in process control, not scale for scale's sake."
+      ],
+      "milestones": [
+        {
+          "num": "01",
+          "title": "Material Selection & Preparation",
+          "body": "Materials are selected based on performance requirements, durability, and brand application, including PVC, TPU, silicone, and composite plastics."
+        },
+        {
+          "num": "02",
+          "title": "Mold Development & Tooling",
+          "body": "Molds are developed or refined to ensure:",
+          "items": ["Accurate form reproduction", "Stable batch output", "Long-term tooling reliability"]
+        },
+        {
+          "num": "03",
+          "title": "Production & Forming",
+          "body": "Production is conducted with controlled parameters to ensure:",
+          "items": ["Shape consistency", "Surface quality", "Color accuracy"]
+        },
+        {
+          "num": "04",
+          "title": "Quality Inspection",
+          "body": "Quality checks are integrated throughout production:",
+          "items": ["Visual inspection", "Dimensional verification", "Batch comparison"],
+          "note": "Quality is controlled during production, not corrected afterward."
+        },
+        {
+          "num": "05",
+          "title": "Finishing & Packaging",
+          "body": "Final products are finished and packaged to protect:",
+          "items": ["Physical integrity", "Surface quality", "Brand appearance"]
+        }
+      ]
+    }
+  },
+  "contactPage": {
+    "hero": {
+      "title": "Get In ",
+      "titleAccent": "Touch",
+      "subtitle": "Let's discuss how we can bring your brand identity to life"
+    },
+    "cards": [
+      { "title": "Email", "lines": ["core@signex.vn", "nhuadeo@gmail.com"] },
+      { "title": "Phone", "lines": ["Tel: (+84) 979 700 072", "Zalo: (+84) 94 9999 326"] },
+      {
+        "title": "Address",
+        "company": "SIGNEX BRAND IDENTITY PRODUCTS MANUFACTURING CO., LTD",
+        "details": [
+          { "label": "Office", "value": "25/88/13 Bui Quang La, An Hoi Tay ward, Ho Chi Minh city, Viet Nam." },
+          { "label": "Factory", "value": "85/45 Duong Thi Muoi, Trung My Tay ward, Ho Chi Minh city, Viet Nam." },
+          { "label": "Tax", "value": "0319401172" }
+        ]
+      }
+    ],
+    "map": {
+      "eyebrow": "Map",
+      "title": "Find ",
+      "titleAccent": "Signex"
+    }
+  },
+  "notFound": {
+    "eyebrow": "404",
+    "title": "Looks like you've ",
+    "titleAccent": "lost the thread",
+    "body": "The page you're looking for has moved or no longer exists. Let's get you back on track — Signex is ready to bring your brand identity to life.",
+    "cta": "Back to homepage",
+    "imageAlt": "Signex production floor"
+  },
+  "meta": {
+    "siteName": "SIGNEX",
+    "title": "SIGNEX — Brand Identity Products Manufacturer",
+    "description": "SIGNEX manufactures brand identity products in Vietnam — plastic logos and emblems, woven and printed labels, badges, nameplates and custom OEM components for fashion and lifestyle brands. Consistent quality, batch after batch.",
+    "ogImageAlt": "SIGNEX — Manufacturing Brand Identity",
+    "about": {
+      "title": "About Us",
+      "description": "Inside SIGNEX — our manufacturing capability, approach and process for producing consistent, high-quality brand identity products: logos, emblems, labels, badges, nameplates and custom OEM components."
+    },
+    "contact": {
+      "title": "Contact",
+      "description": "Get in touch with SIGNEX for a quote on brand identity manufacturing — plastic logos, woven labels, badges, nameplates and custom OEM components. Office and factory in Ho Chi Minh City, Vietnam."
+    }
+  }
+}

@@ -1,0 +1,15 @@
+// Prisma schema for @signex/db.
+// Datasource + generator ONLY — no domain models yet (ready to `prisma migrate`).
+// The generated client is a build artifact: it lands in ../generated/client and is git-ignored.
+// Regenerate with `npm run -w @signex/db generate`.
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/client"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

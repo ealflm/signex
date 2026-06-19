@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Turborepo
+.turbo/
+
+# Prisma generated client (build artifact; regenerate with `prisma generate`)
+packages/db/generated/
+
+# TypeScript / Next build info
+*.tsbuildinfo
+next-env.d.ts
+
+# Env files (committed: .env.example only)
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.vercel

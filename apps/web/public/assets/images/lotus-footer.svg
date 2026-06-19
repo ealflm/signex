@@ -1,0 +1,24 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#e3eef3" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <path id="lp-o" d="M0 0 C -64 -64 -46 -168 0 -212 C 46 -168 64 -64 0 0 Z"/>
+    <path id="lp-i" d="M0 0 C -42 -42 -28 -112 0 -146 C 28 -112 42 -42 0 0 Z"/>
+  </defs>
+  <!-- lotus bloom: 5 outer + 4 interleaved inner petals fanning up -->
+  <g transform="translate(256 300)">
+    <use href="#lp-o" transform="rotate(-72)"/>
+    <use href="#lp-o" transform="rotate(-36)"/>
+    <use href="#lp-o"/>
+    <use href="#lp-o" transform="rotate(36)"/>
+    <use href="#lp-o" transform="rotate(72)"/>
+    <use href="#lp-i" transform="rotate(-54)"/>
+    <use href="#lp-i" transform="rotate(-18)"/>
+    <use href="#lp-i" transform="rotate(18)"/>
+    <use href="#lp-i" transform="rotate(54)"/>
+  </g>
+  <!-- stems -->
+  <path d="M256 304 C 250 364 248 424 244 492"/>
+  <path d="M256 304 C 296 360 330 420 360 484"/>
+  <!-- lily pad with notch -->
+  <ellipse cx="372" cy="474" rx="60" ry="29"/>
+  <path d="M314 474 L 372 467 M314 474 L 372 481"/>
+</svg>

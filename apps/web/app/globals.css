@@ -1,0 +1,1244 @@
+/* app/globals.css */
+/* Caladan port: Webflow's caladan-template.shared.css (loaded via <link> in app/layout.tsx)
+   owns ALL base styling. Tailwind's preflight reset is intentionally NOT imported here —
+   it would override Webflow's box-sizing/margins/heading/list resets.
+   To add Tailwind utilities later WITHOUT the reset, use:
+     @import "tailwindcss/theme.css" layer(theme);
+     @import "tailwindcss/utilities.css" layer(utilities);
+   (do not import the base/preflight layer). */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Hero quote form — progressive disclosure (ADDED feature, scoped).
+   Webflow's caladan-template.shared.css is NOT touched. These rules only drive
+   the new expand/collapse interaction and layout. Fields keep Caladan's own
+   .text-field / .input_wrap / .label / .cta_primary styling.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Full-width form band over the hero image (readable dark glass). Scoped via
+   .hero-quote_panel so other .form elements (e.g. footer newsletter) are unaffected. */
+.hero-quote_panel.hero-quote_panel {
+  max-width: none;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(8, 10, 12, 0.58);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.hero-quote_inner {
+  display: flex;
+  flex-direction: column;
+  grid-row-gap: var(--spacing--space-tiny, 0.5rem);
+  gap: var(--spacing--space-tiny, 0.5rem);
+}
+
+/* Your Information — horizontal full-width bar (fields side by side, submit inline
+   at the end), mirroring Caladan's original hero booking bar. */
+.hero-quote_bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  grid-column-gap: var(--spacing--space-tiny, 0.5rem);
+  grid-row-gap: var(--spacing--space-tiny, 0.5rem);
+  gap: var(--spacing--space-tiny, 0.5rem);
+}
+.hero-quote_bar > .input_wrap {
+  flex: 1 1 12rem;
+  width: auto;
+}
+.hero-quote_submit--bar {
+  flex: 0 0 auto;
+}
+/* Hidden (not unmounted) while the form is expanded, so its IX2 hover binding lives on. */
+.hero-quote_submit--bar.is-hidden {
+  display: none;
+}
+
+/* Product Information — 3-up field grid, full width. */
+.hero-quote_grid {
+  display: grid;
+  grid-column-gap: var(--spacing--space-tiny, 0.5rem);
+  grid-row-gap: var(--spacing--space-tiny, 0.5rem);
+}
+.hero-quote_grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* "Product Information" group: collapsed by default, expands on focus.
+   grid-template-rows 0fr→1fr animates height with no JS measuring; the bottom-anchored
+   hero content means this growth smoothly pushes the headline upward in lockstep.
+   ease-out-expo gives a premium, settled feel. */
+.hero-form_collapsible {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 520ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 360ms ease-out;
+  will-change: grid-template-rows;
+}
+.hero-form_collapsible.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.hero-form_collapsible-inner {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  grid-row-gap: var(--spacing--space-tiny, 0.5rem);
+  gap: var(--spacing--space-tiny, 0.5rem);
+  /* gentle slide-in of the revealed fields, matched to the height curve */
+  transform: translateY(-0.5rem);
+  transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-form_collapsible.is-open .hero-form_collapsible-inner {
+  transform: translateY(0);
+}
+
+/* Message textarea — sized to match fields (more specific than .text-field). */
+.hero-quote_inner .hero-quote_message {
+  height: auto;
+  min-height: 4.25rem;
+  resize: vertical;
+}
+/* Custom file-upload dropzone (hero quote form, dark-panel variant of .contact-upload):
+   the native input is visually hidden inside a <label> styled as a dashed box with an
+   upload icon + format text. Light tones (white-based) for the dark hero glass panel. */
+.hero-quote_upload {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  grid-column-gap: 0.5rem;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: var(--spacing--space-pico, 0.5rem) var(--spacing--space-nano, 0.75rem);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: var(--_🔘-radius---ui--input, 0.75rem);
+  background-color: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+.hero-quote_upload:hover,
+.hero-quote_upload:focus-within {
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
+}
+/* Visually hidden but focusable/clickable via the wrapping label (keeps tabIndex gating). */
+.hero-quote_upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.hero-quote_upload-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.hero-quote_upload-icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
+}
+.hero-quote_upload-text {
+  font-size: var(--_🔠-typography---size--b3, 0.875rem);
+  line-height: 1.2;
+}
+.hero-quote_submit {
+  align-self: flex-end;
+  margin-top: var(--spacing--space-minimal, 0.25rem);
+}
+
+/* Home hero vertical layout for the expanding form.
+   Caladan's default sends the headline to the middle (margin-top:auto) and the form
+   to the bottom. Instead we PIN the headline near the top (just below the navbar) and
+   let the form sit at the bottom via margin-top:auto. As the form expands it grows
+   UPWARD into the gap — the headline stays put (no jump). The hero only grows downward
+   for any overflow past 100dvh, so its size barely changes and the motion stays smooth. */
+/* Desktop only (mobile keeps Caladan's auto-height hero). Higher specificity
+   (.wrap_home-a …) is required to beat Caladan's own rules, which load after globals.css.
+
+   Layout: the headline rests at the TOP of the content, positioned purely by the
+   content's top padding; the form sits at the BOTTOM via margin-top:auto. The hero
+   height TRACKS its content (height:auto, never below the collapsed viewport height)
+   so it grows/shrinks smoothly with the form and doesn't grow at all on tall screens.
+
+   Headline motion: the top padding is large when COLLAPSED (headline at its original
+   resting spot) and smaller when EXPANDED (headline rises toward the navbar, keeping a
+   gap). Transitioning padding-top makes the headline glide up only on expand — and
+   glide back down on collapse — while staying still in the collapsed state. */
+@media screen and (min-width: 768px) {
+  .wrap_home-a:has(.hero-quote_inner) {
+    height: auto;
+    min-height: min(100dvh, 75rem);
+    max-height: none;
+  }
+  /* The headline sits directly above the form (kill Caladan's margin-top:auto, which
+     would otherwise shove it to the top). The whole headline+form group rests at the
+     BOTTOM (justify-content:flex-end), so when collapsed the headline is right above
+     the form bar and the empty space is ABOVE the headline — NOT a gap between them. */
+  .wrap_home-a .headline_home-a {
+    margin-top: 0;
+  }
+  .wrap_home-a .content_hero-home-a {
+    justify-content: flex-end;
+    height: auto;
+    /* fill the collapsed viewport (minus the hero's ~6rem of paddings) so the group
+       rests at the bottom; a definite value is required because the auto-height
+       ancestors can't resolve a percentage min-height. */
+    min-height: calc(min(100dvh, 75rem) - 6rem);
+    /* nav-clearance floor: as the expanding form pushes the group up, the headline
+       stops ~128px below the top (clear of the navbar) and the hero grows for the rest.
+       Because the rise is driven by the form's animated height, it's smooth — and the
+       headline only moves on expand, staying put (just above the form) when collapsed. */
+    padding-top: 5rem;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .hero-quote_bar > .input_wrap {
+    flex-basis: 100%;
+  }
+  .hero-quote_grid--3 {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-form_collapsible {
+    transition: none;
+  }
+}
+
+/* Vietnamese hero headline: the copy is longer than English, so at the full h0 size
+   each phrase wraps. Keep the SAME font size as EN and instead let each phrase stay on
+   one line (white-space: nowrap) by lifting the column's max-width — the longer VI lines
+   extend across the sky area of the hero image. Keyed off html[lang="vi"] (EN untouched);
+   mobile keeps natural wrap. */
+@media screen and (min-width: 768px) {
+  html[lang="vi"] .section_hero-home-a .heading_home-a {
+    max-width: none;
+  }
+  html[lang="vi"] .section_hero-home-a .heading-style-h0 {
+    white-space: nowrap;
+  }
+}
+
+/* Vietnamese Features headline is longer than EN. Caladan caps `.heading_features` at
+   max-width:448px, which wraps the bold first line ("Vì Sao Các Thương Hiệu") onto two
+   lines. Widen the heading column (VI only) so each part of the <br>-split headline sits
+   on exactly one line. EN is untouched (it already fits at 2 lines). */
+@media screen and (min-width: 768px) {
+  html[lang="vi"] .section_features .heading_features {
+    max-width: 32rem;
+  }
+}
+
+/* ───────── Navbar EN/VI language toggle (ADDED) ───────── */
+/* "View Resorts" tertiary look (button-1 type) with a single SLIDING underline: one bar
+   (.lang-toggle_underline) rests under the active locale and slides to the hovered/focused
+   option (its left/width are set inline from JS — measured off the option elements — and
+   animated here). Colour inherits the navbar text colour via currentColor; inactive
+   options are muted with opacity. */
+.lang-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+.lang-toggle_option {
+  font-family: var(--_🔠-typography---font-family--button-1);
+  font-size: var(--_🔠-typography---size--button-1);
+  line-height: var(--_🔠-typography---line-height--button-1);
+  font-weight: var(--_🔠-typography---font-weight--button-1);
+  letter-spacing: var(--_🔠-typography---letter-spacing--button-1);
+  color: currentColor;
+  text-decoration: none;
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+.lang-toggle_option:hover,
+.lang-toggle_option:focus-visible,
+.lang-toggle_option.is-active {
+  opacity: 1;
+}
+.lang-toggle_divider {
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0.3;
+  user-select: none;
+}
+.lang-toggle_underline {
+  position: absolute;
+  bottom: -0.15rem;
+  height: 1px;
+  background-color: currentColor;
+  pointer-events: none;
+}
+.lang-toggle_underline.is-animated {
+  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1), width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Navbar Signex logo (user-supplied SVG, recoloured to #241018). Sized by height; its
+   width auto-derives from the ~2.4:1 aspect ratio and stays within .brand_navbar's cap. */
+.signex-logo-nav {
+  height: 1.85rem;
+  aspect-ratio: 2048 / 855;
+  width: auto;
+  display: block;
+  /* Match the nav links' colour exactly (.link_nav uses tone--strong); a CSS mask lets the
+     SVG wordmark take this token instead of its baked-in #241018, so it tracks the links. */
+  background-color: var(--_🎨-color--tokens---tone--strong);
+  -webkit-mask: url("/assets/images/signex-logo.svg") center / contain no-repeat;
+  mask: url("/assets/images/signex-logo.svg") center / contain no-repeat;
+}
+
+/* Resorts collection section on the HOME page.
+   Caladan's shared rule gives .section_hero-resorts a LARGE top padding because there
+   it's the /resorts page hero (sits right under the navbar). Ported below Features on
+   the home page it's a mid-page block, so the large top padding leaves too big a gap —
+   tighten it to the small padding (matching the bottom). Scoped to .home-a_rest-content
+   so the future /resorts hero keeps its original large top padding; the descendant
+   selector (0,2,0) also beats Caladan's .section_hero-resorts (0,1,0), which loads
+   after globals.css. */
+.home-a_rest-content .section_hero-resorts {
+  padding-top: var(--section-padding--small);
+}
+
+/* Contact section (`.section_hero-contact-b`) — same situation as `.section_hero-resorts` above:
+   in the ref it's the /contact-b page HERO (large top padding, sits under the navbar). signex uses
+   it MID-PAGE in both places it appears — below HomeAbout on the home page, and below the contact-c
+   hero on /contact — so tighten the top padding to small in both. Scoped to .main-wrapper (wraps
+   every page's content) so it applies on home + /contact; (0,2,0) beats Caladan's (0,1,0). */
+.main-wrapper .section_hero-contact-b {
+  padding-top: var(--section-padding--small);
+}
+
+/* Contact form — widened 2-column field grid (ADDED).
+   The ref stacks every field full-width inside .master_contact-b's 8-column cap
+   (57rem). For the signex quote fields that reads too tall and narrow, so:
+   • .contact-form_wide lifts the form's own .master_contact-b wrapper to the
+     section's 10-column rhythm (the About headline/MVV grid cap) — the heading
+     above keeps the ref's 8-column width in its own wrapper;
+   • .contact-form_grid turns .profile-form_inner's flex column into a 2-col grid
+     (class+class (0,2,0) beats Caladan's .profile-form_inner (0,1,0));
+   • the three mm dimensions share one full-width 3-up row (.contact-form_dims)
+     — same grouping as the hero quote form's detail grid;
+   • .contact-form_full (Message) spans both columns.
+   Single column again under 768px, dims included. */
+.master_contact-b.contact-form_wide {
+  max-width: var(--width--10-columns);
+}
+
+/* Email / Phone / Address info cards between the contact heading and form.
+   Three icon-chip cards (blue mail / green phone / purple map-pin — signex accents,
+   not in Caladan's palette, hence hard-coded). Capped at the same 10-column width
+   as the form card below so their edges align; collapses to one column on mobile. */
+.contact_info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-column-gap: 2rem;
+  grid-row-gap: 2rem;
+  max-width: var(--width--10-columns);
+  margin: 0 auto 3rem;
+  text-align: left;
+}
+.contact_info-card {
+  display: flex;
+  align-items: flex-start;
+  grid-column-gap: 0.85rem;
+  gap: 0.85rem;
+}
+.contact_info-icon {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.contact_info-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.contact_info-icon.is-email {
+  background-color: #e7effd;
+  color: #3b5bdb;
+}
+.contact_info-icon.is-phone {
+  background-color: #e7f7ee;
+  color: #2f9e44;
+}
+.contact_info-icon.is-address {
+  background-color: #f3eafd;
+  color: #8b5cf6;
+}
+.contact_info-lines {
+  display: flex;
+  flex-direction: column;
+  grid-row-gap: 0.15rem;
+  gap: 0.15rem;
+}
+@media screen and (max-width: 767px) {
+  .contact_info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.profile-form_inner.contact-form_grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+}
+.contact-form_dims {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-column-gap: var(--spacing--space-tiny, 1rem);
+  grid-row-gap: var(--spacing--space-tiny, 1rem);
+}
+.contact-form_full {
+  grid-column: 1 / -1;
+}
+/* Custom file-upload control (contact form): the native input is visually hidden inside
+   a <label> styled as a dashed dropzone with an upload icon + format text. Reuses the
+   form's input radius/background tokens; the dashed border + muted text are tone tokens
+   (the input default-border token is transparent in .form.is-v2, so it can't be used). */
+.contact-upload {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  grid-column-gap: 0.5rem;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: var(--spacing--space-pico) var(--spacing--space-nano);
+  border: 1px dashed var(--_🎨-color--tokens---input--active--border);
+  border-radius: var(--_🔘-radius---ui--input);
+  background-color: var(--_🎨-color--tokens---input--default--background);
+  color: var(--_🎨-color--tokens---tone--medium);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+.contact-upload:hover,
+.contact-upload:focus-within {
+  border-color: var(--_🎨-color--tokens---tone--strong);
+  color: var(--_🎨-color--tokens---tone--strong);
+}
+/* Visually-hidden native input — stays focusable/clickable via the wrapping label. */
+.contact-upload_input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.contact-upload_icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.contact-upload_icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
+}
+.contact-upload_text {
+  font-size: var(--_🔠-typography---size--b3);
+  line-height: 1.2;
+}
+@media screen and (max-width: 767px) {
+  .profile-form_inner.contact-form_grid,
+  .contact-form_dims {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Home About / Products headline width.
+   Both "About SIGNEX" (HomeAbout) and "What We Manufacture" (ProductCategories) reuse
+   Caladan's .headline_home-about / .home_about-p. Caladan caps the body at 5 columns inside
+   a 6-column headline wrapper, which wraps signex's longer About copy to ~6 lines. Widen both
+   to 10 columns so the About paragraph reads in ~3 lines (the shorter Products description fits
+   comfortably too). Both selectors are (0,2,0) — scoped to .home-a_rest-content — so they beat
+   Caladan's base rules (0,1,0), which load after globals.css; the headline wrapper stays
+   center-aligned, so only the text column widens. */
+.home-a_rest-content .headline_home-about {
+  max-width: var(--width--10-columns);
+}
+.home-a_rest-content .home_about-p {
+  max-width: var(--width--10-columns);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Home About — Mission / Vision / Values (ADDED, signex content).
+   Replaces Caladan's six-image collage (.grid_about-images) under the About
+   headline: mission statement + checklist on the left, Vision / Values tint
+   cards stacked on the right. All-new scoped classes (about-mvv_*) — Caladan's
+   stylesheet is untouched. The sub-heading reuses the compiled Webflow h5
+   typography variables (emoji-prefixed names are how Webflow exports them) so
+   it tracks Caladan's responsive type scale. The check/indigo/green accents are
+   hard-coded — they're signex brand accents, not in Caladan's palette.
+   ───────────────────────────────────────────────────────────────────────────── */
+.about-mvv_grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-column-gap: 4rem;
+  grid-row-gap: 2rem;
+  align-items: start;
+  text-align: left;
+  /* Cap to the same 10-column rhythm as the About headline above (globals.css
+     override) — without this the grid fills .container-large (112.5rem) on wide
+     screens; the collage it replaced was capped at 8 columns by Caladan. */
+  max-width: var(--width--10-columns);
+  margin-left: auto;
+  margin-right: auto;
+}
+.about-mvv_title {
+  margin: 0 0 0.875rem;
+  font-family: var(--_🔠-typography---font-family--h5);
+  font-size: var(--_🔠-typography---size--h5);
+  line-height: var(--_🔠-typography---line-height--h5);
+  font-weight: var(--_🔠-typography---font-weight--h5);
+  letter-spacing: var(--_🔠-typography---letter-spacing--h5);
+}
+.about-mvv_body {
+  margin: 0;
+}
+.about-mvv_list {
+  display: flex;
+  flex-direction: column;
+  grid-row-gap: 0.875rem;
+  gap: 0.875rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.about-mvv_item {
+  display: flex;
+  align-items: flex-start;
+  grid-column-gap: 0.75rem;
+  gap: 0.75rem;
+  margin: 0;
+}
+.about-mvv_check {
+  flex: 0 0 auto;
+  margin-top: 0.125rem;
+  color: #1fa755;
+}
+.about-mvv_check svg {
+  display: block;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.about-mvv_cards {
+  display: flex;
+  flex-direction: column;
+  grid-row-gap: 1.5rem;
+  gap: 1.5rem;
+}
+.about-mvv_card {
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+.about-mvv_card.is-vision {
+  background-color: #edf0fb;
+}
+.about-mvv_card.is-values {
+  background-color: #e9f6ee;
+}
+.about-mvv_card-head {
+  display: flex;
+  align-items: center;
+  grid-column-gap: 0.625rem;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+.about-mvv_card-icon {
+  flex: 0 0 auto;
+}
+.about-mvv_card.is-vision .about-mvv_card-icon {
+  color: #4956e3;
+}
+.about-mvv_card.is-values .about-mvv_card-icon {
+  color: #1fa755;
+}
+.about-mvv_card-icon svg {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+/* h3 carries Caladan's sans heading family already; only resize to card scale. */
+.about-mvv_card-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+@media screen and (max-width: 767px) {
+  .about-mvv_grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Footer — SIGNEX redesign (ADDED). New 3-column content + shipping/payment row
+   poured into Caladan's master_footer shell. Text reuses the footer's own atoms
+   (text_body-bold/tone-medium/link_footer/text-size-*), which inherit the dark
+   master_footer tone remap; only LAYOUT and the brand chips/badges (brand colours
+   not in Caladan's palette) are scoped here. Vendored CSS is untouched.
+   ───────────────────────────────────────────────────────────────────────────── */
+/* 3-column top tile — override Caladan's auto/1fr footer_top-tile grid (0,2,0 beats
+   Caladan's (0,1,0) regardless of load order). brand | contact (wider) | quick links */
+.footer_top-tile.footer-signex_top {
+  /* Re-assert display:grid (0,2,0) so it survives Caladan's max-width:767px rule that
+     flips .footer_top-tile to display:flex — otherwise our grid-template-columns go
+     inert below 768px and the 600-767px band wrongly collapses to one column. */
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr 0.9fr;
+  align-items: start;
+}
+/* Signex logo at the top of the footer brand column (replaces the "SIGNEX" label).
+   Recoloured-to-#241018 SVG flipped to white for the dark footer; sized by height. */
+.footer-signex_logo {
+  height: 2rem;
+  width: auto;
+  display: block;
+  filter: brightness(0) invert(1);
+}
+.footer-signex_brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  grid-row-gap: 0.65rem;
+  gap: 0.65rem;
+  max-width: var(--width--3-columns);
+}
+.footer-signex_tagline {
+  display: flex;
+  flex-direction: column;
+  grid-row-gap: 0.2rem;
+  gap: 0.2rem;
+}
+.footer-signex_socials {
+  display: flex;
+  grid-column-gap: 0.75rem;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.footer-signex_social {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+.footer-signex_social svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  display: block;
+}
+.footer-signex_social.is-facebook {
+  background-color: #1877f2;
+}
+.footer-signex_social.is-youtube {
+  background-color: #ff0000;
+}
+/* Contact + Quick-links columns */
+.footer-signex_col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  grid-row-gap: 1.25rem;
+  gap: 1.25rem;
+}
+.footer-signex_contact {
+  display: flex;
+  flex-direction: column;
+  grid-row-gap: 0.8rem;
+  gap: 0.8rem;
+}
+.footer-signex_company {
+  max-width: 26rem;
+}
+.footer-signex_address {
+  display: flex;
+  flex-direction: column;
+  grid-row-gap: 0.1rem;
+  gap: 0.1rem;
+}
+/* Shipping | Payment utility row (footer_mid-tile keeps its space-between layout).
+   Move Caladan's divider from ABOVE the row to BELOW it (between the shipping/payment
+   row and the SIGNEX wordmark): drop the inherited border-top, add a matching
+   border-bottom, and flip the divider padding from top to bottom. Same faint
+   light-8 hairline colour. */
+.footer_mid-tile.footer-signex_utility {
+  flex-wrap: wrap;
+  border-top: none;
+  border-bottom: 1px solid var(--_🎨-color--base---base--light-8);
+  padding-top: 0;
+  padding-bottom: var(--spacing--space-micro);
+}
+/* Lotus footer watermark: the source SVG is black; flatten + invert it to a white
+   silhouette so .palm-footer's 0.12 opacity renders it as a faint light watermark on
+   the deep-navy footer (the Caladan palm was cream #FFFBE9). */
+.footer-signex_lotus {
+  filter: brightness(0) invert(1);
+}
+/* Un-flip: .palm-footer mirrors horizontally (rotateY 180deg) for the palm's orientation;
+   the lotus should render in its natural (unmirrored) direction. Higher specificity
+   (0,2,0) beats Caladan's .palm-footer (0,1,0); positioning comes from inset, not the
+   transform, so dropping the transform only removes the mirror. */
+.palm-footer.footer-signex_lotus {
+  transform: none;
+  /* Reduce the corner overflow: smaller + pulled inward vs the palm's 32rem / right:-11rem,
+     so less of the lotus is clipped off the footer's right edge. */
+  width: 32rem;
+  right: -3rem;
+  /* Anchor to the footer's BOTTOM instead of the top (the palm's inset sets top:8.3rem),
+     so the lotus rises from the bottom-right corner. */
+  top: auto;
+  bottom: 0;
+}
+@media screen and (max-width: 767px) {
+  .palm-footer.footer-signex_lotus {
+    width: 22rem;
+    right: -2.5rem;
+  }
+}
+.footer-signex_badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  grid-column-gap: 0.6rem;
+  gap: 0.6rem;
+}
+.footer-signex_badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.4rem;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.footer-signex_badge.is-lalamove {
+  background-color: #f16622;
+  color: #ffffff;
+}
+.footer-signex_badge.is-grab {
+  background-color: #00b14f;
+  color: #ffffff;
+}
+.footer-signex_pay {
+  background-color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.footer-signex_pay.is-blue {
+  color: #1a1f71;
+}
+.footer-signex_pay.is-red {
+  color: #c0392b;
+}
+@media screen and (max-width: 991px) {
+  .footer_top-tile.footer-signex_top {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media screen and (max-width: 599px) {
+  .footer_top-tile.footer-signex_top {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* /about hero (home-c layout): the Caladan buttons + bottom stats blocks were removed, leaving
+   only the heading. Caladan's .content_hero-home-c is a flex column with justify-content:space-between
+   (heading top, stats bottom) + asymmetric top/bottom padding (and a 20rem bottom reserve for the
+   stats on ≤767px). Center the lone heading vertically and equalize the vertical padding so it sits
+   in the true middle of the hero. Scoped to .section_hero-home-c, which only exists on /about;
+   specificity (0,2,0) beats Caladan's later-loaded (0,1,0). */
+.section_hero-home-c .content_hero-home-c {
+  justify-content: center;
+  padding-top: var(--section-padding--large);
+  padding-bottom: var(--section-padding--large);
+}
+@media screen and (max-width: 767px) {
+  .section_hero-home-c .content_hero-home-c {
+    padding-top: var(--section-padding--extra-large);
+    padding-bottom: var(--section-padding--extra-large);
+  }
+}
+
+/* /about testimonial card: the decorative quote glyph was swapped for the Signex wordmark.
+   Rendered as a CSS mask filled with currentColor so it inherits .quotes_testimonial-v2's faint
+   ink--dark-8 colour — identical to the original quote glyph (which used fill:currentColor). Fills
+   the quote container's responsive width (6.25rem, 4rem on ≤767px); aspect-ratio keeps the logo's
+   2.4:1 shape with no distortion. */
+.quotes_testimonial-v2 .quotes_testimonial-signex {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2048 / 855;
+  background-color: currentColor;
+  -webkit-mask: url("/assets/images/signex-logo.svg") center / contain no-repeat;
+  mask: url("/assets/images/signex-logo.svg") center / contain no-repeat;
+}
+
+/* /about testimonial card now holds the SIGNEX description (4 paragraphs) where a single big
+   heading-style-h4 quote used to be. Stack the paragraphs with comfortable spacing. */
+.testimonial-signex_body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--space-nano);
+}
+
+/* Tighten the oversized space-huge (~6.5–10rem) gap between the logo and the description in the
+   testimonial card's left column (Caladan's .left_testimonial-v2 reserved it for a short quote). */
+.section_testimonial .left_testimonial-v2 {
+  row-gap: var(--spacing--space-small);
+}
+
+/* Match the testimonial section's bottom padding to its top (Caladan defaults the bottom to
+   section-padding--extra-small vs --small at the top). Same token both sides → equal at every
+   breakpoint. Scoped under .main-wrapper for (0,2,0) > Caladan's later-loaded (0,1,0). */
+.main-wrapper .section_testimonial {
+  padding-bottom: var(--section-padding--small);
+}
+
+/* /about manufacturing-approach cards (replaced the stat tiles). Reuse signex's existing look only:
+   the stat tiles' light-gray surface (ink--dark-4) + the MVV is-vision blue icon tint (#edf0fb /
+   #4956e3) + the MVV card-title type scale. Icon box on top, heading, then the body paragraphs. */
+.about-values_grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--spacing--space-nano);
+}
+.about-values_card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-radius: var(--_🔘-radius---general--default);
+  background-color: var(--_🎨-color--tokens---ink--dark-4);
+}
+.about-values_icon {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 0.25rem;
+  border-radius: 0.625rem;
+  background-color: #edf0fb;
+  color: #4956e3;
+}
+.about-values_icon svg {
+  display: block;
+  width: 1.375rem;
+  height: 1.375rem;
+}
+.about-values_title {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.about-values_body {
+  margin: 0;
+}
+@media screen and (max-width: 767px) {
+  .about-values_grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* /about "Manufacturing Capability" — reuses the .about-values_* grid/card/title; adds bulleted
+   lists (small accent dot, reusing the icon blue #4956e3) and a centered closing note. */
+.about-cap_list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.about-cap_item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+.about-cap_item::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.375rem;
+  height: 0.375rem;
+  margin-top: 0.5rem;
+  border-radius: 50%;
+  background-color: #4956e3;
+}
+.about-cap_closing {
+  margin-top: var(--spacing--space-small);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: center;
+}
+.about-cap_closing p {
+  margin: 0;
+}
+
+/* /about "Manufacturing Approach" — 4 centered numbered step cards. Reuses signex's light-gray card
+   surface (ink--dark-4) + accent blue (#4956e3) for the number badge; same card-title type scale. */
+.about-steps_grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing--space-nano);
+}
+.about-steps_card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.625rem;
+  padding: 1.75rem 1.5rem;
+  border-radius: var(--_🔘-radius---general--default);
+  background-color: var(--_🎨-color--tokens---ink--dark-4);
+}
+/* Identical to the "Why Choose Signex" icon box (.about-values_icon): #edf0fb bg + #4956e3 mark,
+   2.75rem square, 0.625rem radius — for full consistency. */
+.about-steps_num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.625rem;
+  background-color: #edf0fb;
+  color: #4956e3;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.about-steps_title {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.about-steps_body {
+  margin: 0;
+}
+@media screen and (max-width: 991px) {
+  .about-steps_grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media screen and (max-width: 575px) {
+  .about-steps_grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* /about timeline (ported section_timeline): on ≤767px the .timeline_empty cells hide and each row
+   collapses to [circle | item]. Even rows render item|circle|empty, so re-order their circle to the
+   front (Caladan did this via per-instance w-node ids, which we dropped for the dict-driven map). */
+@media screen and (max-width: 767px) {
+  .timeline_row:nth-child(even) .wrap_circle-timeline {
+    order: -9999;
+  }
+}
+
+/* /about process-timeline lead-in paragraph (the 3-line intro above the steps), centered to match
+   the section header. The per-step bullet lists reuse .about-cap_list / .about-cap_item. */
+.about-process_intro {
+  max-width: 47.5rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: var(--spacing--space-medium);
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  text-align: center;
+}
+.about-process_intro p {
+  margin: 0;
+}
+
+/* /contact hero intro: Caladan caps .contact-c_hero-p at 4 columns (28rem), wrapping the localised
+   subtitle (esp. the longer VI line) to 2 lines. Widen it so it sits on a single line on desktop
+   (it still wraps naturally on narrow viewports). Scoped to the contact hero; (0,2,0) > (0,1,0). */
+.section_hero-contact-c .contact-c_hero-p {
+  max-width: none;
+}
+
+/* /contact: the 4 Caladan info cards became 3 SIGNEX cards (Email/Phone/Address). 3-col on desktop
+   (Caladan's grid is 4-col → leaves an empty cell), and cards size to content top-aligned instead of
+   the fixed 22.5rem tall boxes (which left the short Email/Phone cards mostly empty). The grid still
+   stretches them to equal height. Scoped to the contact hero; (0,2,0) beats Caladan's (0,1,0). */
+@media screen and (min-width: 992px) {
+  .section_hero-contact-c .grid_contact-c {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+/* Tablet (Caladan's 2-col range, 480–991px): with 3 cards the 3rd (Address) would orphan in
+   the left cell, leaving the right half empty. Span it across both columns so the layout reads
+   as a balanced "Email | Phone" row + a full-width Address row. */
+@media screen and (min-width: 480px) and (max-width: 991px) {
+  .section_hero-contact-c .card_contact-c:last-child {
+    grid-column: 1 / -1;
+  }
+}
+.section_hero-contact-c .card_contact-c {
+  height: auto;
+  min-height: 0;
+  justify-content: flex-start;
+  grid-row-gap: var(--spacing--space-small);
+}
+
+/* /contact "Find Signex" map — replaces the Caladan FAQ accordion in the section_faq block.
+   Full container width, rounded to match the site; dark-4 fallback while the embed loads. */
+.contact-map {
+  width: 100%;
+  border-radius: var(--_🔘-radius---general--default);
+  overflow: hidden;
+  background-color: var(--_🎨-color--tokens---ink--dark-4);
+}
+.contact-map_frame {
+  display: block;
+  width: 100%;
+  height: 56rem;
+  border: 0;
+}
+
+/* /404 — square (1:1) hero image. Caladan's .image_404 is a tall portrait
+   (height:75rem / 25rem on mobile); override to a 1:1 box so the cover image
+   reads as a square. Specificity (0,2,0) beats Caladan's .image_404 (0,1,0)
+   at every breakpoint (Caladan CSS loads after globals.css). */
+._404 .image_404 {
+  aspect-ratio: 1 / 1;
+  height: auto;
+  max-height: none;
+}
+
+/* /404 — balanced vertical breathing room. Caladan's .grid_404 only has
+   --section-padding--extra-small top/bottom, so the content hugs the navbar and the
+   footer; bump to --medium so the 404 row sits centred between them. (0,2,0) beats
+   Caladan's .grid_404 (0,1,0) at every breakpoint.
+   The navbar (.master_navigation) is position:fixed and ~5.75rem tall, overlapping the
+   top of the page — so add its height to padding-top. The VISIBLE gap below the navbar
+   then equals the (equal-value) bottom padding. */
+._404 .grid_404 {
+  padding-top: calc(var(--section-padding--medium) + 5.75rem);
+  padding-bottom: var(--section-padding--medium);
+}
+
+/* Hide the Webflow attribution badge that the vendored Webflow runtime injects
+   (caladan-template.schunk.368c30933a13e5d4.js appends a .w-webflow-badge to <body>).
+   Caladan's shared CSS has its own `.w-webflow-badge { display:…!important }` (0,1,0) that
+   loads AFTER globals.css, so an equal-specificity rule loses — scope under `body` (0,1,1)
+   to win regardless of source order. */
+body .w-webflow-badge {
+  display: none !important;
+}
+
+/* Mobile-menu EN/VI switch (in .nav-menu_mobile-button, ≤991px only): center it within
+   the column wrapper and enlarge the options so it reads as a proper menu control rather
+   than the tiny navbar-corner toggle. The JS-driven underline re-measures these sizes. */
+.nav-menu_mobile-button .lang-toggle {
+  align-self: center;
+  gap: 0.6rem;
+}
+.nav-menu_mobile-button .lang-toggle_option {
+  font-size: 1.125rem;
+}
+.nav-menu_mobile-button .lang-toggle_divider {
+  font-size: 1rem;
+}
+
+/* Mobile menu scrollbars: Caladan sets `.nav-menu_inner { overflow: scroll }` at ≤991px,
+   which ALWAYS renders (empty) scrollbars on both axes even though the short
+   Home/About/Contact + EN/VI menu fits with no overflow. Switch to `auto` so bars show only
+   if the menu ever exceeds the viewport. Higher specificity (.nav-menu …) is needed to beat
+   Caladan's equal-specificity rule, which loads after globals.css. */
+@media screen and (max-width: 991px) {
+  .nav-menu .nav-menu_inner {
+    overflow: auto;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Product detail page (/products/<category>/<product>) — layout + zoomable image.
+   ───────────────────────────────────────────────────────────────────────────── */
+.section_product-detail {
+  /* clear the fixed navbar (same +5.75rem nav offset used on the 404) */
+  padding-top: calc(var(--section-padding--medium) + 5.75rem);
+  padding-bottom: var(--section-padding--medium);
+}
+.product-detail_back {
+  display: inline-block;
+  margin-bottom: var(--spacing--space-small);
+  text-decoration: none;
+}
+.product-detail_grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-column-gap: var(--spacing--space-medium);
+  grid-row-gap: var(--spacing--space-small);
+  align-items: start;
+}
+@media screen and (min-width: 768px) {
+  .product-detail_grid { grid-template-columns: 1.1fr 0.9fr; }
+}
+.product-detail_info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  grid-row-gap: var(--spacing--space-small);
+  gap: var(--spacing--space-small);
+}
+.product-detail_meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; }
+.product-detail_meta strong { color: var(--_🎨-color--tokens---tone--strong); }
+.product-detail_dot { opacity: 0.4; }
+.product-detail_desc { max-width: 44ch; }
+
+/* Inline zoom trigger (the product image on the detail page). */
+.product-zoom_trigger {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  overflow: hidden;
+  border-radius: var(--_🔘-radius---general--large);
+  aspect-ratio: 4 / 3;
+}
+.product-zoom_trigger .image_cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.product-zoom_trigger:hover .image_cover { transform: scale(1.04); }
+.product-zoom_hint {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  background-color: rgba(8, 10, 12, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: var(--_🔠-typography---size--b3, 0.8rem);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Full-screen zoom lightbox. */
+.product-zoom_overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(8, 10, 12, 0.94);
+  overflow: hidden;
+  touch-action: none;
+  cursor: zoom-out;
+}
+.product-zoom_img {
+  max-width: 92vw;
+  max-height: 88vh;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform; /* no transition — keep wheel/drag crisp */
+}
+.product-zoom_controls {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10; /* above the (transformed) image so the buttons always receive clicks */
+  display: flex;
+  gap: 0.5rem;
+}
+.product-zoom_controls button {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: background-color 0.15s ease;
+}
+.product-zoom_controls button:hover { background-color: rgba(255, 255, 255, 0.24); }
+
+/* App Router error boundary (app/[lang]/error.tsx + app/global-error.tsx) — action row
+   (Try again button + home link). The "Try again" CTA reuses .cta_primary on a native
+   <button>, so reset its default chrome. */
+.error-page_actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  grid-column-gap: var(--spacing--space-small);
+  grid-row-gap: var(--spacing--space-tiny);
+  gap: var(--spacing--space-small);
+}
+.error-page_actions .cta_primary {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* Skip-to-content link (a11y) — visually hidden until focused, then pinned top-left over the nav. */
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10000;
+  transform: translateY(-150%);
+  padding: 0.6rem 1rem;
+  border-radius: var(--_🔘-radius---general--default, 0.75rem);
+  background-color: var(--_🎨-color--tokens---ink--base, #fff);
+  color: var(--_🎨-color--tokens---tone--strong, #0b1f33);
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(8, 10, 12, 0.18);
+  transition: transform 0.18s ease;
+}
+.skip-link:focus { transform: translateY(0); outline: 2px solid var(--_🎨-color--tokens---tone--strong, #0b1f33); }
