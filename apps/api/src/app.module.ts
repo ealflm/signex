@@ -9,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { WorkingStateModule } from './working-state/working-state.module';
 import { AuditModule } from './audit/audit.module';
+import { ContentModule } from './content/content.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { OriginGuard, ALLOWED_ORIGINS } from './auth/guards/origin.guard';
 import { SessionAuthGuard } from './auth/guards/session-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -22,6 +24,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
     UsersModule,
     WorkingStateModule,
     AuditModule,
+    ContentModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [
