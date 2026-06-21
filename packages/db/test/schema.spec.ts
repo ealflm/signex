@@ -89,4 +89,108 @@ describe("cms_foundation migration", () => {
     });
     expect(a.bytes).toBe(9_000_000_000n);
   });
+
+  it("enforces Asset.sha256 unique constraint", async () => {
+    const ts = Date.now();
+    await prisma.asset.create({
+      data: {
+        kind: "IMAGE",
+        sha256: `sha-unique-${ts}`,
+        r2Key: `r2-key-a-${ts}`,
+        mime: "image/png",
+        bytes: 1n,
+        originalName: "a.png",
+      },
+    });
+    await expect(
+      prisma.asset.create({
+        data: {
+          kind: "IMAGE",
+          sha256: `sha-unique-${ts}`, // same sha256
+          r2Key: `r2-key-b-${ts}`,    // different r2Key
+          mime: "image/png",
+          bytes: 2n,
+          originalName: "b.png",
+        },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("enforces Asset.r2Key unique constraint", async () => {
+    const ts = Date.now();
+    await prisma.asset.create({
+      data: {
+        kind: "IMAGE",
+        sha256: `sha-r2-a-${ts}`,
+        r2Key: `r2-key-unique-${ts}`,
+        mime: "image/png",
+        bytes: 1n,
+        originalName: "c.png",
+      },
+    });
+    await expect(
+      prisma.asset.create({
+        data: {
+          kind: "IMAGE",
+          sha256: `sha-r2-b-${ts}`, // different sha256
+          r2Key: `r2-key-unique-${ts}`, // same r2Key
+          mime: "image/png",
+          bytes: 2n,
+          originalName: "d.png",
+        },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("enforces ContentBlock(kind, key) composite unique constraint", async () => {
+    await prisma.contentBlock.create({
+      data: { kind: "PAGE", key: "home.hero", data: {} },
+    });
+    await expect(
+      prisma.contentBlock.create({
+        data: { kind: "PAGE", key: "home.hero", data: { title: "duplicate" } },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("enforces Product(categoryId, slug) composite unique constraint", async () => {
+    const cat = await prisma.category.create({
+      data: {
+        slug: `cat-slug-${Date.now()}`,
+        sortOrder: 99,
+        title: { en: "Cat", vi: "Cat" },
+        tag: { en: "Tag", vi: "Tag" },
+        intro: { en: "Intro", vi: "Intro" },
+        productCount: 1,
+        materialCount: 1,
+      },
+    });
+    await prisma.product.create({
+      data: {
+        categoryId: cat.id,
+        slug: "prod-slug",
+        sortOrder: 1,
+        title: { en: "Prod A", vi: "Prod A" },
+        tag: { en: "T", vi: "T" },
+        desc: { en: "D", vi: "D" },
+      },
+    });
+    await expect(
+      prisma.product.create({
+        data: {
+          categoryId: cat.id,
+          slug: "prod-slug", // same (categoryId, slug)
+          sortOrder: 2,
+          title: { en: "Prod B", vi: "Prod B" },
+          tag: { en: "T", vi: "T" },
+          desc: { en: "D", vi: "D" },
+        },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("ReleaseStatus has exactly PUBLISHED and ARCHIVED — no DRAFT", () => {
+    expect(Object.keys(ReleaseStatus).sort()).toEqual(["ARCHIVED", "PUBLISHED"]);
+    expect(ReleaseStatus).not.toHaveProperty("DRAFT");
+  });
 });
