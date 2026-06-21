@@ -25,6 +25,10 @@ function makeTx() {
         .mockResolvedValue({ id: 'crel0000000000000000001', version: 42 }),
     },
     publishedPointer: {
+      // In-lock checksum re-check (release.service.ts:91-97): returning null
+      // means "no live release yet" → proceed to mint (null?.release?.checksum
+      // !== 'newchecksum' is true, so the noop branch is skipped).
+      findUnique: jest.fn().mockResolvedValue(null),
       upsert: jest.fn().mockResolvedValue({}),
     },
     releaseAssetRef: {
@@ -162,6 +166,21 @@ describe('ReleaseService.publish', () => {
       service.publish(ACTOR, { expectedRevision: 7 }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(tx.release.create).not.toHaveBeenCalled();
+  });
+
+  it('in-lock noop: returns {status:noop} when sibling already published the same checksum inside the tx', async () => {
+    // Simulates the race: outer pre-check saw a different checksum (proceeds to
+    // open the tx), but by the time we hold the advisory lock the live pointer
+    // already carries our checksum — the second concurrent publish no-ops.
+    tx.publishedPointer.findUnique.mockResolvedValue({
+      release: { checksum: 'newchecksum' },
+    });
+    const res = await service.publish(ACTOR, { expectedRevision: 7 });
+    expect(res).toEqual({ status: 'noop' });
+    // tx DID open (advisory lock was acquired), but no new release was minted
+    expect(prisma.client.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.release.create).not.toHaveBeenCalled();
+    expect(revalidation.revalidate).not.toHaveBeenCalled();
   });
 
   it('revalidates AFTER commit (non-fatal)', async () => {
