@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { WorkingStateModule } from './working-state/working-state.module';
 import { OriginGuard, ALLOWED_ORIGINS } from './auth/guards/origin.guard';
 import { SessionAuthGuard } from './auth/guards/session-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -18,6 +19,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     HealthModule,
     AuthModule,
     UsersModule,
+    WorkingStateModule,
   ],
   controllers: [AppController],
   providers: [
