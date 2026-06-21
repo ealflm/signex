@@ -46,10 +46,30 @@ export type ReleaseBlocks = {
 /**
  * Validate `data` against the schema registered under `key`. Throws ZodError
  * on invalid input — the importer relies on this as its conformance gate.
+ *
+ * Overload 1 (importer / release): `parseBlock(key, data)`
+ * Overload 2 (ContentService write path): `parseBlock(kind, key, data)` where
+ *   `key` is the DB composite key like "home.hero" and the registry key is
+ *   derived from the last dot-segment (e.g. "home.hero" → "hero").
  */
-export function parseBlock<K extends BlockKey>(
-  key: K,
-  data: unknown,
-): z.infer<(typeof BLOCK_REGISTRY)[K]> {
-  return BLOCK_REGISTRY[key].parse(data) as z.infer<(typeof BLOCK_REGISTRY)[K]>;
+export function parseBlock<K extends BlockKey>(key: K, data: unknown): z.infer<(typeof BLOCK_REGISTRY)[K]>;
+export function parseBlock(kind: string, key: string, data: unknown): unknown;
+export function parseBlock(
+  kindOrKey: string,
+  keyOrData: unknown,
+  maybeData?: unknown,
+): unknown {
+  if (maybeData !== undefined) {
+    // 3-arg form: parseBlock(kind, dbKey, data)
+    // kindOrKey = kind (e.g. "PAGE") — unused for routing, key lives in the registry
+    // keyOrData = dbKey (e.g. "home.hero") — last dot-segment gives registry key
+    const dbKey = keyOrData as string;
+    const registryKey = dbKey.includes('.') ? dbKey.split('.').pop()! : dbKey;
+    if (!(registryKey in BLOCK_REGISTRY)) {
+      throw new Error(`Unknown block key: "${dbKey}" (derived registry key: "${registryKey}")`);
+    }
+    return BLOCK_REGISTRY[registryKey as BlockKey].parse(maybeData);
+  }
+  // 2-arg form: parseBlock(key, data)
+  return BLOCK_REGISTRY[kindOrKey as BlockKey].parse(keyOrData);
 }
