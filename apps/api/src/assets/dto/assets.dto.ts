@@ -63,6 +63,16 @@ export function keyFor(sha256: string, slug: string, ext: string): string {
   return `originals/${sha256.slice(0, 32)}/${slug}.${ext}`;
 }
 
+/**
+ * Derives a deterministic CUID-shaped Asset ID from a sha256 hex string.
+ * Format: 'c' + first 24 hex chars of sha256 = 25 chars total, all [a-z0-9].
+ * Satisfies z.string().cuid() so AssetRef.assetId validation passes.
+ * Same sha256 → same id (content-addressed, fully reproducible).
+ */
+export function assetIdFromSha256(sha256: string): string {
+  return 'c' + sha256.slice(0, 24).toLowerCase();
+}
+
 const sha256Field = z
   .string()
   .regex(/^[0-9a-f]{64}$/i, 'sha256 must be 64 hex chars');

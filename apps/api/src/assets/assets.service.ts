@@ -14,6 +14,7 @@ import {
   extForMime,
   slugify,
   keyFor,
+  assetIdFromSha256,
   type PresignInput,
   type ReplaceInput,
 } from './dto/assets.dto';
@@ -267,6 +268,7 @@ export class AssetsService {
         })
       : await this.prisma.client.asset.create({
           data: {
+            id: assetIdFromSha256(sha256),
             status: 'READY',
             kind,
             sha256,

@@ -5,175 +5,175 @@ import type { ReleaseSnapshot } from "@signex/shared";
 
 export const INITIAL_SNAPSHOT = {
   "assets": {
-    "cmqntf8g60001sbis9hmzo3m7": {
-      "assetId": "cmqntf8g60001sbis9hmzo3m7",
-      "height": 256,
-      "mime": "image/svg+xml",
-      "r2Key": "originals/7e03ed3b7902e7e5ca8eb130b3018f99/signex-logo.svg",
-      "variants": [],
-      "width": 613
-    },
-    "cmqntf8gf000dsbisziho53ky": {
-      "assetId": "cmqntf8gf000dsbisziho53ky",
-      "height": 630,
-      "mime": "image/png",
-      "r2Key": "originals/c5bc7b3a9d5caa8a4149a83cc2d0ef08/signex-og.png",
-      "variants": [],
-      "width": 1200
-    },
-    "cmqntf8gh000hsbisdlg7qjox": {
-      "assetId": "cmqntf8gh000hsbisdlg7qjox",
-      "height": 32,
-      "mime": "image/png",
-      "r2Key": "originals/1e614126d125a4fb8b262ce16f70c3b9/favicon-32x32.png",
-      "variants": [],
-      "width": 32
-    },
-    "cmqntf8gj000lsbisyggb66m7": {
-      "assetId": "cmqntf8gj000lsbisyggb66m7",
-      "height": 16,
-      "mime": "image/png",
-      "r2Key": "originals/468ff969b95eb24bf5e1dfdbbb554706/favicon-16x16.png",
-      "variants": [],
-      "width": 16
-    },
-    "cmqntf8gl000psbisza03hgjf": {
-      "assetId": "cmqntf8gl000psbisza03hgjf",
-      "height": 180,
-      "mime": "image/png",
-      "r2Key": "originals/1cad7946bed4ebcd596252a9814fd78b/apple-touch-icon.png",
-      "variants": [],
-      "width": 180
-    },
-    "cmqntf8gn000tsbiscedn4l65": {
-      "assetId": "cmqntf8gn000tsbiscedn4l65",
+    "c117e2896f57a312eaa71ca52": {
+      "assetId": "c117e2896f57a312eaa71ca52",
       "height": 192,
       "mime": "image/png",
       "r2Key": "originals/117e2896f57a312eaa71ca52c0cdc891/android-chrome-192x192.png",
       "variants": [],
       "width": 192
     },
-    "cmqntf8gp000xsbiskb7f6mav": {
-      "assetId": "cmqntf8gp000xsbiskb7f6mav",
-      "height": 512,
+    "c1cad7946bed4ebcd596252a9": {
+      "assetId": "c1cad7946bed4ebcd596252a9",
+      "height": 180,
       "mime": "image/png",
-      "r2Key": "originals/7f47c710b79aada5a225daf4b41a6141/android-chrome-512x512.png",
+      "r2Key": "originals/1cad7946bed4ebcd596252a9814fd78b/apple-touch-icon.png",
       "variants": [],
-      "width": 512
+      "width": 180
     },
-    "cmqntf8gs0011sbis22tqievi": {
-      "assetId": "cmqntf8gs0011sbis22tqievi",
-      "height": 2743,
+    "c1e614126d125a4fb8b262ce1": {
+      "assetId": "c1e614126d125a4fb8b262ce1",
+      "height": 32,
+      "mime": "image/png",
+      "r2Key": "originals/1e614126d125a4fb8b262ce16f70c3b9/favicon-32x32.png",
+      "variants": [],
+      "width": 32
+    },
+    "c43f0ecc88ceaad99e422630f": {
+      "assetId": "c43f0ecc88ceaad99e422630f",
+      "height": 1405,
       "mime": "image/avif",
-      "r2Key": "originals/a4b66de045a269b48b297bb6055d43a0/69b04fc10fe79a2becaf38a8-contemporary-cliffside-house-at-twilight.avif",
+      "r2Key": "originals/43f0ecc88ceaad99e422630f471df5fd/69a9a01bdb6ad07ce787019a-pexels-slimmars-13-197677686-13801311.avif",
       "variants": [],
-      "width": 4798
+      "width": 2500
     },
-    "cmqntf8gw0019sbiske5oznxk": {
-      "assetId": "cmqntf8gw0019sbiske5oznxk",
-      "height": 2400,
-      "mime": "image/avif",
-      "r2Key": "originals/a79a1bd46201d96beab5d94daad73cb0/69ac691927961ac98c560fe2-pexels-stephanlouis-19119918.avif",
+    "c468ff969b95eb24bf5e1dfdb": {
+      "assetId": "c468ff969b95eb24bf5e1dfdb",
+      "height": 16,
+      "mime": "image/png",
+      "r2Key": "originals/468ff969b95eb24bf5e1dfdbbb554706/favicon-16x16.png",
       "variants": [],
-      "width": 1920
+      "width": 16
     },
-    "cmqntf8h1001hsbisu1isocn9": {
-      "assetId": "cmqntf8h1001hsbisu1isocn9",
-      "height": 720,
-      "mime": "image/jpeg",
-      "r2Key": "originals/7a51789381425553d5cdf0cea38404ab/69ac9062c7d860e7441b1f36-6168566-hd-1920-1080-30fps-poster-0000000.jpg",
-      "variants": [],
-      "width": 1280
-    },
-    "cmqntf8h8001lsbisrmo2a71a": {
-      "assetId": "cmqntf8h8001lsbisrmo2a71a",
-      "mime": "video/mp4",
-      "r2Key": "originals/6cf61765b1292b8c1e4c3a38834731bb/69ac9062c7d860e7441b1f36-6168566-hd-1920-1080-30fps-mp4.mp4",
-      "variants": []
-    },
-    "cmqntf8hh001psbisetb4nruu": {
-      "assetId": "cmqntf8hh001psbisetb4nruu",
-      "mime": "video/webm",
-      "r2Key": "originals/a48c310271c97ca6c8b1cc83b7f54fb6/69ac9062c7d860e7441b1f36-6168566-hd-1920-1080-30fps-webm.webm",
-      "variants": []
-    },
-    "cmqntf8hs0025sbisj0on5n6w": {
-      "assetId": "cmqntf8hs0025sbisj0on5n6w",
-      "height": 3600,
-      "mime": "image/avif",
-      "r2Key": "originals/cd18e3b1444659de0a5b6b7479112caf/69b049a16076b1b2188d012d-rumman-amin-s3o2rktkf7i-unsplash.avif",
-      "variants": [],
-      "width": 2400
-    },
-    "cmqntf8hu0029sbisbullsdr3": {
-      "assetId": "cmqntf8hu0029sbisbullsdr3",
+    "c47aeed00890ae34ee187193d": {
+      "assetId": "c47aeed00890ae34ee187193d",
       "height": 1600,
       "mime": "image/avif",
       "r2Key": "originals/47aeed00890ae34ee187193dc6a8f823/69b037b7b9f0bc0f27d8889d-dinuka-lankaloka-hkr5cn6s0q0-unsplash.avif",
       "variants": [],
       "width": 2400
     },
-    "cmqntf8hw002dsbisrccnsbxa": {
-      "assetId": "cmqntf8hw002dsbisrccnsbxa",
-      "height": 1405,
-      "mime": "image/avif",
-      "r2Key": "originals/68e3e1726da687d5f9c720ee927c27f1/69b03783cb355b95794c522e-pexels-roman-odintsov-5667901.avif",
-      "variants": [],
-      "width": 2500
-    },
-    "cmqntf8hx002hsbiskvqeq7tm": {
-      "assetId": "cmqntf8hx002hsbiskvqeq7tm",
-      "height": 1405,
-      "mime": "image/avif",
-      "r2Key": "originals/6729c31c0192e90813086218ca51bdce/69aff4da51c27aa9c99aba98-pexels-keeganjchecks-14524361.avif",
-      "variants": [],
-      "width": 2500
-    },
-    "cmqntf8hz002lsbisism9guo7": {
-      "assetId": "cmqntf8hz002lsbisism9guo7",
-      "height": 1405,
-      "mime": "image/avif",
-      "r2Key": "originals/de4dedb21ef3f3df9b6636351a554c56/69a9a5725487307243a72031-pexels-adriendrj-33980501.avif",
-      "variants": [],
-      "width": 2500
-    },
-    "cmqntf8i1002psbis3zk0nmxn": {
-      "assetId": "cmqntf8i1002psbis3zk0nmxn",
-      "height": 1405,
-      "mime": "image/avif",
-      "r2Key": "originals/b3c0bc5aa6391c8b09cbf9c8fb3836ae/69a9a51013e52d8aa1532730-pexels-alohaphotostudio-6961666.avif",
-      "variants": [],
-      "width": 2500
-    },
-    "cmqntf8i9002tsbisivtbceds": {
-      "assetId": "cmqntf8i9002tsbisivtbceds",
+    "c558390147010589195a16498": {
+      "assetId": "c558390147010589195a16498",
       "height": 1405,
       "mime": "image/avif",
       "r2Key": "originals/558390147010589195a164982f35768c/69a9a43eeca7b6045e93b8cd-pexels-freestockpro-1007657.avif",
       "variants": [],
       "width": 2500
     },
-    "cmqntf8ib002xsbisrlfs97a6": {
-      "assetId": "cmqntf8ib002xsbisrlfs97a6",
+    "c6729c31c0192e90813086218": {
+      "assetId": "c6729c31c0192e90813086218",
+      "height": 1405,
+      "mime": "image/avif",
+      "r2Key": "originals/6729c31c0192e90813086218ca51bdce/69aff4da51c27aa9c99aba98-pexels-keeganjchecks-14524361.avif",
+      "variants": [],
+      "width": 2500
+    },
+    "c68e3e1726da687d5f9c720ee": {
+      "assetId": "c68e3e1726da687d5f9c720ee",
+      "height": 1405,
+      "mime": "image/avif",
+      "r2Key": "originals/68e3e1726da687d5f9c720ee927c27f1/69b03783cb355b95794c522e-pexels-roman-odintsov-5667901.avif",
+      "variants": [],
+      "width": 2500
+    },
+    "c6cf61765b1292b8c1e4c3a38": {
+      "assetId": "c6cf61765b1292b8c1e4c3a38",
+      "mime": "video/mp4",
+      "r2Key": "originals/6cf61765b1292b8c1e4c3a38834731bb/69ac9062c7d860e7441b1f36-6168566-hd-1920-1080-30fps-mp4.mp4",
+      "variants": []
+    },
+    "c7a51789381425553d5cdf0ce": {
+      "assetId": "c7a51789381425553d5cdf0ce",
+      "height": 720,
+      "mime": "image/jpeg",
+      "r2Key": "originals/7a51789381425553d5cdf0cea38404ab/69ac9062c7d860e7441b1f36-6168566-hd-1920-1080-30fps-poster-0000000.jpg",
+      "variants": [],
+      "width": 1280
+    },
+    "c7e03ed3b7902e7e5ca8eb130": {
+      "assetId": "c7e03ed3b7902e7e5ca8eb130",
+      "height": 256,
+      "mime": "image/svg+xml",
+      "r2Key": "originals/7e03ed3b7902e7e5ca8eb130b3018f99/signex-logo.svg",
+      "variants": [],
+      "width": 613
+    },
+    "c7f47c710b79aada5a225daf4": {
+      "assetId": "c7f47c710b79aada5a225daf4",
+      "height": 512,
+      "mime": "image/png",
+      "r2Key": "originals/7f47c710b79aada5a225daf4b41a6141/android-chrome-512x512.png",
+      "variants": [],
+      "width": 512
+    },
+    "c85ab32c93251f71a2e485ad3": {
+      "assetId": "c85ab32c93251f71a2e485ad3",
       "height": 1405,
       "mime": "image/avif",
       "r2Key": "originals/85ab32c93251f71a2e485ad38e029b6a/69a9a3f79f4956225122393e-pexels-shameel-mukkath-3421394-15059057-1.avif",
       "variants": [],
       "width": 2500
     },
-    "cmqntf8id0031sbisr1ajp48m": {
-      "assetId": "cmqntf8id0031sbisr1ajp48m",
+    "ca0c5792c16ff36fde7aad11d": {
+      "assetId": "ca0c5792c16ff36fde7aad11d",
       "height": 1405,
       "mime": "image/avif",
       "r2Key": "originals/a0c5792c16ff36fde7aad11d2f05a4e4/69a9a296fd1002040c1e9240-pexels-brett-sayles-2126124.avif",
       "variants": [],
       "width": 2500
     },
-    "cmqntf8ig0035sbismq8t6vtb": {
-      "assetId": "cmqntf8ig0035sbismq8t6vtb",
+    "ca48c310271c97ca6c8b1cc83": {
+      "assetId": "ca48c310271c97ca6c8b1cc83",
+      "mime": "video/webm",
+      "r2Key": "originals/a48c310271c97ca6c8b1cc83b7f54fb6/69ac9062c7d860e7441b1f36-6168566-hd-1920-1080-30fps-webm.webm",
+      "variants": []
+    },
+    "ca4b66de045a269b48b297bb6": {
+      "assetId": "ca4b66de045a269b48b297bb6",
+      "height": 2743,
+      "mime": "image/avif",
+      "r2Key": "originals/a4b66de045a269b48b297bb6055d43a0/69b04fc10fe79a2becaf38a8-contemporary-cliffside-house-at-twilight.avif",
+      "variants": [],
+      "width": 4798
+    },
+    "ca79a1bd46201d96beab5d94d": {
+      "assetId": "ca79a1bd46201d96beab5d94d",
+      "height": 2400,
+      "mime": "image/avif",
+      "r2Key": "originals/a79a1bd46201d96beab5d94daad73cb0/69ac691927961ac98c560fe2-pexels-stephanlouis-19119918.avif",
+      "variants": [],
+      "width": 1920
+    },
+    "cb3c0bc5aa6391c8b09cbf9c8": {
+      "assetId": "cb3c0bc5aa6391c8b09cbf9c8",
       "height": 1405,
       "mime": "image/avif",
-      "r2Key": "originals/43f0ecc88ceaad99e422630f471df5fd/69a9a01bdb6ad07ce787019a-pexels-slimmars-13-197677686-13801311.avif",
+      "r2Key": "originals/b3c0bc5aa6391c8b09cbf9c8fb3836ae/69a9a51013e52d8aa1532730-pexels-alohaphotostudio-6961666.avif",
+      "variants": [],
+      "width": 2500
+    },
+    "cc5bc7b3a9d5caa8a4149a83c": {
+      "assetId": "cc5bc7b3a9d5caa8a4149a83c",
+      "height": 630,
+      "mime": "image/png",
+      "r2Key": "originals/c5bc7b3a9d5caa8a4149a83cc2d0ef08/signex-og.png",
+      "variants": [],
+      "width": 1200
+    },
+    "ccd18e3b1444659de0a5b6b74": {
+      "assetId": "ccd18e3b1444659de0a5b6b74",
+      "height": 3600,
+      "mime": "image/avif",
+      "r2Key": "originals/cd18e3b1444659de0a5b6b7479112caf/69b049a16076b1b2188d012d-rumman-amin-s3o2rktkf7i-unsplash.avif",
+      "variants": [],
+      "width": 2400
+    },
+    "cde4dedb21ef3f3df9b663635": {
+      "assetId": "cde4dedb21ef3f3df9b663635",
+      "height": 1405,
+      "mime": "image/avif",
+      "r2Key": "originals/de4dedb21ef3f3df9b6636351a554c56/69a9a5725487307243a72031-pexels-adriendrj-33980501.avif",
       "variants": [],
       "width": 2500
     }
@@ -834,9 +834,9 @@ export const INITIAL_SNAPSHOT = {
       },
       "video": {
         "media": {
-          "mp4AssetId": "cmqntf8h8001lsbisrmo2a71a",
-          "posterAssetId": "cmqntf8h1001hsbisu1isocn9",
-          "webmAssetId": "cmqntf8hh001psbisetb4nruu"
+          "mp4AssetId": "c6cf61765b1292b8c1e4c3a38",
+          "posterAssetId": "c7a51789381425553d5cdf0ce",
+          "webmAssetId": "ca48c310271c97ca6c8b1cc83"
         },
         "text": {
           "en": "See how we hold tolerances from sample to finished batch.",
@@ -1073,7 +1073,7 @@ export const INITIAL_SNAPSHOT = {
           "en": "Contemporary cliffside house at twilight",
           "vi": "Nhà trên vách đá lúc hoàng hôn"
         },
-        "assetId": "cmqntf8gs0011sbis22tqievi"
+        "assetId": "ca4b66de045a269b48b297bb6"
       },
       "subtitle": {
         "en": "Specialized in manufacturing logos, emblems, labels, badges, and custom identity components for the garment and fashion industry.",
@@ -1116,31 +1116,31 @@ export const INITIAL_SNAPSHOT = {
       "favicons": [
         {
           "asset": {
-            "assetId": "cmqntf8gh000hsbisdlg7qjox"
+            "assetId": "c1e614126d125a4fb8b262ce1"
           },
           "rel": "icon"
         },
         {
           "asset": {
-            "assetId": "cmqntf8gj000lsbisyggb66m7"
+            "assetId": "c468ff969b95eb24bf5e1dfdb"
           },
           "rel": "icon"
         },
         {
           "asset": {
-            "assetId": "cmqntf8gl000psbisza03hgjf"
+            "assetId": "c1cad7946bed4ebcd596252a9"
           },
           "rel": "apple-touch-icon"
         },
         {
           "asset": {
-            "assetId": "cmqntf8gn000tsbiscedn4l65"
+            "assetId": "c117e2896f57a312eaa71ca52"
           },
           "rel": "icon"
         },
         {
           "asset": {
-            "assetId": "cmqntf8gp000xsbiskb7f6mav"
+            "assetId": "c7f47c710b79aada5a225daf4"
           },
           "rel": "icon"
         }
@@ -1150,7 +1150,7 @@ export const INITIAL_SNAPSHOT = {
           "en": "SIGNEX — Manufacturing Brand Identity",
           "vi": "SIGNEX — Sản Xuất Nhận Diện Thương Hiệu"
         },
-        "assetId": "cmqntf8gf000dsbisziho53ky"
+        "assetId": "cc5bc7b3a9d5caa8a4149a83c"
       },
       "siteName": "SIGNEX",
       "siteUrl": "https://signex.vn",
@@ -1192,7 +1192,7 @@ export const INITIAL_SNAPSHOT = {
         }
       ],
       "logo": {
-        "assetId": "cmqntf8g60001sbis9hmzo3m7"
+        "assetId": "c7e03ed3b7902e7e5ca8eb130"
       },
       "skip": {
         "en": "Skip to content",
@@ -1220,7 +1220,7 @@ export const INITIAL_SNAPSHOT = {
           "en": "Signex production floor",
           "vi": "Xưởng sản xuất Signex"
         },
-        "assetId": "cmqntf8gw0019sbiske5oznxk"
+        "assetId": "ca79a1bd46201d96beab5d94d"
       },
       "title": {
         "accent": {
@@ -1303,7 +1303,7 @@ export const INITIAL_SNAPSHOT = {
     "categories": [
       {
         "image": {
-          "assetId": "cmqntf8hs0025sbisj0on5n6w",
+          "assetId": "ccd18e3b1444659de0a5b6b74",
           "height": 3600,
           "mime": "image/avif",
           "r2Key": "originals/cd18e3b1444659de0a5b6b7479112caf/69b049a16076b1b2188d012d-rumman-amin-s3o2rktkf7i-unsplash.avif",
@@ -1321,7 +1321,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nhãn PVC mềm 2D hoặc 3D với chi tiết đúc sắc nét, mặt sau may hoặc ép nhiệt, dùng cho quần áo và mũ nón."
             },
             "image": {
-              "assetId": "cmqntf8hz002lsbisism9guo7",
+              "assetId": "cde4dedb21ef3f3df9b663635",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/de4dedb21ef3f3df9b6636351a554c56/69a9a5725487307243a72031-pexels-adriendrj-33980501.avif",
@@ -1345,7 +1345,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Logo silicone mỏng, co giãn, ép nhiệt trực tiếp lên vải, cho bề mặt thương hiệu sạch và không cần nhãn may."
             },
             "image": {
-              "assetId": "cmqntf8i1002psbis3zk0nmxn",
+              "assetId": "cb3c0bc5aa6391c8b09cbf9c8",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/b3c0bc5aa6391c8b09cbf9c8fb3836ae/69a9a51013e52d8aa1532730-pexels-alohaphotostudio-6961666.avif",
@@ -1369,7 +1369,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Tem in được phủ lớp keo PU bóng nổi, tạo biểu tượng cộm chống trầy cho túi xách và phụ kiện."
             },
             "image": {
-              "assetId": "cmqntf8i9002tsbisivtbceds",
+              "assetId": "c558390147010589195a16498",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/558390147010589195a164982f35768c/69a9a43eeca7b6045e93b8cd-pexels-freestockpro-1007657.avif",
@@ -1393,7 +1393,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Logo cao su PU nhiều lớp với viền dập nổi, cho cảm giác mềm tay và độ tương phản màu cao."
             },
             "image": {
-              "assetId": "cmqntf8ib002xsbisrlfs97a6",
+              "assetId": "c85ab32c93251f71a2e485ad3",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/85ab32c93251f71a2e485ad38e029b6a/69a9a3f79f4956225122393e-pexels-shameel-mukkath-3421394-15059057-1.avif",
@@ -1417,7 +1417,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Logo TPU ép phun cứng với cạnh sắc nét và chấu gắn, dùng cho giày dép và túi có cấu trúc."
             },
             "image": {
-              "assetId": "cmqntf8id0031sbisr1ajp48m",
+              "assetId": "ca0c5792c16ff36fde7aad11d",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/a0c5792c16ff36fde7aad11d2f05a4e4/69a9a296fd1002040c1e9240-pexels-brett-sayles-2126124.avif",
@@ -1441,7 +1441,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nhãn PVC dập nổi cùng tông, chữ nổi và rãnh may sẵn, tạo dấu hiệu thương hiệu tinh tế và bền."
             },
             "image": {
-              "assetId": "cmqntf8ig0035sbismq8t6vtb",
+              "assetId": "c43f0ecc88ceaad99e422630f",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/43f0ecc88ceaad99e422630f471df5fd/69a9a01bdb6ad07ce787019a-pexels-slimmars-13-197677686-13801311.avif",
@@ -1475,7 +1475,7 @@ export const INITIAL_SNAPSHOT = {
       },
       {
         "image": {
-          "assetId": "cmqntf8hu0029sbisbullsdr3",
+          "assetId": "c47aeed00890ae34ee187193d",
           "height": 1600,
           "mime": "image/avif",
           "r2Key": "originals/47aeed00890ae34ee187193dc6a8f823/69b037b7b9f0bc0f27d8889d-dinuka-lankaloka-hkr5cn6s0q0-unsplash.avif",
@@ -1493,7 +1493,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nhãn dệt damask mật độ cao cho logo sắc nét, mềm tay, dùng làm nhãn chính và nhãn gáy cổ áo."
             },
             "image": {
-              "assetId": "cmqntf8hz002lsbisism9guo7",
+              "assetId": "cde4dedb21ef3f3df9b663635",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/de4dedb21ef3f3df9b6636351a554c56/69a9a5725487307243a72031-pexels-adriendrj-33980501.avif",
@@ -1517,7 +1517,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Dải satin mịn in ký hiệu giặt là, thành phần sợi và xuất xứ, dùng làm nhãn bảo quản."
             },
             "image": {
-              "assetId": "cmqntf8i1002psbis3zk0nmxn",
+              "assetId": "cb3c0bc5aa6391c8b09cbf9c8",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/b3c0bc5aa6391c8b09cbf9c8fb3836ae/69a9a51013e52d8aa1532730-pexels-alohaphotostudio-6961666.avif",
@@ -1541,7 +1541,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nhãn size, nhãn bảo quản gấp giữa hoặc gấp một biên, bo mép gọn, may vào đường ráp hoặc sườn áo."
             },
             "image": {
-              "assetId": "cmqntf8i9002tsbisivtbceds",
+              "assetId": "c558390147010589195a16498",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/558390147010589195a164982f35768c/69a9a43eeca7b6045e93b8cd-pexels-freestockpro-1007657.avif",
@@ -1565,7 +1565,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nhãn ép nhiệt không cấn cổ, ép trực tiếp lên vải cho cảm giác mềm mại, êm da."
             },
             "image": {
-              "assetId": "cmqntf8ib002xsbisrlfs97a6",
+              "assetId": "c85ab32c93251f71a2e485ad3",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/85ab32c93251f71a2e485ad38e029b6a/69a9a3f79f4956225122393e-pexels-shameel-mukkath-3421394-15059057-1.avif",
@@ -1589,7 +1589,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Bảng tên kim loại kẽm hoặc đồng, khắc hoặc ăn mòn, mạ điện hoàn thiện, gắn trên túi xách và áo khoác."
             },
             "image": {
-              "assetId": "cmqntf8id0031sbisr1ajp48m",
+              "assetId": "ca0c5792c16ff36fde7aad11d",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/a0c5792c16ff36fde7aad11d2f05a4e4/69a9a296fd1002040c1e9240-pexels-brett-sayles-2126124.avif",
@@ -1613,7 +1613,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Phù hiệu thêu vi tính dày, viền vắt sổ hoặc cắt laser, đế ép keo hoặc may đính."
             },
             "image": {
-              "assetId": "cmqntf8ig0035sbismq8t6vtb",
+              "assetId": "c43f0ecc88ceaad99e422630f",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/43f0ecc88ceaad99e422630f471df5fd/69a9a01bdb6ad07ce787019a-pexels-slimmars-13-197677686-13801311.avif",
@@ -1647,7 +1647,7 @@ export const INITIAL_SNAPSHOT = {
       },
       {
         "image": {
-          "assetId": "cmqntf8hw002dsbisrccnsbxa",
+          "assetId": "c68e3e1726da687d5f9c720ee",
           "height": 1405,
           "mime": "image/avif",
           "r2Key": "originals/68e3e1726da687d5f9c720ee927c27f1/69b03783cb355b95794c522e-pexels-roman-odintsov-5667901.avif",
@@ -1665,7 +1665,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Tay kéo đúc hợp kim kẽm tạo hình theo logo, mạ điện hoặc hoàn thiện mờ, dùng cho áo khoác, túi và đồ mặc ngoài."
             },
             "image": {
-              "assetId": "cmqntf8hz002lsbisism9guo7",
+              "assetId": "cde4dedb21ef3f3df9b663635",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/de4dedb21ef3f3df9b6636351a554c56/69a9a5725487307243a72031-pexels-adriendrj-33980501.avif",
@@ -1689,7 +1689,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nút cài và nút tán bằng đồng thau khắc laser hoặc dập nổi nhãn hiệu, mạ giả cổ, niken hoặc xám súng."
             },
             "image": {
-              "assetId": "cmqntf8i1002psbis3zk0nmxn",
+              "assetId": "cb3c0bc5aa6391c8b09cbf9c8",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/b3c0bc5aa6391c8b09cbf9c8fb3836ae/69a9a51013e52d8aa1532730-pexels-alohaphotostudio-6961666.avif",
@@ -1713,7 +1713,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Khóa nhả nhanh và khóa trượt làm theo quy cách, đúc kẽm hoặc ép acetal, dập chìm nhãn hiệu cho dây đai và dây dệt."
             },
             "image": {
-              "assetId": "cmqntf8i9002tsbisivtbceds",
+              "assetId": "c558390147010589195a16498",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/558390147010589195a164982f35768c/69a9a43eeca7b6045e93b8cd-pexels-freestockpro-1007657.avif",
@@ -1737,7 +1737,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Đinh tán hai đầu và đinh trang trí dập logo trên đầu, hoàn thiện đồng thau, đồng đỏ hoặc niken đen cho hàng jeans và đồ da."
             },
             "image": {
-              "assetId": "cmqntf8ib002xsbisrlfs97a6",
+              "assetId": "c85ab32c93251f71a2e485ad3",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/85ab32c93251f71a2e485ad38e029b6a/69a9a3f79f4956225122393e-pexels-shameel-mukkath-3421394-15059057-1.avif",
@@ -1761,7 +1761,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Chốt chặn dây lò xo và đầu bọc dây ép phun bằng PVC mềm hoặc TPU, logo nổi 3D và pha màu khớp Pantone thương hiệu."
             },
             "image": {
-              "assetId": "cmqntf8id0031sbisr1ajp48m",
+              "assetId": "ca0c5792c16ff36fde7aad11d",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/a0c5792c16ff36fde7aad11d2f05a4e4/69a9a296fd1002040c1e9240-pexels-brett-sayles-2126124.avif",
@@ -1785,7 +1785,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Khoen xỏ tự đột, ô-dê và nút bấm bốn phần khắc logo, mạ niken, đồng thau hoặc đen mờ."
             },
             "image": {
-              "assetId": "cmqntf8ig0035sbismq8t6vtb",
+              "assetId": "c43f0ecc88ceaad99e422630f",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/43f0ecc88ceaad99e422630f471df5fd/69a9a01bdb6ad07ce787019a-pexels-slimmars-13-197677686-13801311.avif",
@@ -1819,7 +1819,7 @@ export const INITIAL_SNAPSHOT = {
       },
       {
         "image": {
-          "assetId": "cmqntf8hx002hsbiskvqeq7tm",
+          "assetId": "c6729c31c0192e90813086218",
           "height": 1405,
           "mime": "image/avif",
           "r2Key": "originals/6729c31c0192e90813086218ca51bdce/69aff4da51c27aa9c99aba98-pexels-keeganjchecks-14524361.avif",
@@ -1837,7 +1837,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Bộ phụ liệu đồng bộ gồm nhãn, tag treo và phụ kiện kim loại được phát triển chung và đồng màu theo spec sheet thương hiệu cho từng chương trình hàng."
             },
             "image": {
-              "assetId": "cmqntf8hz002lsbisism9guo7",
+              "assetId": "cde4dedb21ef3f3df9b663635",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/de4dedb21ef3f3df9b6636351a554c56/69a9a5725487307243a72031-pexels-adriendrj-33980501.avif",
@@ -1861,7 +1861,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nhãn chính dệt damask sản xuất dưới thương hiệu riêng của bạn, khóa màu, font và kiểu gấp theo đúng tech pack."
             },
             "image": {
-              "assetId": "cmqntf8i1002psbis3zk0nmxn",
+              "assetId": "cb3c0bc5aa6391c8b09cbf9c8",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/b3c0bc5aa6391c8b09cbf9c8fb3836ae/69a9a51013e52d8aa1532730-pexels-alohaphotostudio-6961666.avif",
@@ -1885,7 +1885,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Bộ phụ kiện đóng gói gồm đầu khóa kéo, đinh tán và nút bấm gắn logo, đúc và mạ điện theo chuẩn logo và bề mặt của bạn."
             },
             "image": {
-              "assetId": "cmqntf8i9002tsbisivtbceds",
+              "assetId": "c558390147010589195a16498",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/558390147010589195a164982f35768c/69a9a43eeca7b6045e93b8cd-pexels-freestockpro-1007657.avif",
@@ -1909,7 +1909,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nhãn da dập chìm phát triển cùng đội thiết kế của bạn, cố định loại da, xử lý cạnh và quy cách đường may theo bản vẽ."
             },
             "image": {
-              "assetId": "cmqntf8ib002xsbisrlfs97a6",
+              "assetId": "c85ab32c93251f71a2e485ad3",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/85ab32c93251f71a2e485ad38e029b6a/69a9a3f79f4956225122393e-pexels-shameel-mukkath-3421394-15059057-1.avif",
@@ -1933,7 +1933,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nhãn ép nhiệt thông tin và thương hiệu làm theo phim TPU, tiêu chuẩn kiểm tra giặt và vị trí ép cho đơn hàng số lượng lớn."
             },
             "image": {
-              "assetId": "cmqntf8id0031sbisr1ajp48m",
+              "assetId": "ca0c5792c16ff36fde7aad11d",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/a0c5792c16ff36fde7aad11d2f05a4e4/69a9a296fd1002040c1e9240-pexels-brett-sayles-2126124.avif",
@@ -1957,7 +1957,7 @@ export const INITIAL_SNAPSHOT = {
               "vi": "Nhãn logo bằng đồng ăn mòn sản xuất theo file CAD, tông mạ và phương thức gắn của bạn như một linh kiện OEM riêng biệt."
             },
             "image": {
-              "assetId": "cmqntf8ig0035sbismq8t6vtb",
+              "assetId": "c43f0ecc88ceaad99e422630f",
               "height": 1405,
               "mime": "image/avif",
               "r2Key": "originals/43f0ecc88ceaad99e422630f471df5fd/69a9a01bdb6ad07ce787019a-pexels-slimmars-13-197677686-13801311.avif",

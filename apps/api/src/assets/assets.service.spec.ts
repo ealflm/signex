@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { AssetsService } from './assets.service';
+import { assetIdFromSha256 } from './dto/assets.dto';
 import { R2Service } from './r2.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -264,6 +265,47 @@ describe('AssetsService.confirm — malformed SVG → 400', () => {
       BadRequestException,
     );
     expect(prisma.client.asset.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('AssetsService.register — deterministic content-derived ID', () => {
+  let prisma: PrismaService;
+  let svc: AssetsService;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma = makePrisma();
+    svc = new AssetsService(prisma, r2);
+  });
+
+  it('passes id: assetIdFromSha256(sha256) to asset.create (lock deterministic behavior)', async () => {
+    (prisma.client.asset.findUnique as jest.Mock).mockResolvedValue(null);
+    const expectedId = assetIdFromSha256(pngSha);
+    const createdAsset = {
+      id: expectedId,
+      status: 'READY',
+      kind: 'IMAGE',
+      sha256: pngSha,
+      r2Key: `originals/${pngSha.slice(0, 32)}/img.png`,
+      mime: 'image/png',
+      bytes: BigInt(pngBytes.length),
+      width: 1,
+      height: 1,
+      originalName: 'img.png',
+      altDefault: null,
+      duration: null,
+      posterId: null,
+    };
+    (prisma.client.asset.create as jest.Mock).mockResolvedValue(createdAsset);
+    (r2.putObject as jest.Mock).mockResolvedValue(undefined);
+    const dto = await svc.register(actor, {
+      bytes: pngBytes,
+      mime: 'image/png',
+      originalName: 'img.png',
+    });
+    expect(dto.id).toBe(expectedId);
+    const createArg = (prisma.client.asset.create as jest.Mock).mock
+      .calls[0][0];
+    expect(createArg.data.id).toBe(expectedId);
   });
 });
 

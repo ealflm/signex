@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   MIME_ALLOWLIST,
   kindForMime,
@@ -5,6 +6,7 @@ import {
   keyFor,
   extForMime,
   presignSchema,
+  assetIdFromSha256,
 } from './assets.dto';
 
 describe('assets dto helpers', () => {
@@ -117,6 +119,24 @@ describe('assets dto helpers', () => {
   it('slugify handles empty result fallback', () => {
     expect(slugify('')).toBe('asset');
     expect(slugify('   ')).toBe('asset');
+  });
+
+  it('assetIdFromSha256 returns c + first 24 hex chars (25 chars total)', () => {
+    const sha = 'a'.repeat(64);
+    const id = assetIdFromSha256(sha);
+    expect(id).toBe('c' + 'a'.repeat(24));
+    expect(id.length).toBe(25);
+  });
+
+  it('assetIdFromSha256 is deterministic — same sha256 yields same id', () => {
+    const sha = '0123456789abcdef'.repeat(4);
+    expect(assetIdFromSha256(sha)).toBe(assetIdFromSha256(sha));
+    expect(assetIdFromSha256(sha)).toBe('c' + sha.slice(0, 24).toLowerCase());
+  });
+
+  it('assetIdFromSha256 output passes z.string().cuid()', () => {
+    const sha = 'a'.repeat(64);
+    expect(() => z.string().cuid().parse(assetIdFromSha256(sha))).not.toThrow();
   });
 
   it('keyFor uses exactly 32 chars of sha256', () => {
