@@ -9,31 +9,35 @@
  *  - <foreignObject> elements (arbitrary HTML embedding)
  *  - on* event-handler attributes (onload, onclick, onerror, ...)
  *  - javascript: / vbscript: URIs in href / xlink:href / src / action attributes
- *  - data:text/html and other executable data: URIs in those attributes
+ *  - data: URIs that are not safe images (only data:image/png|jpeg|gif|webp allowed)
  *  - <!DOCTYPE> / <!ENTITY> declarations (external entity / DTD injection)
  *  - External http(s): refs in <use> href / xlink:href
  *  - External http(s): refs in <image> href / xlink:href / src
  *  - @import in <style> blocks
  *  - expression() in <style> blocks (IE legacy, belt-and-suspenders)
+ *  - javascript: / data: (non-image) url() in <style> blocks
  */
 
 export class SvgForbiddenError extends Error {
-  constructor(message: string) {
+  constructor(message = 'SVG content is not allowed') {
     super(message);
     this.name = 'SvgForbiddenError';
   }
 }
 
 /**
- * Sanitise an SVG string (or Buffer) by removing dangerous active content.
- * Returns the cleaned SVG as a UTF-8 string.
+ * Sanitise an SVG Buffer by removing dangerous active content.
+ * Returns the cleaned SVG as a UTF-8 Buffer.
  *
- * Callers that want to forbid SVG entirely (e.g. admin upload path) should
- * throw a `SvgForbiddenError` BEFORE calling this function. This function
- * always sanitises — it never throws.
+ * Throws `SvgForbiddenError` if the input does not contain an `<svg>` root element.
  */
-export function sanitizeSvg(svg: string | Buffer): string {
-  let s = typeof svg === 'string' ? svg : svg.toString('utf8');
+export function sanitizeSvg(input: Buffer): Buffer {
+  let s = input.toString('utf8');
+
+  // Guard: must contain an <svg> root element.
+  if (!/<svg[\s>]/i.test(s)) {
+    throw new SvgForbiddenError('Input does not contain an <svg> root element');
+  }
 
   // 1. Strip <!DOCTYPE ...> blocks (covers SYSTEM entity refs, nested brackets)
   //    Use a two-pass approach: first strip nested [...] content, then the decl.
@@ -65,25 +69,18 @@ export function sanitizeSvg(svg: string | Buffer): string {
     s = s.replace(ON_ATTR, '');
   } while (s !== prev);
 
-  // 6. Remove javascript: / vbscript: / executable data: URIs from
-  //    href, xlink:href, src, action attributes.
-  //    Dangerous data: URIs: data:text/html, data:application/xhtml+xml,
-  //    data:application/javascript, data:application/ecmascript.
-  //    We strip the VALUE, leaving the attribute name pointing at an empty string
-  //    (which is safe: href="" is a same-page reference).
-  //
-  //    Approach: replace the attribute=value pair, reconstructing with safe value.
-  //    We handle double-quoted, single-quoted, and unquoted values separately.
+  // 6. Remove dangerous URIs from href, xlink:href, src, action attributes.
+  //    Allow-list for data: URIs: only data:image/(png|jpeg|gif|webp) is safe.
+  //    All other data: URIs (including data:image/svg+xml) are blocked.
+  //    Also block javascript: and vbscript: unconditionally.
   function isDangerousUri(uri: string): boolean {
     const u = uri.replace(/\s/g, '').toLowerCase();
-    return (
-      u.startsWith('javascript:') ||
-      u.startsWith('vbscript:') ||
-      u.startsWith('data:text/html') ||
-      u.startsWith('data:application/xhtml+xml') ||
-      u.startsWith('data:application/javascript') ||
-      u.startsWith('data:application/ecmascript')
-    );
+    if (u.startsWith('javascript:') || u.startsWith('vbscript:')) return true;
+    if (u.startsWith('data:')) {
+      // Only allow safe image data URIs; block everything else.
+      return !/^data:image\/(png|jpeg|gif|webp)[,;]/.test(u);
+    }
+    return false;
   }
 
   // Matches: attrName="value" or attrName='value' or attrName=value
@@ -122,12 +119,15 @@ export function sanitizeSvg(svg: string | Buffer): string {
   // 8. Strip dangerous CSS from <style> blocks.
   //    a) @import rules
   //    b) expression(...) (legacy IE CSS injection)
+  //    c) url(...) with javascript: or data: non-image URIs
   s = s.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi, (_, open, body, close) => {
     let cleaned = body;
     cleaned = cleaned.replace(/@import\b[^;]*(;|$)/gi, '');
     cleaned = cleaned.replace(/\bexpression\s*\([^)]*\)/gi, '');
+    // Neutralize url() with javascript: or non-safe-image data: inside style blocks
+    cleaned = cleaned.replace(/\burl\s*\(\s*(["']?)(javascript:|data:(?!image\/(png|jpeg|gif|webp)))[^)]*\1\s*\)/gi, 'url("")');
     return `${open}${cleaned}${close}`;
   });
 
-  return s;
+  return Buffer.from(s, 'utf8');
 }
