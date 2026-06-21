@@ -159,7 +159,9 @@ export class ReleaseService {
     );
 
     // 4. AFTER commit — non-fatal revalidation (failure must NOT roll back)
-    await this.revalidation.revalidate({}).catch(() => { /* non-fatal: published release stands; reFire() can retry */ });
+    await this.revalidation.revalidate({}).catch(() => {
+      /* non-fatal: published release stands; reFire() can retry */
+    });
 
     return {
       status: 'published',
@@ -226,7 +228,9 @@ export class ReleaseService {
           },
         });
 
-        const assetIds = target.assetRefs.map((r: { assetId: string }) => r.assetId);
+        const assetIds = target.assetRefs.map(
+          (r: { assetId: string }) => r.assetId,
+        );
         if (assetIds.length > 0) {
           await tx.releaseAssetRef.createMany({
             data: assetIds.map((assetId: string) => ({
@@ -261,7 +265,9 @@ export class ReleaseService {
     );
 
     // AFTER commit — non-fatal revalidation
-    this.revalidation.revalidate({}).catch(() => { /* non-fatal */ });
+    this.revalidation.revalidate({}).catch(() => {
+      /* non-fatal */
+    });
 
     return result;
   }

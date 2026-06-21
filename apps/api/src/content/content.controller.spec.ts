@@ -16,7 +16,13 @@ describe('ContentController', () => {
       { id: 'user_1' } as any,
     );
     expect(res).toEqual({ revision: 9 });
-    expect(service.updateBlock).toHaveBeenCalledWith({ id: 'user_1' }, 'PAGE', 'home.hero', { x: 1 }, 4);
+    expect(service.updateBlock).toHaveBeenCalledWith(
+      { id: 'user_1' },
+      'PAGE',
+      'home.hero',
+      { x: 1 },
+      4,
+    );
   });
 
   it('GET delegates to ContentService.getBlock', async () => {
@@ -26,7 +32,9 @@ describe('ContentController', () => {
 
   it('rejects an unknown kind with 400', async () => {
     await expect(
-      ctrl.update('NONSENSE', 'k', { data: {}, expectedRevision: 0 }, { id: 'u' } as any),
+      ctrl.update('NONSENSE', 'k', { data: {}, expectedRevision: 0 }, {
+        id: 'u',
+      } as any),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

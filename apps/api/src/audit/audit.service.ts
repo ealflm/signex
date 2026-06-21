@@ -11,7 +11,10 @@ export interface AuditEntry {
 
 @Injectable()
 export class AuditService {
-  async writeAudit(tx: Prisma.TransactionClient, entry: AuditEntry): Promise<void> {
+  async writeAudit(
+    tx: Prisma.TransactionClient,
+    entry: AuditEntry,
+  ): Promise<void> {
     await tx.auditLog.create({
       data: {
         userId: entry.userId ?? null,

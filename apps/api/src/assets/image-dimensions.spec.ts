@@ -18,9 +18,12 @@ function gif(w: number, h: number): Buffer {
 function jpeg(w: number, h: number): Buffer {
   // SOI + SOF0 marker (FFC0), len=17, precision=8, height, width
   const sof = Buffer.alloc(19);
-  sof[0] = 0xff; sof[1] = 0xd8; // SOI
-  sof[2] = 0xff; sof[3] = 0xc0; // SOF0
-  sof[4] = 0x00; sof[5] = 0x11; // length 17
+  sof[0] = 0xff;
+  sof[1] = 0xd8; // SOI
+  sof[2] = 0xff;
+  sof[3] = 0xc0; // SOF0
+  sof[4] = 0x00;
+  sof[5] = 0x11; // length 17
   sof[6] = 0x08; // precision
   sof.writeUInt16BE(h, 7);
   sof.writeUInt16BE(w, 9);
@@ -40,27 +43,51 @@ function webpVp8x(w: number, h: number): Buffer {
 
 describe('readImageDimensions', () => {
   it('reads PNG IHDR', () => {
-    expect(readImageDimensions(PNG_1x1, 'image/png')).toEqual({ width: 1, height: 1 });
+    expect(readImageDimensions(PNG_1x1, 'image/png')).toEqual({
+      width: 1,
+      height: 1,
+    });
   });
   it('reads GIF logical screen', () => {
-    expect(readImageDimensions(gif(320, 240), 'image/gif')).toEqual({ width: 320, height: 240 });
+    expect(readImageDimensions(gif(320, 240), 'image/gif')).toEqual({
+      width: 320,
+      height: 240,
+    });
   });
   it('reads JPEG SOF0', () => {
-    expect(readImageDimensions(jpeg(640, 480), 'image/jpeg')).toEqual({ width: 640, height: 480 });
+    expect(readImageDimensions(jpeg(640, 480), 'image/jpeg')).toEqual({
+      width: 640,
+      height: 480,
+    });
   });
   it('reads WebP VP8X', () => {
-    expect(readImageDimensions(webpVp8x(800, 600), 'image/webp')).toEqual({ width: 800, height: 600 });
+    expect(readImageDimensions(webpVp8x(800, 600), 'image/webp')).toEqual({
+      width: 800,
+      height: 600,
+    });
   });
   it('reads SVG width/height attrs', () => {
-    const svg = Buffer.from('<svg width="48" height="24" xmlns="http://www.w3.org/2000/svg"></svg>');
-    expect(readImageDimensions(svg, 'image/svg+xml')).toEqual({ width: 48, height: 24 });
+    const svg = Buffer.from(
+      '<svg width="48" height="24" xmlns="http://www.w3.org/2000/svg"></svg>',
+    );
+    expect(readImageDimensions(svg, 'image/svg+xml')).toEqual({
+      width: 48,
+      height: 24,
+    });
   });
   it('reads SVG viewBox when no width/height', () => {
-    const svg = Buffer.from('<svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"></svg>');
-    expect(readImageDimensions(svg, 'image/svg+xml')).toEqual({ width: 100, height: 50 });
+    const svg = Buffer.from(
+      '<svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"></svg>',
+    );
+    expect(readImageDimensions(svg, 'image/svg+xml')).toEqual({
+      width: 100,
+      height: 50,
+    });
   });
   it('returns null for unknown bytes', () => {
-    expect(readImageDimensions(Buffer.from('not an image'), 'image/png')).toBeNull();
+    expect(
+      readImageDimensions(Buffer.from('not an image'), 'image/png'),
+    ).toBeNull();
   });
 
   describe('AVIF (ispe box parsing)', () => {
@@ -78,7 +105,9 @@ describe('readImageDimensions', () => {
     });
 
     it('returns null for non-AVIF buffer with image/avif mime', () => {
-      expect(readImageDimensions(Buffer.from('not avif data at all'), 'image/avif')).toBeNull();
+      expect(
+        readImageDimensions(Buffer.from('not avif data at all'), 'image/avif'),
+      ).toBeNull();
     });
 
     it('reads second real AVIF file (sanity check dims are positive)', () => {

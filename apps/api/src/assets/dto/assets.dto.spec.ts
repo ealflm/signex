@@ -23,7 +23,9 @@ describe('assets dto helpers', () => {
 
   it('builds content-addressed key from first 32 hash chars', () => {
     const sha = 'a'.repeat(64);
-    expect(keyFor(sha, 'logo', 'svg')).toBe(`originals/${'a'.repeat(32)}/logo.svg`);
+    expect(keyFor(sha, 'logo', 'svg')).toBe(
+      `originals/${'a'.repeat(32)}/logo.svg`,
+    );
   });
 
   it('derives extension from mime', () => {
@@ -55,7 +57,12 @@ describe('assets dto helpers', () => {
 
   it('presignSchema rejects a disallowed mime', () => {
     expect(() =>
-      presignSchema.parse({ mime: 'application/zip', bytes: 1, sha256: 'b'.repeat(64), originalName: 'x' }),
+      presignSchema.parse({
+        mime: 'application/zip',
+        bytes: 1,
+        sha256: 'b'.repeat(64),
+        originalName: 'x',
+      }),
     ).toThrow();
   });
 
@@ -72,7 +79,12 @@ describe('assets dto helpers', () => {
 
   it('presignSchema rejects a malformed sha256', () => {
     expect(() =>
-      presignSchema.parse({ mime: 'image/png', bytes: 1, sha256: 'zzz', originalName: 'x.png' }),
+      presignSchema.parse({
+        mime: 'image/png',
+        bytes: 1,
+        sha256: 'zzz',
+        originalName: 'x.png',
+      }),
     ).toThrow();
   });
 

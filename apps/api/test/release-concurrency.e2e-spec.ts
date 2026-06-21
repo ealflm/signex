@@ -17,7 +17,6 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { AuditService } from '../src/audit/audit.service';
 import { RevalidationService } from '../src/revalidation/revalidation.service';
 import { BLOCK_FIXTURES } from '../src/release/__fixtures__/blocks.fixture';
-import { BLOCK_REGISTRY } from '@signex/shared';
 
 // Gate: skip the entire suite when there is no real database wired up.
 const DESCRIBE = process.env.DATABASE_URL ? describe : describe.skip;
@@ -113,7 +112,8 @@ DESCRIBE('Release concurrency (integration)', () => {
         id: FIXTURE_ASSET_ID,
         kind: 'IMAGE',
         status: 'READY',
-        sha256: 'e2econcurrencytest0000000000000000000000000000000000000000000001',
+        sha256:
+          'e2econcurrencytest0000000000000000000000000000000000000000000001',
         r2Key: 'e2e/concurrency/fixture.png',
         mime: 'image/png',
         bytes: BigInt(1024),

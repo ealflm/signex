@@ -12,7 +12,11 @@ function ownerId(kind: BlockKind, key: string): string {
 }
 
 function isZodError(e: unknown): e is { name: string; issues: unknown } {
-  return typeof e === 'object' && e !== null && (e as { name?: string }).name === 'ZodError';
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    (e as { name?: string }).name === 'ZodError'
+  );
 }
 
 @Injectable()
@@ -62,7 +66,11 @@ export class ContentService {
 
     return this.prisma.client.$transaction(async (tx) => {
       // (1) Optimistic lock — guard first so stale edit 409s before any write.
-      const revision = await this.workingState.guardAndBump(tx, expectedRevision, actor.id);
+      const revision = await this.workingState.guardAndBump(
+        tx,
+        expectedRevision,
+        actor.id,
+      );
 
       // (2) Upsert the ContentBlock by (kind, key).
       const block = await tx.contentBlock.upsert({
@@ -72,7 +80,12 @@ export class ContentService {
       });
 
       // (3) Rebuild the AssetRef cache for this block.
-      await reconcileAssetRefs(tx, 'contentBlock', ownerId(kind, key), collectAssetRefs(validated));
+      await reconcileAssetRefs(
+        tx,
+        'contentBlock',
+        ownerId(kind, key),
+        collectAssetRefs(validated),
+      );
 
       // (4) Write the audit row.
       await this.audit.writeAudit(tx, {

@@ -49,7 +49,11 @@ export class CatalogController {
     @Body(new ZodValidationPipe(writeBody)) body: WriteBody,
     @CurrentUser() actor: AuthedUser,
   ) {
-    return this.catalog.createCategory(actor, body.input, body.expectedRevision);
+    return this.catalog.createCategory(
+      actor,
+      body.input,
+      body.expectedRevision,
+    );
   }
 
   @Patch('categories/:id')
@@ -59,7 +63,12 @@ export class CatalogController {
     @Body(new ZodValidationPipe(writeBody)) body: WriteBody,
     @CurrentUser() actor: AuthedUser,
   ) {
-    return this.catalog.updateCategory(actor, id, body.input, body.expectedRevision);
+    return this.catalog.updateCategory(
+      actor,
+      id,
+      body.input,
+      body.expectedRevision,
+    );
   }
 
   @Delete('categories/:id')
@@ -99,7 +108,12 @@ export class CatalogController {
     @Body(new ZodValidationPipe(writeBody)) body: WriteBody,
     @CurrentUser() actor: AuthedUser,
   ) {
-    return this.catalog.updateProduct(actor, id, body.input, body.expectedRevision);
+    return this.catalog.updateProduct(
+      actor,
+      id,
+      body.input,
+      body.expectedRevision,
+    );
   }
 
   @Delete('products/:id')

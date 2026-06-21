@@ -28,13 +28,21 @@ describe('SeedService', () => {
   });
 
   it('hashes the password via the shared scrypt hasher (not inline)', async () => {
-    upsert.mockResolvedValue({ id: SYSTEM_USER_ID, createdAt: new Date(), updatedAt: new Date() });
+    upsert.mockResolvedValue({
+      id: SYSTEM_USER_ID,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
     await service.seedAdmin(cfg);
     expect(password.hashPassword).toHaveBeenCalledWith('change-me-please');
   });
 
   it('upserts the fixed system user as ADMIN + active with the deterministic id', async () => {
-    upsert.mockResolvedValue({ id: SYSTEM_USER_ID, createdAt: new Date('2020-01-01'), updatedAt: new Date('2020-01-01') });
+    upsert.mockResolvedValue({
+      id: SYSTEM_USER_ID,
+      createdAt: new Date('2020-01-01'),
+      updatedAt: new Date('2020-01-01'),
+    });
     await service.seedAdmin(cfg);
     const args = upsert.mock.calls[0][0];
     expect(args.where).toEqual({ id: SYSTEM_USER_ID });
@@ -59,8 +67,15 @@ describe('SeedService', () => {
 
   it('reports created:true on first run (createdAt === updatedAt)', async () => {
     const t = new Date('2020-01-01T00:00:00.000Z');
-    upsert.mockResolvedValue({ id: SYSTEM_USER_ID, createdAt: t, updatedAt: t });
-    await expect(service.seedAdmin(cfg)).resolves.toEqual({ id: SYSTEM_USER_ID, created: true });
+    upsert.mockResolvedValue({
+      id: SYSTEM_USER_ID,
+      createdAt: t,
+      updatedAt: t,
+    });
+    await expect(service.seedAdmin(cfg)).resolves.toEqual({
+      id: SYSTEM_USER_ID,
+      created: true,
+    });
   });
 
   it('reports created:false on a re-run (updatedAt > createdAt) and is idempotent', async () => {
@@ -69,8 +84,14 @@ describe('SeedService', () => {
       createdAt: new Date('2020-01-01T00:00:00.000Z'),
       updatedAt: new Date('2020-02-01T00:00:00.000Z'),
     });
-    await expect(service.seedAdmin(cfg)).resolves.toEqual({ id: SYSTEM_USER_ID, created: false });
-    await expect(service.seedAdmin(cfg)).resolves.toEqual({ id: SYSTEM_USER_ID, created: false });
+    await expect(service.seedAdmin(cfg)).resolves.toEqual({
+      id: SYSTEM_USER_ID,
+      created: false,
+    });
+    await expect(service.seedAdmin(cfg)).resolves.toEqual({
+      id: SYSTEM_USER_ID,
+      created: false,
+    });
     expect(upsert).toHaveBeenCalledTimes(2);
   });
 });

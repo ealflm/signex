@@ -48,7 +48,9 @@ describe('Catalog write path (e2e)', () => {
     await prisma.product.deleteMany({
       where: { category: { slug: { startsWith: 'e2e-' } } },
     });
-    await prisma.category.deleteMany({ where: { slug: { startsWith: 'e2e-' } } });
+    await prisma.category.deleteMany({
+      where: { slug: { startsWith: 'e2e-' } },
+    });
     // Remove all test users (*.test emails) + their sessions/audit-logs.
     await cleanupEditorUser();
     await app.close();

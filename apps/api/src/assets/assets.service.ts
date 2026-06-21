@@ -49,7 +49,11 @@ export type PresignResult =
       deduped: false;
       assetId: string;
       r2Key: string;
-      upload: { url: string; headers: Record<string, string>; expiresIn: number };
+      upload: {
+        url: string;
+        headers: Record<string, string>;
+        expiresIn: number;
+      };
     };
 
 @Injectable()
@@ -78,16 +82,29 @@ export class AssetsService {
     };
   }
 
-  private async audit(actor: Actor, action: string, entityId: string, meta?: unknown) {
+  private async audit(
+    actor: Actor,
+    action: string,
+    entityId: string,
+    meta?: unknown,
+  ) {
     await this.prisma.client.auditLog.create({
-      data: { userId: actor.id, action, entityType: 'asset', entityId, meta: meta as never },
+      data: {
+        userId: actor.id,
+        action,
+        entityType: 'asset',
+        entityId,
+        meta: meta as never,
+      },
     });
   }
 
   async presign(actor: Actor, input: PresignInput): Promise<PresignResult> {
     const sha256 = input.sha256.toLowerCase();
     // Dedup short-circuit: same bytes already live => same content-addressed key.
-    const existing = await this.prisma.client.asset.findUnique({ where: { sha256 } });
+    const existing = await this.prisma.client.asset.findUnique({
+      where: { sha256 },
+    });
     if (existing && existing.status === 'READY') {
       return { deduped: true, asset: this.toAssetDto(existing) };
     }
@@ -125,7 +142,9 @@ export class AssetsService {
   }
 
   async confirm(actor: Actor, assetId: string): Promise<AssetDto> {
-    const asset = await this.prisma.client.asset.findUnique({ where: { id: assetId } });
+    const asset = await this.prisma.client.asset.findUnique({
+      where: { id: assetId },
+    });
     if (!asset) {
       throw new NotFoundException('asset not found');
     }
@@ -141,7 +160,9 @@ export class AssetsService {
     const bytes = await this.r2.getObjectBytes(asset.r2Key);
     const actualSha = createHash('sha256').update(bytes).digest('hex');
     if (actualSha !== asset.sha256) {
-      throw new BadRequestException('CHECKSUM_MISMATCH: uploaded bytes do not match declared sha256');
+      throw new BadRequestException(
+        'CHECKSUM_MISMATCH: uploaded bytes do not match declared sha256',
+      );
     }
 
     let storedBytes = bytes;
@@ -151,7 +172,8 @@ export class AssetsService {
       try {
         cleaned = sanitizeSvg(bytes);
       } catch (e) {
-        if (e instanceof SvgForbiddenError) throw new BadRequestException('INVALID_SVG: ' + e.message);
+        if (e instanceof SvgForbiddenError)
+          throw new BadRequestException('INVALID_SVG: ' + e.message);
         throw e;
       }
       storedBytes = cleaned;
@@ -174,21 +196,30 @@ export class AssetsService {
         height: dims?.height ?? null,
       },
     });
-    await this.audit(actor, 'asset.confirm', asset.id, { bytes: storedBytes.length });
+    await this.audit(actor, 'asset.confirm', asset.id, {
+      bytes: storedBytes.length,
+    });
     return this.toAssetDto(updated);
   }
 
   /** Server-side upload path reused by the importer + replace (no presign round-trip). */
   async register(
     actor: Actor,
-    input: { bytes: Buffer; mime: string; originalName: string; altDefault?: LocalizedText },
+    input: {
+      bytes: Buffer;
+      mime: string;
+      originalName: string;
+      altDefault?: LocalizedText;
+    },
   ): Promise<AssetDto> {
     if (!(input.mime in MIME_ALLOWLIST)) {
       throw new BadRequestException(`mime ${input.mime} not in allowlist`);
     }
     const cap = MIME_ALLOWLIST[input.mime].maxBytes;
     if (input.bytes.length > cap) {
-      throw new BadRequestException(`file size ${input.bytes.length} exceeds cap ${cap}`);
+      throw new BadRequestException(
+        `file size ${input.bytes.length} exceeds cap ${cap}`,
+      );
     }
 
     let body = input.bytes;
@@ -196,13 +227,16 @@ export class AssetsService {
       try {
         body = sanitizeSvg(body);
       } catch (e) {
-        if (e instanceof SvgForbiddenError) throw new BadRequestException('INVALID_SVG: ' + e.message);
+        if (e instanceof SvgForbiddenError)
+          throw new BadRequestException('INVALID_SVG: ' + e.message);
         throw e;
       }
     }
     const sha256 = createHash('sha256').update(body).digest('hex');
 
-    const existing = await this.prisma.client.asset.findUnique({ where: { sha256 } });
+    const existing = await this.prisma.client.asset.findUnique({
+      where: { sha256 },
+    });
     if (existing && existing.status === 'READY') {
       return this.toAssetDto(existing); // dedup
     }
@@ -224,7 +258,12 @@ export class AssetsService {
     const asset = existing
       ? await this.prisma.client.asset.update({
           where: { id: existing.id },
-          data: { status: 'READY', bytes: BigInt(body.length), width: dims?.width ?? null, height: dims?.height ?? null },
+          data: {
+            status: 'READY',
+            bytes: BigInt(body.length),
+            width: dims?.width ?? null,
+            height: dims?.height ?? null,
+          },
         })
       : await this.prisma.client.asset.create({
           data: {
@@ -245,7 +284,10 @@ export class AssetsService {
     return this.toAssetDto(asset);
   }
 
-  async list(opts?: { kind?: string; includeDeleted?: boolean }): Promise<AssetDto[]> {
+  async list(opts?: {
+    kind?: string;
+    includeDeleted?: boolean;
+  }): Promise<AssetDto[]> {
     const rows = await this.prisma.client.asset.findMany({
       where: {
         status: 'READY',
@@ -258,7 +300,12 @@ export class AssetsService {
   }
 
   async usage(assetId: string): Promise<{
-    working: { id: string; ownerType: string; ownerId: string; field: string }[];
+    working: {
+      id: string;
+      ownerType: string;
+      ownerId: string;
+      field: string;
+    }[];
     releases: { releaseId: string }[];
   }> {
     const [working, releases] = await Promise.all([
@@ -280,8 +327,14 @@ export class AssetsService {
   }
 
   /** Replace = register the new bytes; callers repoint imageId/posterId atomically at the catalog/content layer. */
-  async replace(actor: Actor, assetId: string, input: ReplaceInput & { bytes?: Buffer }): Promise<AssetDto> {
-    const target = await this.prisma.client.asset.findUnique({ where: { id: assetId } });
+  async replace(
+    actor: Actor,
+    assetId: string,
+    input: ReplaceInput & { bytes?: Buffer },
+  ): Promise<AssetDto> {
+    const target = await this.prisma.client.asset.findUnique({
+      where: { id: assetId },
+    });
     if (!target) {
       throw new NotFoundException('asset to replace not found');
     }
@@ -297,8 +350,14 @@ export class AssetsService {
     return dto;
   }
 
-  async setAlt(actor: Actor, assetId: string, alt: LocalizedText): Promise<AssetDto> {
-    const asset = await this.prisma.client.asset.findUnique({ where: { id: assetId } });
+  async setAlt(
+    actor: Actor,
+    assetId: string,
+    alt: LocalizedText,
+  ): Promise<AssetDto> {
+    const asset = await this.prisma.client.asset.findUnique({
+      where: { id: assetId },
+    });
     if (!asset) {
       throw new NotFoundException('asset not found');
     }

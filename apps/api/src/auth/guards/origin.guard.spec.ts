@@ -3,7 +3,9 @@ import { Reflector } from '@nestjs/core';
 import { OriginGuard } from './origin.guard';
 
 function ctx(req: any, isPublic = false) {
-  const reflector = { getAllAndOverride: jest.fn().mockReturnValue(isPublic) } as unknown as Reflector;
+  const reflector = {
+    getAllAndOverride: jest.fn().mockReturnValue(isPublic),
+  } as unknown as Reflector;
   const execCtx = {
     switchToHttp: () => ({ getRequest: () => req }),
     getHandler: () => ({}),
@@ -29,12 +31,18 @@ describe('OriginGuard', () => {
   });
 
   it('allows a POST from an allowlisted Origin', () => {
-    const { guard, execCtx } = ctx({ method: 'POST', headers: { origin: 'http://admin.test' } });
+    const { guard, execCtx } = ctx({
+      method: 'POST',
+      headers: { origin: 'http://admin.test' },
+    });
     expect(guard.canActivate(execCtx)).toBe(true);
   });
 
   it('rejects a POST from a foreign Origin', () => {
-    const { guard, execCtx } = ctx({ method: 'POST', headers: { origin: 'http://evil.test' } });
+    const { guard, execCtx } = ctx({
+      method: 'POST',
+      headers: { origin: 'http://evil.test' },
+    });
     expect(() => guard.canActivate(execCtx)).toThrow(ForbiddenException);
   });
 });

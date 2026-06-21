@@ -1,5 +1,16 @@
-import { ConflictException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  ConflictException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { ContentService } from './content.service';
+import { WorkingStateService } from '../working-state/working-state.service';
+import { AuditService } from '../audit/audit.service';
+import {
+  parseBlock as parseBlockImpl,
+  UnknownBlockKeyError,
+} from '@signex/shared';
+
+const parseBlock = parseBlockImpl as jest.MockedFunction<typeof parseBlockImpl>;
 
 // Mock the shared registry so the service test is deterministic and offline.
 // Spread jest.requireActual so that UnknownBlockKeyError (a real class) is preserved
@@ -8,11 +19,6 @@ jest.mock('@signex/shared', () => ({
   ...jest.requireActual('@signex/shared'),
   parseBlock: jest.fn(),
 }));
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { parseBlock, UnknownBlockKeyError } = require('@signex/shared') as {
-  parseBlock: jest.Mock;
-  UnknownBlockKeyError: typeof import('@signex/shared').UnknownBlockKeyError;
-};
 
 function buildTx() {
   return {
@@ -32,9 +38,11 @@ function buildTx() {
 function buildService(tx: any) {
   const prisma = { client: { $transaction: (fn: any) => fn(tx) } } as any;
   // real WorkingStateService + AuditService (their unit tests already cover them)
-  const { WorkingStateService } = require('../working-state/working-state.service');
-  const { AuditService } = require('../audit/audit.service');
-  return new ContentService(prisma, new WorkingStateService(prisma), new AuditService());
+  return new ContentService(
+    prisma,
+    new WorkingStateService(prisma),
+    new AuditService(),
+  );
 }
 
 describe('ContentService.updateBlock', () => {
@@ -45,34 +53,61 @@ describe('ContentService.updateBlock', () => {
     const tx = buildTx();
     const svc = buildService(tx);
 
-    const res = await svc.updateBlock({ id: 'user_1' }, 'PAGE' as any, 'home.hero', { any: 1 }, 2);
+    const res = await svc.updateBlock(
+      { id: 'user_1' },
+      'PAGE' as any,
+      'home.hero',
+      { any: 1 },
+      2,
+    );
 
     expect(res).toEqual({ revision: 3 });
     expect(parseBlock).toHaveBeenCalledWith('PAGE', 'home.hero', { any: 1 });
     expect(tx.contentBlock.upsert).toHaveBeenCalledWith({
       where: { kind_key: { kind: 'PAGE', key: 'home.hero' } },
-      create: { kind: 'PAGE', key: 'home.hero', data: { image: { assetId: 'a1' } } },
+      create: {
+        kind: 'PAGE',
+        key: 'home.hero',
+        data: { image: { assetId: 'a1' } },
+      },
       update: { data: { image: { assetId: 'a1' } } },
     });
     expect(tx.assetRef.deleteMany).toHaveBeenCalledWith({
       where: { ownerType: 'contentBlock', ownerId: 'PAGE:home.hero' },
     });
     expect(tx.assetRef.createMany).toHaveBeenCalledWith({
-      data: [{ ownerType: 'contentBlock', ownerId: 'PAGE:home.hero', field: 'image', assetId: 'a1', alt: undefined }],
+      data: [
+        {
+          ownerType: 'contentBlock',
+          ownerId: 'PAGE:home.hero',
+          field: 'image',
+          assetId: 'a1',
+          alt: undefined,
+        },
+      ],
     });
     expect(tx.auditLog.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ userId: 'user_1', action: 'content.update', entityType: 'contentBlock', entityId: 'PAGE:home.hero' }),
+      data: expect.objectContaining({
+        userId: 'user_1',
+        action: 'content.update',
+        entityType: 'contentBlock',
+        entityId: 'PAGE:home.hero',
+      }),
     });
   });
 
   it('throws 422 INVALID_BLOCK when parseBlock throws', async () => {
     parseBlock.mockImplementation(() => {
-      const e: any = new Error('bad'); e.name = 'ZodError'; e.issues = [{ path: ['image'], message: 'required' }]; throw e;
+      const e: any = new Error('bad');
+      e.name = 'ZodError';
+      e.issues = [{ path: ['image'], message: 'required' }];
+      throw e;
     });
     const tx = buildTx();
     const svc = buildService(tx);
-    await expect(svc.updateBlock({ id: 'u' }, 'PAGE' as any, 'home.hero', {}, 2))
-      .rejects.toBeInstanceOf(UnprocessableEntityException);
+    await expect(
+      svc.updateBlock({ id: 'u' }, 'PAGE' as any, 'home.hero', {}, 2),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(tx.contentBlock.upsert).not.toHaveBeenCalled();
   });
 
@@ -82,8 +117,9 @@ describe('ContentService.updateBlock', () => {
     });
     const tx = buildTx();
     const svc = buildService(tx);
-    await expect(svc.updateBlock({ id: 'u' }, 'PAGE' as any, 'seo.home', {}, 2))
-      .rejects.toBeInstanceOf(UnprocessableEntityException);
+    await expect(
+      svc.updateBlock({ id: 'u' }, 'PAGE' as any, 'seo.home', {}, 2),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(tx.contentBlock.upsert).not.toHaveBeenCalled();
   });
 
@@ -92,7 +128,8 @@ describe('ContentService.updateBlock', () => {
     const tx = buildTx();
     tx.workingState.findUnique.mockResolvedValue({ revision: 5 }); // caller said 2
     const svc = buildService(tx);
-    await expect(svc.updateBlock({ id: 'u' }, 'PAGE' as any, 'home.hero', {}, 2))
-      .rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      svc.updateBlock({ id: 'u' }, 'PAGE' as any, 'home.hero', {}, 2),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

@@ -22,7 +22,10 @@ export class R2Service {
     this.s3 = new S3Client({
       region: cfg.region,
       endpoint: cfg.endpoint,
-      credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
+      credentials: {
+        accessKeyId: cfg.accessKeyId,
+        secretAccessKey: cfg.secretAccessKey,
+      },
       forcePathStyle: true,
     });
   }
@@ -36,7 +39,11 @@ export class R2Service {
     mime: string;
     sha256: string;
     maxBytes: number;
-  }): Promise<{ url: string; headers: Record<string, string>; expiresIn: number }> {
+  }): Promise<{
+    url: string;
+    headers: Record<string, string>;
+    expiresIn: number;
+  }> {
     const checksum = hexToBase64(args.sha256);
     const cmd = new PutObjectCommand({
       Bucket: this.cfg.bucket,
@@ -48,7 +55,11 @@ export class R2Service {
     const url = await getSignedUrl(this.s3, cmd, {
       expiresIn: this.cfg.presignTtlSeconds,
       // The browser MUST echo these headers on PUT or R2 rejects the signature.
-      signableHeaders: new Set(['content-type', 'cache-control', 'x-amz-checksum-sha256']),
+      signableHeaders: new Set([
+        'content-type',
+        'cache-control',
+        'x-amz-checksum-sha256',
+      ]),
     });
     return {
       url,
@@ -87,9 +98,13 @@ export class R2Service {
       const res = await this.s3.send(
         new HeadObjectCommand({ Bucket: this.cfg.bucket, Key: r2Key }),
       );
-      return { contentLength: res.ContentLength ?? 0, contentType: res.ContentType };
+      return {
+        contentLength: res.ContentLength ?? 0,
+        contentType: res.ContentType,
+      };
     } catch (err) {
-      const status = (err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+      const status = (err as { $metadata?: { httpStatusCode?: number } })
+        .$metadata?.httpStatusCode;
       if (status === 404 || (err as { name?: string }).name === 'NotFound') {
         return null;
       }

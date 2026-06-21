@@ -84,10 +84,8 @@ export function sanitizeSvg(input: Buffer): Buffer {
   }
 
   // Matches: attrName="value" or attrName='value' or attrName=value
-  const URL_ATTR_DOUBLE =
-    /\b((?:xlink:)?href|src|action)\s*=\s*"([^"]*)"/gi;
-  const URL_ATTR_SINGLE =
-    /\b((?:xlink:)?href|src|action)\s*=\s*'([^']*)'/gi;
+  const URL_ATTR_DOUBLE = /\b((?:xlink:)?href|src|action)\s*=\s*"([^"]*)"/gi;
+  const URL_ATTR_SINGLE = /\b((?:xlink:)?href|src|action)\s*=\s*'([^']*)'/gi;
   const URL_ATTR_UNQUOTED =
     /\b((?:xlink:)?href|src|action)\s*=\s*([^\s>"'][^\s>]*)/gi;
 
@@ -106,7 +104,9 @@ export function sanitizeSvg(input: Buffer): Buffer {
   //    Strategy: replace the URI value with "" (keeps the element, drops the leak).
   function isExternalUri(uri: string): boolean {
     const u = uri.replace(/\s/g, '').toLowerCase();
-    return u.startsWith('http:') || u.startsWith('https:') || u.startsWith('//');
+    return (
+      u.startsWith('http:') || u.startsWith('https:') || u.startsWith('//')
+    );
   }
 
   s = s.replace(URL_ATTR_DOUBLE, (_, attr, val) =>
@@ -120,14 +120,20 @@ export function sanitizeSvg(input: Buffer): Buffer {
   //    a) @import rules
   //    b) expression(...) (legacy IE CSS injection)
   //    c) url(...) with javascript: or data: non-image URIs
-  s = s.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi, (_, open, body, close) => {
-    let cleaned = body;
-    cleaned = cleaned.replace(/@import\b[^;]*(;|$)/gi, '');
-    cleaned = cleaned.replace(/\bexpression\s*\([^)]*\)/gi, '');
-    // Neutralize url() with javascript: or non-safe-image data: inside style blocks
-    cleaned = cleaned.replace(/\burl\s*\(\s*(["']?)(javascript:|data:(?!image\/(png|jpeg|gif|webp)))[^)]*\1\s*\)/gi, 'url("")');
-    return `${open}${cleaned}${close}`;
-  });
+  s = s.replace(
+    /(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi,
+    (_, open, body, close) => {
+      let cleaned = body;
+      cleaned = cleaned.replace(/@import\b[^;]*(;|$)/gi, '');
+      cleaned = cleaned.replace(/\bexpression\s*\([^)]*\)/gi, '');
+      // Neutralize url() with javascript: or non-safe-image data: inside style blocks
+      cleaned = cleaned.replace(
+        /\burl\s*\(\s*(["']?)(javascript:|data:(?!image\/(png|jpeg|gif|webp)))[^)]*\1\s*\)/gi,
+        'url("")',
+      );
+      return `${open}${cleaned}${close}`;
+    },
+  );
 
   return Buffer.from(s, 'utf8');
 }

@@ -4,7 +4,9 @@ import type { AuthedUser } from '../../auth/auth.types';
 
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): AuthedUser | undefined => {
-    const req = ctx.switchToHttp().getRequest<Request & { user?: AuthedUser }>();
+    const req = ctx
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthedUser }>();
     return req.user;
   },
 );

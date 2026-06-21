@@ -1,7 +1,4 @@
-import {
-  ConflictException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ReleaseService } from './release.service';
 import { SnapshotSerializer } from './snapshot.serializer';
@@ -209,19 +206,23 @@ describe('ReleaseService rollback / diff / live / list', () => {
         findUniqueOrThrow: jest.fn().mockResolvedValue({
           id: 'crel-old',
           version: 3,
-          snapshot: { schemaVersion: 1, blocks: {}, catalog: { categories: [] } },
+          snapshot: {
+            schemaVersion: 1,
+            blocks: {},
+            catalog: { categories: [] },
+          },
           checksum: 'oldsum',
           assetRefs: [{ assetId: 'a1' }, { assetId: 'a2' }],
         }),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        create: jest
-          .fn()
-          .mockResolvedValue({ id: 'crel-new', version: 9 }),
+        create: jest.fn().mockResolvedValue({ id: 'crel-new', version: 9 }),
       },
       $executeRaw: jest.fn().mockResolvedValue(1),
       $queryRaw: jest.fn().mockResolvedValue([{ nextval: 9n }]),
       publishedPointer: { upsert: jest.fn().mockResolvedValue({}) },
-      releaseAssetRef: { createMany: jest.fn().mockResolvedValue({ count: 2 }) },
+      releaseAssetRef: {
+        createMany: jest.fn().mockResolvedValue({ count: 2 }),
+      },
       workingState: { update: jest.fn().mockResolvedValue({}) },
     };
     prisma = {

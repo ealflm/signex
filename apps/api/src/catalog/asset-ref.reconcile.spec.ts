@@ -16,8 +16,20 @@ describe('reconcileAssetRefs', () => {
     });
     expect(createMany).toHaveBeenCalledWith({
       data: [
-        { ownerType: 'contentBlock', ownerId: 'PAGE:home.hero', field: 'hero.image', assetId: 'a1', alt: { en: 'x', vi: 'y' } },
-        { ownerType: 'contentBlock', ownerId: 'PAGE:home.hero', field: 'gallery[0]', assetId: 'a2', alt: undefined },
+        {
+          ownerType: 'contentBlock',
+          ownerId: 'PAGE:home.hero',
+          field: 'hero.image',
+          assetId: 'a1',
+          alt: { en: 'x', vi: 'y' },
+        },
+        {
+          ownerType: 'contentBlock',
+          ownerId: 'PAGE:home.hero',
+          field: 'gallery[0]',
+          assetId: 'a2',
+          alt: undefined,
+        },
       ],
     });
   });

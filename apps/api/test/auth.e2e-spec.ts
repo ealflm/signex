@@ -8,12 +8,18 @@ import { SESSION_COOKIE } from '../src/auth/guards/origin.guard';
 import type { AuthedUser } from '../src/auth/auth.types';
 
 const ADMIN: AuthedUser = {
-  id: 'u-admin', email: 'admin@signex.test', name: 'Admin',
-  role: 'ADMIN', isActive: true,
+  id: 'u-admin',
+  email: 'admin@signex.test',
+  name: 'Admin',
+  role: 'ADMIN',
+  isActive: true,
 };
 const EDITOR: AuthedUser = {
-  id: 'u-editor', email: 'editor@signex.test', name: 'Editor',
-  role: 'EDITOR', isActive: true,
+  id: 'u-editor',
+  email: 'editor@signex.test',
+  name: 'Editor',
+  role: 'EDITOR',
+  isActive: true,
 };
 
 // In-memory auth: "admin-tok" -> ADMIN, "editor-tok" -> EDITOR.
@@ -34,7 +40,9 @@ const authStub: Partial<AuthService> = {
     throw new UnauthorizedException('Invalid credentials');
   }),
   logout: jest.fn(async () => {}),
-  validateSessionToken: jest.fn(async (raw: string) => tokenToUser[raw] ?? null),
+  validateSessionToken: jest.fn(
+    async (raw: string) => tokenToUser[raw] ?? null,
+  ),
 };
 
 describe('Auth + RBAC (e2e)', () => {
@@ -56,7 +64,9 @@ describe('Auth + RBAC (e2e)', () => {
   });
 
   it('GET /api/health is public (200)', () =>
-    request(app.getHttpServer()).get('/api/health').expect(200, { status: 'ok' }));
+    request(app.getHttpServer())
+      .get('/api/health')
+      .expect(200, { status: 'ok' }));
 
   it('GET /api/auth/me is 401 without a session', () =>
     request(app.getHttpServer()).get('/api/auth/me').expect(401));
@@ -93,13 +103,23 @@ describe('Auth + RBAC (e2e)', () => {
     // anon
     await request(server)
       .post('/api/users')
-      .send({ email: 'x@y.com', name: 'X', password: 'pw12345', role: 'EDITOR' })
+      .send({
+        email: 'x@y.com',
+        name: 'X',
+        password: 'pw12345',
+        role: 'EDITOR',
+      })
       .expect(401);
     // editor -> forbidden by RolesGuard
     await request(server)
       .post('/api/users')
       .set('Cookie', [`${SESSION_COOKIE}=editor-tok`])
-      .send({ email: 'x@y.com', name: 'X', password: 'pw12345', role: 'EDITOR' })
+      .send({
+        email: 'x@y.com',
+        name: 'X',
+        password: 'pw12345',
+        role: 'EDITOR',
+      })
       .expect(403);
   });
 });

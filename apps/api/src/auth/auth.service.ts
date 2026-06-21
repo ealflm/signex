@@ -74,10 +74,7 @@ export class AuthService {
     try {
       const { count } = await this.prisma.client.session.deleteMany({
         where: {
-          OR: [
-            { expiresAt: { lt: new Date() } },
-            { revokedAt: { not: null } },
-          ],
+          OR: [{ expiresAt: { lt: new Date() } }, { revokedAt: { not: null } }],
         },
       });
       return count;

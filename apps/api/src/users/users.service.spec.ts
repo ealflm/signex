@@ -22,18 +22,29 @@ describe('UsersService', () => {
       user: {
         create: jest.fn().mockImplementation(({ data }) =>
           Promise.resolve({
-            id: 'u1', email: data.email, name: data.name,
-            passwordHash: data.passwordHash, role: data.role, isActive: true,
+            id: 'u1',
+            email: data.email,
+            name: data.name,
+            passwordHash: data.passwordHash,
+            role: data.role,
+            isActive: true,
           }),
         ),
       },
     });
     const svc = new UsersService(prisma);
     const out = await svc.create({
-      email: 'new@b.com', name: 'New', password: 'pw12345', role: 'EDITOR',
+      email: 'new@b.com',
+      name: 'New',
+      password: 'pw12345',
+      role: 'EDITOR',
     });
     expect(out).toEqual({
-      id: 'u1', email: 'new@b.com', name: 'New', role: 'EDITOR', isActive: true,
+      id: 'u1',
+      email: 'new@b.com',
+      name: 'New',
+      role: 'EDITOR',
+      isActive: true,
     });
     const stored = prisma.client.user.create.mock.calls[0][0].data.passwordHash;
     expect(stored).not.toBe('pw12345');
@@ -48,7 +59,10 @@ describe('UsersService', () => {
     });
     await expect(
       new UsersService(prisma).create({
-        email: 'dup@b.com', name: 'X', password: 'pw12345', role: 'EDITOR',
+        email: 'dup@b.com',
+        name: 'X',
+        password: 'pw12345',
+        role: 'EDITOR',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
@@ -57,8 +71,12 @@ describe('UsersService', () => {
     const prisma = makePrisma({
       user: {
         update: jest.fn().mockResolvedValue({
-          id: 'u1', email: 'a@b.com', name: 'A', passwordHash: 'h',
-          role: 'EDITOR', isActive: true,
+          id: 'u1',
+          email: 'a@b.com',
+          name: 'A',
+          passwordHash: 'h',
+          role: 'EDITOR',
+          isActive: true,
         }),
       },
     });
@@ -74,8 +92,12 @@ describe('UsersService', () => {
     const prisma = makePrisma({
       user: {
         update: jest.fn().mockResolvedValue({
-          id: 'u1', email: 'a@b.com', name: 'A2', passwordHash: 'h',
-          role: 'ADMIN', isActive: true,
+          id: 'u1',
+          email: 'a@b.com',
+          name: 'A2',
+          passwordHash: 'h',
+          role: 'ADMIN',
+          isActive: true,
         }),
       },
     });
@@ -88,8 +110,12 @@ describe('UsersService', () => {
     const prisma = makePrisma({
       user: {
         update: jest.fn().mockResolvedValue({
-          id: 'u1', email: 'a@b.com', name: 'A', passwordHash: 'h',
-          role: 'EDITOR', isActive: false,
+          id: 'u1',
+          email: 'a@b.com',
+          name: 'A',
+          passwordHash: 'h',
+          role: 'EDITOR',
+          isActive: false,
         }),
       },
     });
@@ -97,7 +123,8 @@ describe('UsersService', () => {
     const out = await svc.deactivate('u1');
     expect(out.isActive).toBe(false);
     expect(prisma.client.user.update).toHaveBeenCalledWith({
-      where: { id: 'u1' }, data: { isActive: false },
+      where: { id: 'u1' },
+      data: { isActive: false },
     });
     expect(prisma.client.session.updateMany).toHaveBeenCalled();
   });

@@ -19,13 +19,19 @@ describe('loadR2Config', () => {
   });
 
   it('honors R2_REGION + R2_PRESIGN_TTL overrides', () => {
-    const cfg = loadR2Config({ ...base, R2_REGION: 'wnam', R2_PRESIGN_TTL: '120' });
+    const cfg = loadR2Config({
+      ...base,
+      R2_REGION: 'wnam',
+      R2_PRESIGN_TTL: '120',
+    });
     expect(cfg.region).toBe('wnam');
     expect(cfg.presignTtlSeconds).toBe(120);
   });
 
   it('throws when a required var is missing', () => {
     const { R2_BUCKET: _omit, ...partial } = base as Record<string, string>;
-    expect(() => loadR2Config(partial as NodeJS.ProcessEnv)).toThrow(/R2_BUCKET/);
+    expect(() => loadR2Config(partial as NodeJS.ProcessEnv)).toThrow(
+      /R2_BUCKET/,
+    );
   });
 });

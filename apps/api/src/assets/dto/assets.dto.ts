@@ -3,7 +3,10 @@ import type { AssetKind } from '@signex/db';
 
 const MB = 1024 * 1024;
 
-export const MIME_ALLOWLIST: Record<string, { kind: AssetKind; maxBytes: number }> = {
+export const MIME_ALLOWLIST: Record<
+  string,
+  { kind: AssetKind; maxBytes: number }
+> = {
   'image/png': { kind: 'IMAGE', maxBytes: 15 * MB },
   'image/jpeg': { kind: 'IMAGE', maxBytes: 15 * MB },
   'image/webp': { kind: 'IMAGE', maxBytes: 15 * MB },
@@ -60,7 +63,9 @@ export function keyFor(sha256: string, slug: string, ext: string): string {
   return `originals/${sha256.slice(0, 32)}/${slug}.${ext}`;
 }
 
-const sha256Field = z.string().regex(/^[0-9a-f]{64}$/i, 'sha256 must be 64 hex chars');
+const sha256Field = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/i, 'sha256 must be 64 hex chars');
 const mimeField = z
   .string()
   .refine((m) => m in MIME_ALLOWLIST, { message: 'mime not in allowlist' });

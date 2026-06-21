@@ -50,7 +50,9 @@ describe('R2Service', () => {
     expect(out.url).toBe('https://signed.example/put');
     expect(out.expiresIn).toBe(300);
     expect(out.headers['Content-Type']).toBe('image/png');
-    expect(out.headers['Cache-Control']).toBe('public, max-age=31536000, immutable');
+    expect(out.headers['Cache-Control']).toBe(
+      'public, max-age=31536000, immutable',
+    );
     // base64 of the hex sha256, for x-amz-checksum-sha256
     expect(out.headers['x-amz-checksum-sha256']).toBe(
       Buffer.from('a'.repeat(64), 'hex').toString('base64'),
@@ -64,9 +66,14 @@ describe('R2Service', () => {
       .on(HeadObjectCommand)
       .resolvesOnce({ ContentLength: 42, ContentType: 'image/png' })
       .rejectsOnce(
-        Object.assign(new Error('not found'), { $metadata: { httpStatusCode: 404 } }),
+        Object.assign(new Error('not found'), {
+          $metadata: { httpStatusCode: 404 },
+        }),
       );
-    expect(await svc.headObject('k')).toEqual({ contentLength: 42, contentType: 'image/png' });
+    expect(await svc.headObject('k')).toEqual({
+      contentLength: 42,
+      contentType: 'image/png',
+    });
     expect(await svc.headObject('missing')).toBeNull();
   });
 
@@ -88,7 +95,9 @@ describe('R2Service', () => {
   });
 
   it('getObjectBytes buffers the stream', async () => {
-    s3mock.on(GetObjectCommand).resolves({ Body: Readable.from([Buffer.from('hello')]) as never });
+    s3mock
+      .on(GetObjectCommand)
+      .resolves({ Body: Readable.from([Buffer.from('hello')]) as never });
     const buf = await svc.getObjectBytes('k');
     expect(buf.toString()).toBe('hello');
   });

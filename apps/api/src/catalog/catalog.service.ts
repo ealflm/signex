@@ -8,10 +8,18 @@ import { reconcileAssetRefs } from './asset-ref.reconcile';
 import type { CollectedRef } from '../content/asset-ref.util';
 
 function isZodError(e: unknown): boolean {
-  return typeof e === 'object' && e !== null && (e as { name?: string }).name === 'ZodError';
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    (e as { name?: string }).name === 'ZodError'
+  );
 }
 
-function validate<T>(schema: { parse: (v: unknown) => T }, raw: unknown, what: string): T {
+function validate<T>(
+  schema: { parse: (v: unknown) => T },
+  raw: unknown,
+  what: string,
+): T {
   try {
     return schema.parse(raw);
   } catch (e) {
@@ -52,9 +60,20 @@ export class CatalogService {
   ): Promise<{ id: string; revision: number }> {
     const data = validate(categoryInputSchema, input, 'Category');
     return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(tx, expectedRevision, actor.id);
-      const row = await tx.category.create({ data: data as unknown as Prisma.CategoryUncheckedCreateInput });
-      await reconcileAssetRefs(tx, 'category', row.id, imageRef(data.imageId, data.imageAlt));
+      const revision = await this.workingState.guardAndBump(
+        tx,
+        expectedRevision,
+        actor.id,
+      );
+      const row = await tx.category.create({
+        data: data as unknown as Prisma.CategoryUncheckedCreateInput,
+      });
+      await reconcileAssetRefs(
+        tx,
+        'category',
+        row.id,
+        imageRef(data.imageId, data.imageAlt),
+      );
       await this.audit.writeAudit(tx, {
         userId: actor.id,
         action: 'category.create',
@@ -73,9 +92,21 @@ export class CatalogService {
   ): Promise<{ revision: number }> {
     const data = validate(categoryInputSchema, input, 'Category');
     return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(tx, expectedRevision, actor.id);
-      await tx.category.update({ where: { id }, data: data as unknown as Prisma.CategoryUncheckedUpdateInput });
-      await reconcileAssetRefs(tx, 'category', id, imageRef(data.imageId, data.imageAlt));
+      const revision = await this.workingState.guardAndBump(
+        tx,
+        expectedRevision,
+        actor.id,
+      );
+      await tx.category.update({
+        where: { id },
+        data: data as unknown as Prisma.CategoryUncheckedUpdateInput,
+      });
+      await reconcileAssetRefs(
+        tx,
+        'category',
+        id,
+        imageRef(data.imageId, data.imageAlt),
+      );
       await this.audit.writeAudit(tx, {
         userId: actor.id,
         action: 'category.update',
@@ -92,8 +123,15 @@ export class CatalogService {
     expectedRevision: number,
   ): Promise<{ revision: number }> {
     return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(tx, expectedRevision, actor.id);
-      await tx.category.update({ where: { id }, data: { deletedAt: new Date() } });
+      const revision = await this.workingState.guardAndBump(
+        tx,
+        expectedRevision,
+        actor.id,
+      );
+      await tx.category.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       await this.audit.writeAudit(tx, {
         userId: actor.id,
         action: 'category.delete',
@@ -113,9 +151,20 @@ export class CatalogService {
   ): Promise<{ id: string; revision: number }> {
     const data = validate(productInputSchema, input, 'Product');
     return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(tx, expectedRevision, actor.id);
-      const row = await tx.product.create({ data: data as unknown as Prisma.ProductUncheckedCreateInput });
-      await reconcileAssetRefs(tx, 'product', row.id, imageRef(data.imageId, data.imageAlt));
+      const revision = await this.workingState.guardAndBump(
+        tx,
+        expectedRevision,
+        actor.id,
+      );
+      const row = await tx.product.create({
+        data: data as unknown as Prisma.ProductUncheckedCreateInput,
+      });
+      await reconcileAssetRefs(
+        tx,
+        'product',
+        row.id,
+        imageRef(data.imageId, data.imageAlt),
+      );
       await this.audit.writeAudit(tx, {
         userId: actor.id,
         action: 'product.create',
@@ -134,9 +183,21 @@ export class CatalogService {
   ): Promise<{ revision: number }> {
     const data = validate(productInputSchema, input, 'Product');
     return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(tx, expectedRevision, actor.id);
-      await tx.product.update({ where: { id }, data: data as unknown as Prisma.ProductUncheckedUpdateInput });
-      await reconcileAssetRefs(tx, 'product', id, imageRef(data.imageId, data.imageAlt));
+      const revision = await this.workingState.guardAndBump(
+        tx,
+        expectedRevision,
+        actor.id,
+      );
+      await tx.product.update({
+        where: { id },
+        data: data as unknown as Prisma.ProductUncheckedUpdateInput,
+      });
+      await reconcileAssetRefs(
+        tx,
+        'product',
+        id,
+        imageRef(data.imageId, data.imageAlt),
+      );
       await this.audit.writeAudit(tx, {
         userId: actor.id,
         action: 'product.update',
@@ -153,8 +214,15 @@ export class CatalogService {
     expectedRevision: number,
   ): Promise<{ revision: number }> {
     return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(tx, expectedRevision, actor.id);
-      await tx.product.update({ where: { id }, data: { deletedAt: new Date() } });
+      const revision = await this.workingState.guardAndBump(
+        tx,
+        expectedRevision,
+        actor.id,
+      );
+      await tx.product.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       await this.audit.writeAudit(tx, {
         userId: actor.id,
         action: 'product.delete',

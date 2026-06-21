@@ -25,7 +25,10 @@ const KINDS = new Set<string>(Object.values(BlockKind));
 function toKind(raw: string): BlockKind {
   const upper = raw.toUpperCase();
   if (!KINDS.has(upper)) {
-    throw new BadRequestException({ code: 'UNKNOWN_KIND', message: `Unknown block kind "${raw}"` });
+    throw new BadRequestException({
+      code: 'UNKNOWN_KIND',
+      message: `Unknown block kind "${raw}"`,
+    });
   }
   return upper as BlockKind;
 }
@@ -42,12 +45,21 @@ export class ContentController {
     @Body(new ZodValidationPipe(updateBlockBody)) body: UpdateBlockBody,
     @CurrentUser() actor: AuthedUser,
   ): Promise<{ revision: number }> {
-    return this.content.updateBlock(actor, toKind(kind), key, body.data, body.expectedRevision);
+    return this.content.updateBlock(
+      actor,
+      toKind(kind),
+      key,
+      body.data,
+      body.expectedRevision,
+    );
   }
 
   @Get(':kind/:key')
   @Roles('EDITOR')
-  async get(@Param('kind') kind: string, @Param('key') key: string): Promise<unknown> {
+  async get(
+    @Param('kind') kind: string,
+    @Param('key') key: string,
+  ): Promise<unknown> {
     return this.content.getBlock(toKind(kind), key);
   }
 }

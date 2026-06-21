@@ -24,24 +24,62 @@ const lt = (en: string, vi: string) => ({ en, vi });
 
 const validFormConfig = {
   fields: {
-    name:      { label: lt('Name', 'Tên'), placeholder: lt('Your name', 'Tên của bạn'), required: false },
-    email:     { label: lt('Email', 'Email'), placeholder: lt('you@example.com', 'ban@example.com'), required: false },
-    phone:     { label: lt('Phone', 'Điện thoại'), placeholder: lt('+84', '+84'), required: false },
-    quantity:  { label: lt('Quantity', 'Số lượng'), placeholder: lt('1', '1'), required: false },
-    standard:  { label: lt('Standard', 'Tiêu chuẩn'), placeholder: lt('Select', 'Chọn'), required: false },
-    height:    { label: lt('Height (mm)', 'Cao (mm)'), placeholder: lt('100', '100'), required: false },
-    width:     { label: lt('Width (mm)', 'Rộng (mm)'), placeholder: lt('100', '100'), required: false },
-    thickness: { label: lt('Thickness (mm)', 'Dày (mm)'), placeholder: lt('3', '3'), required: false },
-    upload:    { label: lt('Upload', 'Tải lên'), placeholder: lt('Select file', 'Chọn tệp'), required: false },
-    message:   { label: lt('Message', 'Tin nhắn'), placeholder: lt('Details…', 'Chi tiết…'), required: false },
+    name: {
+      label: lt('Name', 'Tên'),
+      placeholder: lt('Your name', 'Tên của bạn'),
+      required: false,
+    },
+    email: {
+      label: lt('Email', 'Email'),
+      placeholder: lt('you@example.com', 'ban@example.com'),
+      required: false,
+    },
+    phone: {
+      label: lt('Phone', 'Điện thoại'),
+      placeholder: lt('+84', '+84'),
+      required: false,
+    },
+    quantity: {
+      label: lt('Quantity', 'Số lượng'),
+      placeholder: lt('1', '1'),
+      required: false,
+    },
+    standard: {
+      label: lt('Standard', 'Tiêu chuẩn'),
+      placeholder: lt('Select', 'Chọn'),
+      required: false,
+    },
+    height: {
+      label: lt('Height (mm)', 'Cao (mm)'),
+      placeholder: lt('100', '100'),
+      required: false,
+    },
+    width: {
+      label: lt('Width (mm)', 'Rộng (mm)'),
+      placeholder: lt('100', '100'),
+      required: false,
+    },
+    thickness: {
+      label: lt('Thickness (mm)', 'Dày (mm)'),
+      placeholder: lt('3', '3'),
+      required: false,
+    },
+    upload: {
+      label: lt('Upload', 'Tải lên'),
+      placeholder: lt('Select file', 'Chọn tệp'),
+      required: false,
+    },
+    message: {
+      label: lt('Message', 'Tin nhắn'),
+      placeholder: lt('Details…', 'Chi tiết…'),
+      required: false,
+    },
   },
   uploadHelp: lt('PDF, PNG, JPG up to 10 MB', 'PDF, PNG, JPG tối đa 10 MB'),
-  standardOptions: [
-    { value: 'A3', label: lt('A3', 'A3') },
-  ],
-  submit:  lt('Submit', 'Gửi'),
+  standardOptions: [{ value: 'A3', label: lt('A3', 'A3') }],
+  submit: lt('Submit', 'Gửi'),
   success: lt('Sent!', 'Đã gửi!'),
-  fail:    lt('Error', 'Lỗi'),
+  fail: lt('Error', 'Lỗi'),
 };
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -103,7 +141,9 @@ describe('Content write path (e2e)', () => {
     expect(res.body).toEqual({ revision: 1 });
 
     // Verify the DB actually persisted the bump.
-    const ws = await prisma.workingState.findUnique({ where: { id: 'singleton' } });
+    const ws = await prisma.workingState.findUnique({
+      where: { id: 'singleton' },
+    });
     expect(ws?.revision).toBe(1);
   });
 

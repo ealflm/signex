@@ -16,9 +16,11 @@ describe('ReleaseController', () => {
       getLive: jest.fn().mockResolvedValue({ version: 1 }),
       diff: jest.fn().mockResolvedValue({ dirty: false }),
       getByVersion: jest.fn().mockResolvedValue({ version: 2 }),
-      publish: jest
-        .fn()
-        .mockResolvedValue({ status: 'published', version: 3, releaseId: 'r3' }),
+      publish: jest.fn().mockResolvedValue({
+        status: 'published',
+        version: 3,
+        releaseId: 'r3',
+      }),
       rollback: jest.fn().mockResolvedValue({ version: 4, releaseId: 'r4' }),
     } as any;
     revalidation = { reFire: jest.fn().mockResolvedValue({ drained: 1 }) };

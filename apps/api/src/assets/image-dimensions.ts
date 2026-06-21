@@ -29,7 +29,13 @@ function readJpeg(buf: Buffer): Dimensions | null {
     }
     const marker = buf[off + 1];
     // SOF0..SOF15 except DHT(c4)/DAC(cc)/RSTn carry frame dims
-    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc
+    ) {
       const height = buf.readUInt16BE(off + 5);
       const width = buf.readUInt16BE(off + 7);
       return { width, height };
@@ -46,11 +52,17 @@ function readWebp(buf: Buffer): Dimensions | null {
   if (buf.subarray(8, 12).toString('ascii') !== 'WEBP') return null;
   const fmt = buf.subarray(12, 16).toString('ascii');
   if (fmt === 'VP8X') {
-    return { width: buf.readUIntLE(24, 3) + 1, height: buf.readUIntLE(27, 3) + 1 };
+    return {
+      width: buf.readUIntLE(24, 3) + 1,
+      height: buf.readUIntLE(27, 3) + 1,
+    };
   }
   if (fmt === 'VP8 ') {
     // lossy: dims at offset 26/28 (14-bit, mask high 2 bits)
-    return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
+    return {
+      width: buf.readUInt16LE(26) & 0x3fff,
+      height: buf.readUInt16LE(28) & 0x3fff,
+    };
   }
   if (fmt === 'VP8L') {
     const b0 = buf[21];
@@ -69,11 +81,18 @@ function readSvg(buf: Buffer): Dimensions | null {
   const w = /\bwidth\s*=\s*["']?\s*([\d.]+)/i.exec(text);
   const h = /\bheight\s*=\s*["']?\s*([\d.]+)/i.exec(text);
   if (w && h) {
-    return { width: Math.round(Number(w[1])), height: Math.round(Number(h[1])) };
+    return {
+      width: Math.round(Number(w[1])),
+      height: Math.round(Number(h[1])),
+    };
   }
-  const vb = /\bviewBox\s*=\s*["']\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)/i.exec(text);
+  const vb =
+    /\bviewBox\s*=\s*["']\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)/i.exec(text);
   if (vb) {
-    return { width: Math.round(Number(vb[1])), height: Math.round(Number(vb[2])) };
+    return {
+      width: Math.round(Number(vb[1])),
+      height: Math.round(Number(vb[2])),
+    };
   }
   return null;
 }
@@ -88,7 +107,8 @@ function isAvifBrand(buf: Buffer): boolean {
   if (avifBrands.has(buf.subarray(8, 12).toString('ascii'))) return true;
   // Compatible brands (each 4 bytes starting at offset 16)
   for (let off = 16; off + 4 <= buf.length; off += 4) {
-    if (avifBrands.has(buf.subarray(off, off + 4).toString('ascii'))) return true;
+    if (avifBrands.has(buf.subarray(off, off + 4).toString('ascii')))
+      return true;
   }
   return false;
 }
@@ -116,7 +136,10 @@ function readAvif(buf: Buffer): Dimensions | null {
   return null;
 }
 
-export function readImageDimensions(buf: Buffer, mime: string): Dimensions | null {
+export function readImageDimensions(
+  buf: Buffer,
+  mime: string,
+): Dimensions | null {
   switch (mime) {
     case 'image/png':
       return readPng(buf);

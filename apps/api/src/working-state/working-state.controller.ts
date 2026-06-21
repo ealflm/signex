@@ -8,7 +8,11 @@ export class WorkingStateController {
 
   @Get()
   @Roles('EDITOR')
-  async get(): Promise<{ revision: number; lastPublishedRevision: number; dirty: boolean }> {
+  async get(): Promise<{
+    revision: number;
+    lastPublishedRevision: number;
+    dirty: boolean;
+  }> {
     const s = await this.workingState.readState();
     return { ...s, dirty: s.revision !== s.lastPublishedRevision };
   }

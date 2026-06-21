@@ -29,8 +29,12 @@ describe('AuthService', () => {
     const prisma = makePrisma({
       user: {
         findUnique: jest.fn().mockResolvedValue({
-          id: 'u1', email: 'a@b.com', name: 'A', passwordHash: pwHash,
-          role: 'ADMIN', isActive: true,
+          id: 'u1',
+          email: 'a@b.com',
+          name: 'A',
+          passwordHash: pwHash,
+          role: 'ADMIN',
+          isActive: true,
         }),
         update: jest.fn().mockResolvedValue({}),
       },
@@ -51,8 +55,12 @@ describe('AuthService', () => {
     const prisma = makePrisma({
       user: {
         findUnique: jest.fn().mockResolvedValue({
-          id: 'u1', email: 'a@b.com', name: 'A', passwordHash: pwHash,
-          role: 'ADMIN', isActive: true,
+          id: 'u1',
+          email: 'a@b.com',
+          name: 'A',
+          passwordHash: pwHash,
+          role: 'ADMIN',
+          isActive: true,
         }),
       },
     });
@@ -73,8 +81,12 @@ describe('AuthService', () => {
     const prisma2 = makePrisma({
       user: {
         findUnique: jest.fn().mockResolvedValue({
-          id: 'u1', email: 'a@b.com', name: 'A', passwordHash: pwHash,
-          role: 'ADMIN', isActive: false,
+          id: 'u1',
+          email: 'a@b.com',
+          name: 'A',
+          passwordHash: pwHash,
+          role: 'ADMIN',
+          isActive: false,
         }),
       },
     });
@@ -88,10 +100,18 @@ describe('AuthService', () => {
     const prisma = makePrisma({
       session: {
         findUnique: jest.fn().mockResolvedValue({
-          id: 's1', tokenHash: hashToken('raw'), expiresAt: future,
+          id: 's1',
+          tokenHash: hashToken('raw'),
+          expiresAt: future,
           revokedAt: null,
-          user: { id: 'u1', email: 'a@b.com', name: 'A', passwordHash: 'h',
-                  role: 'EDITOR', isActive: true },
+          user: {
+            id: 'u1',
+            email: 'a@b.com',
+            name: 'A',
+            passwordHash: 'h',
+            role: 'EDITOR',
+            isActive: true,
+          },
         }),
         update: jest.fn().mockResolvedValue({}),
       },
@@ -103,19 +123,32 @@ describe('AuthService', () => {
 
   it('validateSessionToken returns null when revoked / expired / inactive / missing', async () => {
     const base = (session: any) =>
-      new AuthService(makePrisma({ session: { findUnique: jest.fn().mockResolvedValue(session) } }));
+      new AuthService(
+        makePrisma({
+          session: { findUnique: jest.fn().mockResolvedValue(session) },
+        }),
+      );
     await expect(base(null).validateSessionToken('raw')).resolves.toBeNull();
     await expect(
-      base({ expiresAt: new Date(Date.now() + 1000), revokedAt: new Date(),
-             user: { isActive: true } }).validateSessionToken('raw'),
+      base({
+        expiresAt: new Date(Date.now() + 1000),
+        revokedAt: new Date(),
+        user: { isActive: true },
+      }).validateSessionToken('raw'),
     ).resolves.toBeNull();
     await expect(
-      base({ expiresAt: new Date(Date.now() - 1000), revokedAt: null,
-             user: { isActive: true } }).validateSessionToken('raw'),
+      base({
+        expiresAt: new Date(Date.now() - 1000),
+        revokedAt: null,
+        user: { isActive: true },
+      }).validateSessionToken('raw'),
     ).resolves.toBeNull();
     await expect(
-      base({ expiresAt: new Date(Date.now() + 1000), revokedAt: null,
-             user: { isActive: false } }).validateSessionToken('raw'),
+      base({
+        expiresAt: new Date(Date.now() + 1000),
+        revokedAt: null,
+        user: { isActive: false },
+      }).validateSessionToken('raw'),
     ).resolves.toBeNull();
   });
 

@@ -27,7 +27,10 @@ export function collectAssetRefs(data: unknown): CollectedRef[] {
     if (!isRecord(node)) return;
 
     // VideoRef
-    if (typeof node.posterAssetId === 'string' && typeof node.mp4AssetId === 'string') {
+    if (
+      typeof node.posterAssetId === 'string' &&
+      typeof node.mp4AssetId === 'string'
+    ) {
       out.push({ field: `${path}.poster`, assetId: node.posterAssetId });
       out.push({ field: `${path}.mp4`, assetId: node.mp4AssetId });
       if (typeof node.webmAssetId === 'string') {

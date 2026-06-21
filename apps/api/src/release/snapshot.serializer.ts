@@ -63,8 +63,9 @@ export class SnapshotSerializer {
     });
 
     // 2. Read all ContentBlock rows; map by registry key (last dot-segment)
-    const blockRows: Array<{ key: string; data: unknown }> =
-      await (client as any).contentBlock.findMany();
+    const blockRows: Array<{ key: string; data: unknown }> = await (
+      client as any
+    ).contentBlock.findMany();
 
     const blocksByKey = new Map<string, unknown>();
     for (const row of blockRows) {

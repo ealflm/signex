@@ -38,9 +38,10 @@ describe('RevalidationService', () => {
   });
 
   it('queues for retry and resolves {ok:false} on a non-2xx response (never throws)', async () => {
-    global.fetch = jest
-      .fn()
-      .mockResolvedValue({ ok: false, status: 401 } as Response) as unknown as typeof fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    } as Response) as unknown as typeof fetch;
 
     const res = await service.revalidate({ paths: ['/vi'] });
 
@@ -63,7 +64,10 @@ describe('RevalidationService', () => {
     global.fetch = jest
       .fn()
       .mockRejectedValueOnce(new Error('down'))
-      .mockResolvedValue({ ok: true, status: 200 } as Response) as unknown as typeof fetch;
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+      } as Response) as unknown as typeof fetch;
 
     await service.revalidate({ paths: ['/vi'] });
     expect(service.pendingCount()).toBe(1);

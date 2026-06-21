@@ -54,7 +54,9 @@ export class ReleaseController {
 
   @Get(':version')
   @Roles('EDITOR')
-  byVersion(@Param('version', ParseIntPipe) version: number): Promise<Release | null> {
+  byVersion(
+    @Param('version', ParseIntPipe) version: number,
+  ): Promise<Release | null> {
     return this.releases.getByVersion(version);
   }
 
@@ -78,7 +80,9 @@ export class ReleaseController {
 
   @Post(':version/revalidate')
   @Roles('PUBLISHER')
-  revalidate(@Param('version', ParseIntPipe) _version: number): Promise<{ drained: number }> {
+  revalidate(
+    @Param('version', ParseIntPipe) _version: number,
+  ): Promise<{ drained: number }> {
     return this.revalidation.reFire();
   }
 }

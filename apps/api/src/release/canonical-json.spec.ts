@@ -9,9 +9,12 @@ describe('canonicalJson', () => {
   });
 
   it('preserves array order and recurses into array elements', () => {
-    expect(canonicalJson([{ b: 1, a: 2 }, { d: 4, c: 3 }])).toBe(
-      '[{"a":2,"b":1},{"c":3,"d":4}]',
-    );
+    expect(
+      canonicalJson([
+        { b: 1, a: 2 },
+        { d: 4, c: 3 },
+      ]),
+    ).toBe('[{"a":2,"b":1},{"c":3,"d":4}]');
   });
 
   it('serializes null and primitives', () => {
@@ -21,8 +24,6 @@ describe('canonicalJson', () => {
   });
 
   it('throws on bigint (snapshots must not carry raw BigInt)', () => {
-    expect(() => canonicalJson({ bytes: 10n })).toThrow(
-      /bigint not allowed/i,
-    );
+    expect(() => canonicalJson({ bytes: 10n })).toThrow(/bigint not allowed/i);
   });
 });

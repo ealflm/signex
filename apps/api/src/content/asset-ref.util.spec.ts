@@ -2,7 +2,9 @@ import { collectAssetRefs } from './asset-ref.util';
 
 describe('collectAssetRefs', () => {
   it('finds a nested AssetRef and labels its json path', () => {
-    const data = { hero: { image: { assetId: 'a1', alt: { en: 'x', vi: 'y' } } } };
+    const data = {
+      hero: { image: { assetId: 'a1', alt: { en: 'x', vi: 'y' } } },
+    };
     expect(collectAssetRefs(data)).toEqual([
       { field: 'hero.image', assetId: 'a1', alt: { en: 'x', vi: 'y' } },
     ]);
@@ -21,7 +23,9 @@ describe('collectAssetRefs', () => {
 
   it('expands a VideoRef into its poster + mp4 (+ webm) assets', () => {
     const data = {
-      video: { media: { posterAssetId: 'p1', mp4AssetId: 'm1', webmAssetId: 'w1' } },
+      video: {
+        media: { posterAssetId: 'p1', mp4AssetId: 'm1', webmAssetId: 'w1' },
+      },
     };
     expect(collectAssetRefs(data)).toEqual([
       { field: 'video.media.poster', assetId: 'p1' },
@@ -39,7 +43,11 @@ describe('collectAssetRefs', () => {
   });
 
   it('ignores plain objects with no assetId/posterAssetId', () => {
-    const data = { title: { en: 'Hi', vi: 'Chao' }, count: 4, nested: { foo: 'bar' } };
+    const data = {
+      title: { en: 'Hi', vi: 'Chao' },
+      count: 4,
+      nested: { foo: 'bar' },
+    };
     expect(collectAssetRefs(data)).toEqual([]);
   });
 

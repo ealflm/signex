@@ -14,7 +14,10 @@ export class WorkingStateService {
     });
   }
 
-  async readState(): Promise<{ revision: number; lastPublishedRevision: number }> {
+  async readState(): Promise<{
+    revision: number;
+    lastPublishedRevision: number;
+  }> {
     await this.ensure();
     const row = await this.prisma.client.workingState.findUniqueOrThrow({
       where: { id: 'singleton' },

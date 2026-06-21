@@ -9,9 +9,7 @@ describe('release DTOs', () => {
       publishSchema.parse({ expectedRevision: 5, note: 'launch' }),
     ).toEqual({ expectedRevision: 5, note: 'launch' });
     expect(() => publishSchema.parse({})).toThrow();
-    expect(() =>
-      publishSchema.parse({ expectedRevision: 'x' }),
-    ).toThrow();
+    expect(() => publishSchema.parse({ expectedRevision: 'x' })).toThrow();
   });
 
   it('rollbackSchema requires toVersion and defaults restoreWorkingState to false', () => {

@@ -16,7 +16,9 @@ export class SeedService {
    * - password is hashed with the shared scrypt hasher (same one login verifies).
    * Returns created:true only when the row was newly inserted (createdAt === updatedAt).
    */
-  async seedAdmin(cfg: SeedAdminConfig): Promise<{ id: string; created: boolean }> {
+  async seedAdmin(
+    cfg: SeedAdminConfig,
+  ): Promise<{ id: string; created: boolean }> {
     const passwordHash = await hashPassword(cfg.password);
     const fields = {
       email: cfg.email,

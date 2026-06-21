@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import { SnapshotSerializer } from './snapshot.serializer';
 import { canonicalJson } from './canonical-json';
+import { BLOCK_FIXTURES } from './__fixtures__/blocks.fixture';
 
 // Minimal hand-rolled fake of the Prisma client surface the serializer touches.
 function makeAsset(over: Partial<any> = {}) {
@@ -89,12 +91,7 @@ function makeClient(over: Partial<any> = {}) {
 // Every BLOCK_REGISTRY key must be present and valid; the importer guarantees
 // this at runtime. For the unit test we feed pre-validated block data fixtures.
 function blockRows() {
-  // Loaded lazily so the test file does not duplicate the whole registry shape.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fixtures = require('./__fixtures__/blocks.fixture').BLOCK_FIXTURES as Record<
-    string,
-    unknown
-  >;
+  const fixtures = BLOCK_FIXTURES as Record<string, unknown>;
   return Object.entries(fixtures).map(([key, data], i) => ({
     id: `clqt5s000000000000000${String(i).padStart(4, '0')}`,
     kind: keyKind(key),
@@ -122,7 +119,8 @@ describe('SnapshotSerializer', () => {
     expect(cat.image.assetId).toBe('clqt5s0000000000000000002');
     expect(cat.image.variants).toEqual([]);
     // No asset r2Key is a resolved absolute URL — web resolves MEDIA_PUBLIC_BASE + r2Key at read time.
-    const allR2Keys = JSON.stringify(snapshot).match(/"r2Key":"([^"]+)"/g) ?? [];
+    const allR2Keys =
+      JSON.stringify(snapshot).match(/"r2Key":"([^"]+)"/g) ?? [];
     for (const match of allR2Keys) {
       expect(match).not.toMatch(/https?:\/\//);
     }
@@ -134,18 +132,24 @@ describe('SnapshotSerializer', () => {
 
     // Block asset (e.g. hero.image, nav.logo, meta.ogImage, notFound.image in fixture)
     expect(snapshot.assets[BLOCK_ASSET_ID]).toBeDefined();
-    expect((snapshot.assets[BLOCK_ASSET_ID] as any).r2Key).toBe('originals/aaaa/logo.svg');
+    expect((snapshot.assets[BLOCK_ASSET_ID] as any).r2Key).toBe(
+      'originals/aaaa/logo.svg',
+    );
     expect((snapshot.assets[BLOCK_ASSET_ID] as any).variants).toEqual([]);
 
     // Catalog image asset
     const catAssetId = 'clqt5s0000000000000000002';
     expect(snapshot.assets[catAssetId]).toBeDefined();
-    expect((snapshot.assets[catAssetId] as any).r2Key).toBe('originals/bbbb/cat.jpg');
+    expect((snapshot.assets[catAssetId] as any).r2Key).toBe(
+      'originals/bbbb/cat.jpg',
+    );
 
     // Product image asset
     const prodAssetId = 'clqt5s0000000000000000003';
     expect(snapshot.assets[prodAssetId]).toBeDefined();
-    expect((snapshot.assets[prodAssetId] as any).r2Key).toBe('originals/cccc/prod.jpg');
+    expect((snapshot.assets[prodAssetId] as any).r2Key).toBe(
+      'originals/cccc/prod.jpg',
+    );
   });
 
   it('serializes a product without an image cleanly (no image: null, snapshot parses)', async () => {
@@ -173,7 +177,7 @@ describe('SnapshotSerializer', () => {
                 tag: { en: 't', vi: 't' },
                 desc: { en: 'd', vi: 'd' },
                 imageId: null,
-                image: null,  // no image
+                image: null, // no image
                 imageAlt: null,
               },
             ],
@@ -221,7 +225,6 @@ describe('SnapshotSerializer', () => {
     expect(out1.checksum).toMatch(/^[0-9a-f]{64}$/);
     expect(out1.checksum).toBe(out2.checksum);
     // checksum is over canonicalJson(snapshot)
-    const { createHash } = require('node:crypto');
     expect(out1.checksum).toBe(
       createHash('sha256').update(canonicalJson(out1.snapshot)).digest('hex'),
     );

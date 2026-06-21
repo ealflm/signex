@@ -35,20 +35,20 @@ describe('seed-config', () => {
     });
 
     it('throws when SEED_ADMIN_EMAIL is missing', () => {
-      const { SEED_ADMIN_EMAIL, ...rest } = ok;
+      const { SEED_ADMIN_EMAIL: _SEED_ADMIN_EMAIL, ...rest } = ok;
       expect(() => readSeedAdminConfig(rest)).toThrow(/SEED_ADMIN_EMAIL/);
     });
 
     it('throws when SEED_ADMIN_NAME is blank', () => {
-      expect(() => readSeedAdminConfig({ ...ok, SEED_ADMIN_NAME: '   ' })).toThrow(
-        /SEED_ADMIN_NAME/,
-      );
+      expect(() =>
+        readSeedAdminConfig({ ...ok, SEED_ADMIN_NAME: '   ' }),
+      ).toThrow(/SEED_ADMIN_NAME/);
     });
 
     it('throws when SEED_ADMIN_PASSWORD is shorter than 12 chars', () => {
-      expect(() => readSeedAdminConfig({ ...ok, SEED_ADMIN_PASSWORD: 'short' })).toThrow(
-        /SEED_ADMIN_PASSWORD.*12/,
-      );
+      expect(() =>
+        readSeedAdminConfig({ ...ok, SEED_ADMIN_PASSWORD: 'short' }),
+      ).toThrow(/SEED_ADMIN_PASSWORD.*12/);
     });
   });
 });
