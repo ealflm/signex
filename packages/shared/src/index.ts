@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 /**
- * @signex/shared — placeholder shared types + an example zod schema.
+ * @signex/shared — the cross-app content + auth contract.
  * Compiled to CommonJS in dist/ (see package.json "main"/"exports") so the
- * NestJS runtime can require() it. Build with `npm run build`.
+ * NestJS runtime and the Next apps can require() it. Build with `npm run build`.
  */
 
 /** Placeholder shared identifier type. */
@@ -15,8 +15,8 @@ export type ApiResult<T> =
   | { ok: false; error: string };
 
 /**
- * Example DTO schema (proves the zod dependency + import path work).
- * Mirrors a contact-message payload; not wired to any feature yet.
+ * Example DTO schema (kept from the original placeholder; the contact form
+ * still validates against it).
  */
 export const contactMessageSchema = z.object({
   name: z.string().min(1, "name is required"),
@@ -26,6 +26,14 @@ export const contactMessageSchema = z.object({
 
 /** Inferred type for the example DTO. */
 export type ContactMessage = z.infer<typeof contactMessageSchema>;
+
+// ===== Content + auth registry (build step 0) =====
+export * from "./content/primitives";
+export * from "./content/blocks";
+export * from "./content/registry";
+export * from "./content/catalog";
+export * from "./content/release";
+export * from "./auth";
 
 /** Re-export zod so consumers can build/extend schemas without their own dep. */
 export { z };
