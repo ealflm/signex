@@ -13,3 +13,268 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// =============================================================================
+// CMS FOUNDATION (spec §4). Conventions:
+//   LocalizedText = Json { en, vi } (LocalizedTextSchema in @signex/shared);
+//   every Json column is zod-validated before write AND again at publish.
+// SNAPSHOT-SERIALIZED  : Category, Product, Asset (as frozen refs), ContentBlock.
+// OPERATIONAL-ONLY     : User, Session, AuditLog, Release, PublishedPointer,
+//                        WorkingState, FormSubmission, AssetRef, ReleaseAssetRef.
+// ID strategy is locked to cuid() so @signex/shared's Id can be z.string().cuid().
+// =============================================================================
+
+// ===== IDENTITY / RBAC =====
+enum Role {
+  EDITOR
+  PUBLISHER
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String // node:crypto scrypt (no native dep)
+  role         Role      @default(EDITOR)
+  isActive     Boolean   @default(true) // deactivate, never hard-delete (preserves audit FKs)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions          Session[]
+  releasesCreated   Release[]  @relation("ReleaseCreatedBy")
+  releasesPublished Release[]  @relation("ReleasePublishedBy")
+  assetsUploaded    Asset[]
+  auditLogs         AuditLog[]
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique // sha256(raw token); raw lives only in the cookie
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  revokedAt  DateTime? // logout / demote / deactivate => instant kill
+  lastSeenAt DateTime  @default(now())
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String // "content.update" | "release.publish" | "release.rollback" ...
+  entityType String
+  entityId   String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ===== MEDIA (R2) =====
+enum AssetStatus {
+  PENDING
+  READY
+}
+
+enum AssetKind {
+  IMAGE
+  VIDEO
+  SVG
+}
+
+model Asset {
+  id           String      @id @default(cuid())
+  status       AssetStatus @default(PENDING)
+  kind         AssetKind
+  sha256       String      @unique // content hash => dedup + immutability
+  r2Key        String      @unique // originals/<hash32>/<slug>.<ext> ; URL is DERIVED, never stored
+  mime         String
+  bytes        BigInt // BigInt to avoid a future migration on large video
+  width        Int?
+  height       Int?
+  duration     Float?
+  originalName String
+  altDefault   Json? // LocalizedText fallback ONLY; real alt is per-use
+  posterId     String? // video poster (an IMAGE asset)
+  poster       Asset?      @relation("AssetPoster", fields: [posterId], references: [id])
+  postered     Asset[]     @relation("AssetPoster")
+  uploadedById String?
+  uploadedBy   User?       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  deletedAt    DateTime? // soft-delete; service-layer enforces "no delete while referenced"
+
+  categoriesImage Category[]        @relation("CategoryImage")
+  productsImage   Product[]         @relation("ProductImage")
+  refs            AssetRef[] // working-state usage (derived cache, rebuilt at publish)
+  releaseRefs     ReleaseAssetRef[] // indexed release<->asset (delete/GC safety)
+
+  @@index([status, kind])
+  @@index([deletedAt])
+}
+
+// Working-state usage tracking; DERIVED from working state, rebuilt on every publish.
+model AssetRef {
+  id        String @id @default(cuid())
+  assetId   String
+  asset     Asset  @relation(fields: [assetId], references: [id])
+  ownerType String // "product"|"category"|"contentBlock"|"settings"
+  ownerId   String
+  field     String // json path e.g. "hero.image" | "gallery[2]"
+  alt       Json? // per-use LocalizedText (canonical alt source)
+
+  @@unique([ownerType, ownerId, field])
+  @@index([assetId])
+}
+
+// Indexed "which retained release references this asset" — makes delete/GC an O(1) set query.
+model ReleaseAssetRef {
+  releaseId String
+  release   Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  assetId   String
+  asset     Asset   @relation(fields: [assetId], references: [id])
+
+  @@id([releaseId, assetId])
+  @@index([assetId])
+}
+
+// ===== CATALOG (relational working state) =====
+model Category {
+  id            String    @id @default(cuid())
+  slug          String    @unique // URL key (generateStaticParams)
+  sortOrder     Int // LOAD-BEARING (index->image, sitemap)
+  title         Json // LocalizedText
+  tag           Json // LocalizedText "PVC · Silicone"
+  intro         Json // LocalizedText (category page desc + meta + JSON-LD)
+  productCount  Int // locale-invariant stat (18/24/15/12)
+  materialCount Int // (4/6/5/3)
+  imageId       String?
+  image         Asset?    @relation("CategoryImage", fields: [imageId], references: [id], onDelete: Restrict)
+  imageAlt      Json? // per-use alt (not on Asset)
+  products      Product[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  @@index([sortOrder])
+}
+
+model Product {
+  id         String    @id @default(cuid())
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  slug       String // unique WITHIN category
+  sortOrder  Int
+  title      Json // LocalizedText
+  tag        Json // LocalizedText
+  desc       Json // LocalizedText
+  imageId    String?
+  image      Asset?    @relation("ProductImage", fields: [imageId], references: [id], onDelete: Restrict)
+  imageAlt   Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  @@unique([categoryId, slug])
+  @@index([categoryId, sortOrder])
+}
+
+// ===== JSON CONTENT BLOCKS =====
+enum BlockKind {
+  PAGE
+  SETTINGS
+  NAV
+  SEO
+}
+
+model ContentBlock {
+  id        String    @id @default(cuid())
+  kind      BlockKind
+  key       String // "home.hero" | "businessContact" | "nav.primary" | "seo.home"
+  data      Json // zod-validated by registry[(kind,key)]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([kind, key])
+  @@index([kind])
+  @@index([key])
+}
+
+// ===== FORM SUBMISSIONS (operational-only; NOT in snapshots) =====
+enum SubmissionStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
+model FormSubmission {
+  id            String           @id @default(cuid())
+  formKey       String // "quote" | "contact"
+  payload       Json // zod-validated against the form's submit schema
+  uploadAssetId String? // the form's "upload" field -> R2 Asset
+  status        SubmissionStatus @default(NEW)
+  ip            String?
+  userAgent     String?
+  createdAt     DateTime         @default(now())
+
+  @@index([formKey, status])
+  @@index([createdAt])
+}
+
+// ===== VERSIONING =====
+enum ReleaseStatus {
+  PUBLISHED
+  ARCHIVED
+} // DRAFT removed (locked #4: working tables ARE the draft)
+
+model Release {
+  id                    String        @id @default(cuid())
+  version               Int           @unique // assigned from a Postgres sequence
+  status                ReleaseStatus @default(PUBLISHED)
+  label                 String?
+  note                  String?
+  snapshot              Json // whole serialized site (ReleaseSnapshotSchema)
+  checksum              String // sha256(canonical snapshot)
+  schemaVersion         Int // stamped; web gates/migrates on this
+  fromRevision          Int // WorkingState.revision at serialize time
+  rolledBackFromVersion Int?
+  createdById           String
+  createdBy             User          @relation("ReleaseCreatedBy", fields: [createdById], references: [id])
+  publishedById         String?
+  publishedBy           User?         @relation("ReleasePublishedBy", fields: [publishedById], references: [id])
+  createdAt             DateTime      @default(now())
+  publishedAt           DateTime?
+
+  assetRefs        ReleaseAssetRef[]
+  publishedPointer PublishedPointer?
+
+  @@index([status])
+  @@index([version])
+}
+
+// Singleton: which release is LIVE. Repoint = one-row update (atomic, cheap).
+model PublishedPointer {
+  id               String   @id @default("singleton")
+  releaseId        String   @unique
+  release          Release  @relation(fields: [releaseId], references: [id])
+  publishedVersion Int
+  publishedAt      DateTime @default(now())
+  publishedById    String
+}
+
+// Singleton: the global optimistic lock + dirty tracking.
+model WorkingState {
+  id                    String   @id @default("singleton")
+  revision              Int      @default(0) // bumped on every committed working-state edit
+  lastPublishedRevision Int      @default(0) // dirty iff revision != lastPublishedRevision
+  updatedAt             DateTime @updatedAt
+  updatedById           String?
+}
