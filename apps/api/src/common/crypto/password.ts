@@ -1,7 +1,14 @@
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
-const scryptAsync = promisify(scrypt);
+// Cast to any: promisify(scrypt) typings only expose the 3-arg overload;
+// the 4-arg (with options) form exists at runtime but needs an explicit cast.
+const scryptAsync = promisify(scrypt) as (
+  password: string | Buffer,
+  salt: string | Buffer,
+  keylen: number,
+  options: { N: number; r: number; p: number },
+) => Promise<Buffer>;
 
 // scrypt cost params (interactive-login tuned; pure-JS-free, no native dep).
 const N = 16384; // CPU/memory cost
