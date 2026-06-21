@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthModule } from './health/health.module';
@@ -12,7 +12,13 @@ import { SessionAuthGuard } from './auth/guards/session-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
 @Module({
-  imports: [PrismaModule, HealthModule, AuthModule, UsersModule],
+  imports: [
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
+    PrismaModule,
+    HealthModule,
+    AuthModule,
+    UsersModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,
