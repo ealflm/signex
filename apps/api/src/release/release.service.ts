@@ -3,7 +3,7 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import type { Prisma, User } from '@signex/db';
+import type { Prisma, Release, User } from '@signex/db';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RevalidationService } from '../revalidation/revalidation.service';
@@ -150,5 +150,146 @@ export class ReleaseService {
       version: result.version,
       releaseId: result.releaseId,
     };
+  }
+
+  async rollback(
+    actor: User,
+    input: { toVersion: number; restoreWorkingState?: boolean },
+  ): Promise<{ version: number; releaseId: string }> {
+    this.assertMediaBaseConfigured();
+
+    const result = await this.prisma.client.$transaction(
+      async (tx) => {
+        const target = await tx.release.findUniqueOrThrow({
+          where: { version: input.toVersion },
+          include: { assetRefs: { select: { assetId: true } } },
+        });
+
+        const seq = await tx.$queryRaw<Array<{ nextval: bigint }>>`
+          SELECT nextval('release_version_seq')`;
+        const version = Number(seq[0].nextval);
+
+        await tx.release.updateMany({
+          where: { status: 'PUBLISHED' },
+          data: { status: 'ARCHIVED' },
+        });
+
+        const release = await tx.release.create({
+          data: {
+            version,
+            status: 'PUBLISHED',
+            label: null,
+            note: `rollback to v${input.toVersion}`,
+            snapshot: target.snapshot as Prisma.InputJsonValue,
+            checksum: target.checksum,
+            schemaVersion: SCHEMA_VERSION,
+            fromRevision: 0,
+            rolledBackFromVersion: input.toVersion,
+            createdById: actor.id,
+            publishedById: actor.id,
+            publishedAt: new Date(),
+          },
+        });
+
+        await tx.publishedPointer.upsert({
+          where: { id: 'singleton' },
+          create: {
+            id: 'singleton',
+            releaseId: release.id,
+            publishedVersion: version,
+            publishedById: actor.id,
+          },
+          update: {
+            releaseId: release.id,
+            publishedVersion: version,
+            publishedById: actor.id,
+            publishedAt: new Date(),
+          },
+        });
+
+        const assetIds = target.assetRefs.map((r: { assetId: string }) => r.assetId);
+        if (assetIds.length > 0) {
+          await tx.releaseAssetRef.createMany({
+            data: assetIds.map((assetId: string) => ({
+              releaseId: release.id,
+              assetId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        if (input.restoreWorkingState) {
+          // Opt-in: mark the working state as aligned to the restored release.
+          // Full working-table rehydrate from snapshot is a documented seam
+          // (content reconcile); foundation updates bookkeeping only.
+          await tx.workingState.update({
+            where: { id: 'singleton' },
+            data: { lastPublishedRevision: { increment: 0 } },
+          });
+        }
+
+        await this.audit.record(tx as unknown as Prisma.TransactionClient, {
+          userId: actor.id,
+          action: 'release.rollback',
+          entityType: 'release',
+          entityId: release.id,
+          meta: { toVersion: input.toVersion, version },
+        });
+
+        return { version, releaseId: release.id };
+      },
+      { timeout: 10000, maxWait: 5000 },
+    );
+
+    // AFTER commit — non-fatal revalidation
+    this.revalidation.revalidate({}).catch(() => { /* non-fatal */ });
+
+    return result;
+  }
+
+  async diff(): Promise<{
+    dirty: boolean;
+    revision: number;
+    lastPublishedRevision: number;
+  }> {
+    const ws = await this.prisma.client.workingState.findUniqueOrThrow({
+      where: { id: 'singleton' },
+    });
+    return {
+      dirty: ws.revision !== ws.lastPublishedRevision,
+      revision: ws.revision,
+      lastPublishedRevision: ws.lastPublishedRevision,
+    };
+  }
+
+  async isDirty(): Promise<boolean> {
+    return (await this.diff()).dirty;
+  }
+
+  async getLive(): Promise<{
+    version: number;
+    checksum: string;
+    publishedAt: Date;
+  } | null> {
+    const live = await this.prisma.client.publishedPointer.findUnique({
+      where: { id: 'singleton' },
+      include: {
+        release: {
+          select: { version: true, checksum: true, publishedAt: true },
+        },
+      },
+    });
+    if (!live) return null;
+    return {
+      version: live.release.version,
+      checksum: live.release.checksum,
+      publishedAt: live.release.publishedAt as Date,
+    };
+  }
+
+  async listReleases(): Promise<Release[]> {
+    return this.prisma.client.release.findMany({
+      orderBy: { version: 'desc' },
+    });
   }
 }

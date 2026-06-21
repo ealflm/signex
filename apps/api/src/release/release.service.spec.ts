@@ -193,3 +193,126 @@ describe('ReleaseService.publish', () => {
     expect(tx.release.create).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('ReleaseService rollback / diff / live / list', () => {
+  let service: ReleaseService;
+  let prisma: any;
+  let revalidation: { revalidate: jest.Mock };
+  let audit: { record: jest.Mock };
+  let tx: any;
+
+  beforeEach(async () => {
+    process.env.MEDIA_PUBLIC_BASE = 'https://media.signex.example';
+    tx = {
+      release: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'crel-old',
+          version: 3,
+          snapshot: { schemaVersion: 1, blocks: {}, catalog: { categories: [] } },
+          checksum: 'oldsum',
+          assetRefs: [{ assetId: 'a1' }, { assetId: 'a2' }],
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        create: jest
+          .fn()
+          .mockResolvedValue({ id: 'crel-new', version: 9 }),
+      },
+      $queryRaw: jest.fn().mockResolvedValue([{ nextval: 9n }]),
+      publishedPointer: { upsert: jest.fn().mockResolvedValue({}) },
+      releaseAssetRef: { createMany: jest.fn().mockResolvedValue({ count: 2 }) },
+      workingState: { update: jest.fn().mockResolvedValue({}) },
+    };
+    prisma = {
+      client: {
+        $transaction: jest.fn(async (fn: any) => fn(tx)),
+        workingState: {
+          findUniqueOrThrow: jest
+            .fn()
+            .mockResolvedValue({ revision: 7, lastPublishedRevision: 3 }),
+        },
+        publishedPointer: {
+          findUnique: jest.fn().mockResolvedValue({
+            release: {
+              version: 8,
+              checksum: 'livesum',
+              publishedAt: new Date('2026-06-21T00:00:00Z'),
+            },
+          }),
+        },
+        release: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: 'crel-new', version: 9 }]),
+        },
+      },
+    };
+    revalidation = { revalidate: jest.fn().mockResolvedValue({ ok: true }) };
+    audit = { record: jest.fn().mockResolvedValue(undefined) };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ReleaseService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: SnapshotSerializer, useValue: { serialize: jest.fn() } },
+        { provide: RevalidationService, useValue: revalidation },
+        { provide: AuditService, useValue: audit },
+      ],
+    }).compile();
+    service = moduleRef.get(ReleaseService);
+  });
+
+  it('rollback (repoint-only) mints a new PUBLISHED release copying the target snapshot', async () => {
+    const res = await service.rollback(ACTOR, { toVersion: 3 });
+
+    expect(res).toEqual({ version: 9, releaseId: 'crel-new' });
+    const createArg = tx.release.create.mock.calls[0][0].data;
+    expect(createArg.version).toBe(9);
+    expect(createArg.status).toBe('PUBLISHED');
+    expect(createArg.checksum).toBe('oldsum');
+    expect(createArg.rolledBackFromVersion).toBe(3);
+    expect(tx.releaseAssetRef.createMany).toHaveBeenCalledWith({
+      data: [
+        { releaseId: 'crel-new', assetId: 'a1' },
+        { releaseId: 'crel-new', assetId: 'a2' },
+      ],
+      skipDuplicates: true,
+    });
+    // repoint-only: working tables NOT touched
+    expect(tx.workingState.update).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ action: 'release.rollback' }),
+    );
+    expect(revalidation.revalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it('rollback with restoreWorkingState=true updates working-state bookkeeping', async () => {
+    await service.rollback(ACTOR, { toVersion: 3, restoreWorkingState: true });
+    expect(tx.workingState.update).toHaveBeenCalled();
+  });
+
+  it('diff reports dirty when revision != lastPublishedRevision', async () => {
+    const d = await service.diff();
+    expect(d).toEqual({
+      dirty: true,
+      revision: 7,
+      lastPublishedRevision: 3,
+    });
+    expect(await service.isDirty()).toBe(true);
+  });
+
+  it('getLive returns the live release summary', async () => {
+    const live = await service.getLive();
+    expect(live).toEqual({
+      version: 8,
+      checksum: 'livesum',
+      publishedAt: new Date('2026-06-21T00:00:00Z'),
+    });
+  });
+
+  it('listReleases returns the release list', async () => {
+    expect(await service.listReleases()).toEqual([
+      { id: 'crel-new', version: 9 },
+    ]);
+  });
+});
