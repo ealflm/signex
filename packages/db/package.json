@@ -19,6 +19,7 @@
     "build": "tsc",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
+    "migrate:reset": "prisma migrate reset --force --skip-seed",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
