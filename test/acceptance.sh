@@ -24,11 +24,18 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Pull the SAME secrets the Compose services use from the root .env, so this host-side
+# script doesn't diverge from the container env (→ login 401 / secret 403). We do NOT
+# `source` .env (values like `SEED_ADMIN_NAME=Signex Admin` have unquoted spaces and would
+# break `set -e`); instead read each needed key's raw value (everything after the first '=').
+envval() { [ -f .env ] && grep -E "^$1=" .env 2>/dev/null | head -1 | cut -d= -f2- || true; }
+
 API="${API_BASE:-http://localhost:3060}"
 WEB="${WEB_BASE:-http://localhost:3062}"
-ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-admin@signex.local}"
-ADMIN_PASS="${SEED_ADMIN_PASSWORD:-change-me-please-32chars-long}"
-PREVIEW_SECRET="${PREVIEW_SECRET:-dev-preview-secret-change-me}"
+ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-$(envval SEED_ADMIN_EMAIL)}"; ADMIN_EMAIL="${ADMIN_EMAIL:-admin@signex.local}"
+ADMIN_PASS="${SEED_ADMIN_PASSWORD:-$(envval SEED_ADMIN_PASSWORD)}"; ADMIN_PASS="${ADMIN_PASS:-change-me-please-32chars-long}"
+PREVIEW_SECRET="${PREVIEW_SECRET:-$(envval PREVIEW_SECRET)}"; PREVIEW_SECRET="${PREVIEW_SECRET:-dev-preview-secret-change-me}"
+REVALIDATE_SECRET="${REVALIDATE_SECRET:-$(envval REVALIDATE_SECRET)}"; REVALIDATE_SECRET="${REVALIDATE_SECRET:-dev-revalidate-secret-change-me}"
 JAR="$(mktemp)"
 trap 'rm -f "$JAR"' EXIT
 
@@ -48,20 +55,23 @@ done
 # ---------------------------------------------------------------------------
 say "1. seed + importer (auth:seed -> Release v1) inside the api container"
 # ---------------------------------------------------------------------------
-# node dist/main seed: idempotent — upserts SYSTEM/ADMIN user + no-ops if content
-# already imported (the importer's advisory lock + Release row guard handle it).
-docker compose exec -T api node dist/main seed || fail "seed/importer command failed"
+# node apps/api/dist/main seed: idempotent — upserts SYSTEM/ADMIN user + no-ops if
+# content already imported (the importer's advisory lock + Release row guard handle it).
+# Path is apps/api/dist/main (monorepo layout: container WORKDIR is /app, CMD = node apps/api/dist/main).
+docker compose exec -T api node apps/api/dist/main seed || fail "seed/importer command failed"
 
 # ---------------------------------------------------------------------------
 say "2. login -> sx_session cookie + ADMIN role"
 # ---------------------------------------------------------------------------
 code="$(curl -sS -o /dev/null -w '%{http_code}' -c "$JAR" \
-  -H 'Content-Type: application/json' -H "Origin: $API" \
+  -H 'Content-Type: application/json' \
   -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASS\"}" \
   "$API/api/auth/login")"
-[ "$code" = "200" ] || fail "login returned $code (expected 200)"
+# NestJS @Post() returns 201 by default; accept 200 or 201.
+{ [ "$code" = "200" ] || [ "$code" = "201" ]; } || fail "login returned $code (expected 200/201)"
 grep -q 'sx_session' "$JAR" || fail "no sx_session cookie issued"
-role="$(curl -sS -b "$JAR" "$API/api/auth/me" | jq -r '.role')"
+# GET /api/auth/me returns { user: { id, email, name, role, isActive } }
+role="$(curl -sS -b "$JAR" "$API/api/auth/me" | jq -r '.user.role')"
 [ "$role" = "ADMIN" ] || fail "me.role=$role (expected ADMIN)"
 
 # ---------------------------------------------------------------------------
@@ -77,13 +87,14 @@ BASE_VER="$(printf '%s' "$LIVE_RESP" | jq -r '.version')"
 # ---------------------------------------------------------------------------
 say "4. edit the businessContact block (save draft / working state)"
 # ---------------------------------------------------------------------------
-BLOCK_RESP="$(curl -sS -b "$JAR" "$API/api/content/blocks/SETTINGS/businessContact")"
-REV="$(printf '%s' "$BLOCK_RESP" | jq -r '.revision // 0')"
+# GET /api/content/blocks/:kind/:key returns the RAW block data (no {data,revision} wrapper);
+# the working-state revision (the optimistic-lock token) comes from /api/releases/diff.
+REV="$(curl -sS -b "$JAR" "$API/api/releases/diff" | jq -r '.revision')"
 LIVE_JSON="$(printf '%s' "$LIVE_RESP" | jq -c '.snapshot.blocks.businessContact')"
 NEW_VI="ACCEPTANCE-$(date +%s)"
 NEW_DATA="$(printf '%s' "$LIVE_JSON" | jq -c --arg v "$NEW_VI" '.legalName.vi=$v')"
 put_code="$(curl -sS -o /dev/null -w '%{http_code}' -b "$JAR" -X PUT \
-  -H 'Content-Type: application/json' -H "Origin: $API" \
+  -H 'Content-Type: application/json' \
   -d "{\"data\":$NEW_DATA,\"expectedRevision\":$REV}" \
   "$API/api/content/blocks/SETTINGS/businessContact")"
 [ "$put_code" = "200" ] || fail "PUT block returned $put_code (expected 200)"
@@ -110,8 +121,8 @@ fi
 # ---------------------------------------------------------------------------
 say "6. publish -> new monotonic version"
 # ---------------------------------------------------------------------------
-WS_REV="$(curl -sS -b "$JAR" "$API/api/content/blocks/SETTINGS/businessContact" | jq -r '.revision')"
-PUB_RESP="$(curl -sS -b "$JAR" -X POST -H 'Content-Type: application/json' -H "Origin: $API" \
+WS_REV="$(curl -sS -b "$JAR" "$API/api/releases/diff" | jq -r '.revision')"
+PUB_RESP="$(curl -sS -b "$JAR" -X POST -H 'Content-Type: application/json' \
   -d "{\"note\":\"acceptance\",\"expectedRevision\":$WS_REV}" \
   "$API/api/releases/publish")"
 PUB_STATUS="$(printf '%s' "$PUB_RESP" | jq -r '.status')"
@@ -146,7 +157,7 @@ ROLLBACK_VER="$(curl -sS -b "$JAR" "$API/api/releases" | jq -r \
 [ -n "$ROLLBACK_VER" ] && [ "$ROLLBACK_VER" != "null" ] \
   || fail "could not find baseline release version (legalName.vi='$BASE_VI' not in any release)"
 rollback_code="$(curl -sS -o /dev/null -w '%{http_code}' -b "$JAR" \
-  -X POST -H 'Content-Type: application/json' -H "Origin: $API" \
+  -X POST -H 'Content-Type: application/json' \
   -d "{\"toVersion\":$ROLLBACK_VER}" "$API/api/releases/rollback")"
 [ "$rollback_code" = "200" ] || [ "$rollback_code" = "201" ] \
   || fail "rollback call returned $rollback_code (expected 200)"

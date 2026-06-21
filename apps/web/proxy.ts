@@ -40,7 +40,9 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // App routes only — exclude Next internals, the vendored Webflow /assets, favicon,
-  // and any path containing a file extension (so CSS/JS/images load untouched).
-  matcher: ["/((?!_next/static|_next/image|assets/|favicon.ico|.*\\..*).*)"],
+  // App routes only — exclude Next internals, the web's OWN api route handlers
+  // (/api/revalidate, /api/draft — these must NOT be locale-redirected, or the api's
+  // on-demand revalidation POST gets a 307 → /vi/api/revalidate → 404), the vendored
+  // Webflow /assets, favicon, and any path containing a file extension.
+  matcher: ["/((?!_next/static|_next/image|api/|assets/|favicon.ico|.*\\..*).*)"],
 };
