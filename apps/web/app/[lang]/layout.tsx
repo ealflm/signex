@@ -35,8 +35,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   return buildMetadata({ locale, meta: dict.meta, title: dict.meta.title, description: dict.meta.description });
 }
 
-// Pre-render one route per locale; reject any other locale with a 404.
-export const dynamicParams = false;
+// Pre-render one route per locale. (Under cacheComponents the `dynamicParams`
+// route config is not allowed; unknown-locale rejection is handled in-render.)
 export function generateStaticParams() {
   return LOCALES.map((lang) => ({ lang }));
 }

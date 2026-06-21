@@ -12,7 +12,8 @@ import { buildMetadata } from "@/app/lib/seo";
 import { ProductImageZoom } from "@/app/components/product-image-zoom";
 import { productImage } from "@/app/lib/product-images";
 
-export const dynamicParams = false;
+// Under cacheComponents the `dynamicParams` route config is not allowed; slugs
+// not in generateStaticParams render on demand then cache (invalid → notFound in-render).
 export async function generateStaticParams() {
   const dict = await getDictionary(DEFAULT_LOCALE);
   return dict.products.categories.flatMap((c) =>
