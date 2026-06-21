@@ -17,6 +17,8 @@ import { STANDARD_VALUES } from "@/app/lib/standard-options";
  * .text_input-label.label-large, .button_submit-static, .cta_primary) — design unchanged.
  */
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+
 export function HeroQuoteForm({
   dict,
   "data-w-id": dataWId,
@@ -26,7 +28,8 @@ export function HeroQuoteForm({
   "data-w-id"?: string;
   style?: React.CSSProperties;
 }) {
-  const [done, setDone] = useState(false);
+  const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const done = state === "done";
   const [expanded, setExpanded] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const doneRef = useRef<HTMLDivElement>(null);
@@ -94,11 +97,22 @@ export function HeroQuoteForm({
           style={style}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            setDone(true);
+            setState("sending");
+            try {
+              const body = new FormData(e.currentTarget);
+              const res = await fetch(`${API_BASE}/api/forms/quote/submit`, {
+                method: "POST",
+                body,
+              });
+              setState(res.ok ? "done" : "error");
+            } catch {
+              setState("error");
+            }
           }}
         >
+          <fieldset disabled={state === "sending"} style={{ border: 0, padding: 0, margin: 0 }}>
           <div className="hero-quote_inner">
             {/* ---- Contact info — horizontal bar (always visible) ---- */}
             <div className="hero-quote_bar">
@@ -277,11 +291,17 @@ export function HeroQuoteForm({
               </div>
             </div>
           </div>
+          </fieldset>
         </form>
       )}
       {done && (
         <div ref={doneRef} tabIndex={-1} role="status" className="success-message w-form-done" style={{ display: "block" }}>
           <div>{dict.success}</div>
+        </div>
+      )}
+      {state === "error" && (
+        <div className="error-message w-form-fail" style={{ display: "block" }}>
+          <div>{dict.fail}</div>
         </div>
       )}
     </div>

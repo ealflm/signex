@@ -127,6 +127,7 @@ export function Contact({
                 id="contact-form"
                 name="contact-form"
                 className="form is-v2"
+                formKey="contact"
                 successMarkup={`<div>${t.success}</div>`}
                 failMarkup={`<div>${t.fail}</div>`}
               >

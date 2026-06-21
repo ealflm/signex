@@ -7,35 +7,68 @@ type Props = {
   id: string;
   name: string;
   className: string;
-  children: React.ReactNode;          // the fields + submit (the original <form> inner markup)
-  successMarkup: string;              // the original .w-form-done inner HTML (curly apostrophes preserved)
+  formKey: "quote" | "contact";       // selects the api submit endpoint + zod schema
+  children: React.ReactNode;
+  successMarkup: string;
   failMarkup?: string;
   "data-wf-element-id"?: string;
   "data-wf-page-id"?: string;
-  "data-w-id"?: string;            // some Webflow forms carry an animation hook on the <form> itself
-  style?: React.CSSProperties;     // forwarded to the <form> (e.g. the runtime's opacity/blur reveal)
+  "data-w-id"?: string;
+  style?: React.CSSProperties;
 };
 
-export function StaticWebflowForm({ id, name, className, children, successMarkup, failMarkup, ...rest }: Props) {
-  const [done, setDone] = useState(false);
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+
+export function StaticWebflowForm({
+  id, name, className, formKey, children, successMarkup, failMarkup, ...rest
+}: Props) {
+  const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const doneRef = useRef<HTMLDivElement>(null);
-  // On success, announce the confirmation (role=status live region) + move focus to it.
-  useEffect(() => { if (done) doneRef.current?.focus(); }, [done]);
+  useEffect(() => { if (state === "done") doneRef.current?.focus(); }, [state]);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setState("sending");
+    try {
+      const body = new FormData(e.currentTarget); // includes the file upload field
+      const res = await fetch(`${API_BASE}/api/forms/${formKey}/submit`, {
+        method: "POST",
+        body,
+      });
+      setState(res.ok ? "done" : "error");
+    } catch {
+      setState("error");
+    }
+  }
+
   return (
     <div className="w-form">
-      {!done && (
+      {state !== "done" && (
         <form
           id={id}
           name={name}
           className={className}
-          onSubmit={(e) => { e.preventDefault(); setDone(true); }}
+          onSubmit={onSubmit}
           {...rest}
         >
-          {children}
+          <fieldset disabled={state === "sending"} style={{ border: 0, padding: 0, margin: 0 }}>
+            {children}
+          </fieldset>
         </form>
       )}
-      {done && <div ref={doneRef} tabIndex={-1} role="status" className="success-message w-form-done" style={{ display: "block" }} dangerouslySetInnerHTML={{ __html: successMarkup }} />}
-      {!done && failMarkup && <div className="error-message w-form-fail" dangerouslySetInnerHTML={{ __html: failMarkup }} />}
+      {state === "done" && (
+        <div
+          ref={doneRef}
+          tabIndex={-1}
+          role="status"
+          className="success-message w-form-done"
+          style={{ display: "block" }}
+          dangerouslySetInnerHTML={{ __html: successMarkup }}
+        />
+      )}
+      {state === "error" && failMarkup && (
+        <div className="error-message w-form-fail" style={{ display: "block" }} dangerouslySetInnerHTML={{ __html: failMarkup }} />
+      )}
     </div>
   );
 }
