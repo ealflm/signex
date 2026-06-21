@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { R2Service, IMMUTABLE_CACHE_CONTROL } from './r2.service';
 import { readImageDimensions } from './image-dimensions';
-import { sanitizeSvg } from './svg-sanitize';
+import { sanitizeSvg, SvgForbiddenError } from './svg-sanitize';
 import {
   MIME_ALLOWLIST,
   kindForMime,
@@ -147,7 +147,13 @@ export class AssetsService {
     let storedBytes = bytes;
     if (asset.kind === 'SVG') {
       // Sanitize-or-forbid: re-write the cleaned SVG back to R2 (key/hash unchanged, content trusted).
-      const cleaned = sanitizeSvg(bytes);
+      let cleaned: Buffer;
+      try {
+        cleaned = sanitizeSvg(bytes);
+      } catch (e) {
+        if (e instanceof SvgForbiddenError) throw new BadRequestException('INVALID_SVG: ' + e.message);
+        throw e;
+      }
       storedBytes = cleaned;
       await this.r2.putObject({
         r2Key: asset.r2Key,
@@ -187,7 +193,12 @@ export class AssetsService {
 
     let body = input.bytes;
     if (input.mime === 'image/svg+xml') {
-      body = sanitizeSvg(body);
+      try {
+        body = sanitizeSvg(body);
+      } catch (e) {
+        if (e instanceof SvgForbiddenError) throw new BadRequestException('INVALID_SVG: ' + e.message);
+        throw e;
+      }
     }
     const sha256 = createHash('sha256').update(body).digest('hex');
 

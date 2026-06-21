@@ -163,6 +163,124 @@ describe('AssetsService.confirm SVG', () => {
   });
 });
 
+describe('AssetsService.confirm — malformed SVG → 400', () => {
+  let prisma: PrismaService;
+  let svc: AssetsService;
+  const notSvgBytes = Buffer.from('<html>no svg</html>');
+  const notSvgSha = createHash('sha256').update(notSvgBytes).digest('hex');
+  const pendingSvg = {
+    id: 's2', status: 'PENDING', kind: 'SVG', sha256: notSvgSha,
+    r2Key: `originals/${notSvgSha.slice(0, 32)}/bad.svg`, mime: 'image/svg+xml',
+    bytes: BigInt(notSvgBytes.length), width: null, height: null, originalName: 'bad.svg',
+    altDefault: null, duration: null, posterId: null,
+  };
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma = makePrisma();
+    svc = new AssetsService(prisma, r2);
+    (prisma.client.asset.findUnique as jest.Mock).mockResolvedValue(pendingSvg);
+    (r2.headObject as jest.Mock).mockResolvedValue({ contentLength: notSvgBytes.length });
+    (r2.getObjectBytes as jest.Mock).mockResolvedValue(notSvgBytes);
+  });
+
+  it('throws BadRequestException (4xx) for svg+xml bytes with no <svg> root', async () => {
+    await expect(svc.confirm(actor, 's2')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('does NOT flip the asset to READY when SVG bytes are malformed', async () => {
+    await expect(svc.confirm(actor, 's2')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.client.asset.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('AssetsService.register — malformed SVG → 400', () => {
+  let prisma: PrismaService;
+  let svc: AssetsService;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma = makePrisma();
+    svc = new AssetsService(prisma, r2);
+  });
+
+  it('throws BadRequestException when register receives svg+xml bytes with no <svg> root', async () => {
+    const notSvgBytes = Buffer.from('<html>no svg</html>');
+    await expect(
+      svc.register(actor, { bytes: notSvgBytes, mime: 'image/svg+xml', originalName: 'bad.svg' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(r2.putObject).not.toHaveBeenCalled();
+  });
+});
+
+describe('AssetsService.replace', () => {
+  let prisma: PrismaService;
+  let svc: AssetsService;
+  const existingAsset = {
+    id: 'orig1', status: 'READY', kind: 'IMAGE', sha256: 'aabbcc', r2Key: 'originals/aabbcc/logo.png',
+    mime: 'image/png', bytes: BigInt(pngBytes.length), width: 1, height: 1, originalName: 'logo.png',
+    altDefault: null, duration: null, posterId: null,
+  };
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma = makePrisma();
+    svc = new AssetsService(prisma, r2);
+  });
+
+  it('delegates to register with new bytes and returns the new asset', async () => {
+    (prisma.client.asset.findUnique as jest.Mock)
+      .mockResolvedValueOnce(existingAsset) // target lookup
+      .mockResolvedValueOnce(null);         // dedup check inside register
+    const newAsset = {
+      id: 'new1', status: 'READY', kind: 'IMAGE', sha256: pngSha,
+      r2Key: `originals/${pngSha.slice(0, 32)}/logo.png`, mime: 'image/png',
+      bytes: BigInt(pngBytes.length), width: 1, height: 1, originalName: 'logo.png',
+      altDefault: null, duration: null, posterId: null,
+    };
+    (prisma.client.asset.create as jest.Mock).mockResolvedValue(newAsset);
+    (r2.putObject as jest.Mock).mockResolvedValue(undefined);
+    const dto = await svc.replace(actor, 'orig1', {
+      bytes: pngBytes,
+      mime: 'image/png',
+      originalName: 'logo.png',
+    });
+    expect(dto.id).toBe('new1');
+    expect(dto.status).toBe('READY');
+  });
+
+  it('writes an asset.replace audit log with replacedWith', async () => {
+    (prisma.client.asset.findUnique as jest.Mock)
+      .mockResolvedValueOnce(existingAsset)
+      .mockResolvedValueOnce(null);
+    const newAsset = {
+      id: 'new2', status: 'READY', kind: 'IMAGE', sha256: pngSha,
+      r2Key: `originals/${pngSha.slice(0, 32)}/logo.png`, mime: 'image/png',
+      bytes: BigInt(pngBytes.length), width: 1, height: 1, originalName: 'logo.png',
+      altDefault: null, duration: null, posterId: null,
+    };
+    (prisma.client.asset.create as jest.Mock).mockResolvedValue(newAsset);
+    (r2.putObject as jest.Mock).mockResolvedValue(undefined);
+    await svc.replace(actor, 'orig1', { bytes: pngBytes, mime: 'image/png', originalName: 'logo.png' });
+    const auditCalls = (prisma.client.auditLog.create as jest.Mock).mock.calls;
+    const replaceAudit = auditCalls.find((c) => c[0].data.action === 'asset.replace');
+    expect(replaceAudit).toBeDefined();
+    expect(replaceAudit[0].data.meta).toEqual({ replacedWith: 'new2' });
+    expect(replaceAudit[0].data.entityId).toBe('orig1');
+  });
+
+  it('throws NotFoundException when the target asset does not exist', async () => {
+    (prisma.client.asset.findUnique as jest.Mock).mockResolvedValue(null);
+    await expect(
+      svc.replace(actor, 'missing', { bytes: pngBytes, mime: 'image/png', originalName: 'logo.png' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws BadRequestException when bytes are not provided', async () => {
+    (prisma.client.asset.findUnique as jest.Mock).mockResolvedValue(existingAsset);
+    await expect(
+      svc.replace(actor, 'orig1', { mime: 'image/png', originalName: 'logo.png' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
 describe('AssetsService.replace + setAlt + usage', () => {
   let prisma: PrismaService;
   let svc: AssetsService;
