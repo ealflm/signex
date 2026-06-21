@@ -133,10 +133,12 @@ function JsonField({
   field,
   value,
   onChange,
+  onValidityChange,
 }: {
   field: FieldPlan;
   value: unknown;
   onChange: (v: unknown) => void;
+  onValidityChange: (name: string, valid: boolean) => void;
 }) {
   const [raw, setRaw] = useState(() => JSON.stringify(value ?? null, null, 2));
   const [parseError, setParseError] = useState<string | null>(null);
@@ -158,8 +160,10 @@ function JsonField({
           try {
             onChange(JSON.parse(e.target.value));
             setParseError(null);
+            onValidityChange(field.name, true);
           } catch {
             setParseError("Invalid JSON — will not be saved until fixed.");
+            onValidityChange(field.name, false);
           }
         }}
         aria-describedby={parseError ? `field-${field.name}-err` : undefined}
@@ -177,11 +181,13 @@ function FieldEditor({
   field,
   value,
   onChange,
+  onValidityChange,
   assets,
 }: {
   field: FieldPlan;
   value: unknown;
   onChange: (v: unknown) => void;
+  onValidityChange: (name: string, valid: boolean) => void;
   assets: AssetRow[];
 }) {
   if (field.kind === "string") {
@@ -191,10 +197,11 @@ function FieldEditor({
     return <LocalizedField field={field} value={value} onChange={onChange} />;
   }
   if (field.kind === "assetRef") {
+    // TODO: alt editing
     return <AssetRefField field={field} value={value} onChange={onChange} assets={assets} />;
   }
   // localizedArray, array, json → raw JSON textarea (client-side parseBlock validates on submit)
-  return <JsonField field={field} value={value} onChange={onChange} />;
+  return <JsonField field={field} value={value} onChange={onChange} onValidityChange={onValidityChange} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -212,8 +219,27 @@ export function ZodForm({
   const [data, setData] = useState<Record<string, unknown>>(initialData);
   const [msg, setMsg] = useState<{ text: string; type: "success" | "error" | "warn" } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [jsonErrors, setJsonErrors] = useState<Set<string>>(new Set());
+
+  function handleValidityChange(name: string, valid: boolean) {
+    setJsonErrors((prev) => {
+      const next = new Set(prev);
+      if (valid) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }
 
   async function onSave() {
+    // Gate: if any JSON field is currently invalid, abort before submitting stale data.
+    if (jsonErrors.size > 0) {
+      setMsg({ text: "Fix the highlighted JSON field(s) before saving.", type: "error" });
+      return;
+    }
+
     setBusy(true);
     setMsg(null);
 
@@ -294,6 +320,7 @@ export function ZodForm({
           value={data[f.name]}
           assets={assets}
           onChange={(v) => setData((d) => ({ ...d, [f.name]: v }))}
+          onValidityChange={handleValidityChange}
         />
       ))}
 
@@ -310,7 +337,8 @@ export function ZodForm({
       <div className="flex items-center gap-3">
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || jsonErrors.size > 0}
+          aria-disabled={busy || jsonErrors.size > 0}
           onClick={onSave}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
