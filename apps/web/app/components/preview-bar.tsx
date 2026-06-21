@@ -3,6 +3,7 @@
 // (spec §10.1). When draft mode is on, render a fixed banner with an exit affordance.
 import { Suspense } from "react";
 import { draftMode } from "next/headers";
+import { ExitPreviewButton } from "@/app/components/exit-preview-button";
 
 async function PreviewBanner() {
   const { isEnabled } = await draftMode();
@@ -18,10 +19,7 @@ async function PreviewBanner() {
       }}
     >
       <span>Draft preview</span>
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-      <a href="/api/draft" style={{ color: "#9cd2ff", textDecoration: "underline" }} data-method="delete">
-        Exit preview
-      </a>
+      <ExitPreviewButton />
     </div>
   );
 }

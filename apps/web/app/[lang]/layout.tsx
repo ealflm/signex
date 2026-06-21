@@ -50,8 +50,8 @@ export default async function RootLayout({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  // dynamicParams=false + generateStaticParams restrict this to LOCALES; the guard
-  // just narrows the string to Locale for getSiteContent (Footer is dict-driven, EN + VI).
+  // generateStaticParams pre-lists all locales; the hasLocale guard narrows the unknown
+  // string to Locale for getSiteContent (unknown locales fall back to DEFAULT_LOCALE in-render).
   const dict = await getSiteContent(hasLocale(lang) ? lang : DEFAULT_LOCALE);
   const { domain, site } = siteAttrs(); // single source for the Webflow site attrs
   return (
