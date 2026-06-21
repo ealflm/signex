@@ -61,7 +61,7 @@ DESCRIBE('importer (e2e)', () => {
 
     // ── Clean importer-created tables in FK-safe order ────────────────────────
     // PublishedPointer → ReleaseAssetRef → Release → Product → Category →
-    // ContentBlock → Asset → WorkingState
+    // ContentBlock → AssetRef → Asset → WorkingState
     // NOT migrate reset — purely additive Prisma deletes.
     await prisma.publishedPointer.deleteMany({});
     await prisma.releaseAssetRef.deleteMany({});
@@ -69,6 +69,10 @@ DESCRIBE('importer (e2e)', () => {
     await prisma.product.deleteMany({});
     await prisma.category.deleteMany({});
     await prisma.contentBlock.deleteMany({});
+    // AssetRef.assetId → Asset.id (ON DELETE RESTRICT) — must precede asset.
+    await prisma.assetRef.deleteMany({});
+    // Null out self-referential poster FK so bulk delete can't hit the self-FK.
+    await prisma.$executeRawUnsafe('UPDATE "Asset" SET "posterId" = NULL');
     await prisma.asset.deleteMany({});
     // Reset WorkingState to a clean base (absent = importer creates it fresh).
     await prisma.workingState.deleteMany({});
