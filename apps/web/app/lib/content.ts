@@ -13,11 +13,8 @@ import { ReleaseSnapshotSchema, type ReleaseSnapshot } from "@signex/shared";
 import type { Locale } from "@/app/lib/i18n-config";
 import { INITIAL_SNAPSHOT } from "@/app/lib/initial-snapshot";
 
-// SiteContent is the resolved per-locale view — a structural superset of the old Dictionary.
-// Components keep importing `Dictionary` (aliased to SiteContent in dictionaries.ts shim).
-// The shape is derived from en.json to stay in sync with the ~30 ({ dict }) => JSX components.
-import type enJson from "@/app/[lang]/dictionaries/en.json";
-export type SiteContent = typeof enJson;
+// SiteContent is declared AFTER resolveForLang (below) via ReturnType<typeof resolveForLang>.
+// This decouples the web type from en.json — the transform's output IS the type.
 
 // Asset URLs are NEVER frozen into the snapshot — only the r2Key is. Resolve at read time so the
 // site survives a CDN/domain migration (spec §3.1.3). Empty base = relative key (dev only).
@@ -36,7 +33,7 @@ function ta(node: { en: string[]; vi: string[] } | undefined, lang: Locale): str
 
 // Full structural transform: snapshot (ReleaseSnapshot) → SiteContent (Dictionary shape).
 // This is the inverse of the importer's buildBlocks. Every field is explicitly mapped.
-function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
+function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
   const b = snap.blocks;
   const bc = b.businessContact;
 
@@ -368,8 +365,13 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
         description: t(b.meta.contact.description, lang),
       },
     },
-  } as unknown as SiteContent;
+  };
 }
+
+// SiteContent is the resolved per-locale view — inferred from resolveForLang's return type.
+// Components keep importing `Dictionary` (aliased to SiteContent in dictionaries.ts shim).
+// Decoupled from en.json: no cast needed; the transform's output IS the type.
+export type SiteContent = ReturnType<typeof resolveForLang>;
 
 // PUBLISHED path — cached + tagged. Draft-mode-free.
 export async function getPublishedSnapshot(lang: Locale): Promise<SiteContent> {
