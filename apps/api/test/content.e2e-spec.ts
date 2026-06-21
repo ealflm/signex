@@ -71,11 +71,16 @@ describe('Content write path (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Clean up: remove the test content block.
+    // Clean up: remove ALL content blocks this suite could have created.
+    // Scoped to exact test keys so we never clobber production data.
+    // Idempotent — deleteMany is a no-op when no rows match.
     await prisma.contentBlock.deleteMany({
-      where: { kind: BLOCK_KIND as 'PAGE', key: BLOCK_KEY },
+      where: {
+        kind: BLOCK_KIND as 'PAGE',
+        key: { in: [BLOCK_KEY, 'home.hero'] },
+      },
     });
-    // Remove the test EDITOR user + their sessions.
+    // Remove all test users (*.test emails) + their sessions/audit-logs.
     await cleanupEditorUser();
     await app.close();
   });

@@ -47,14 +47,28 @@ export async function loginAsEditor(app: INestApplication): Promise<string> {
   return match[0];
 }
 
-/** Deletes the EDITOR user (and their sessions) created by loginAsEditor. */
+/**
+ * Pattern-based cleanup: deletes ALL test users (email ending in `.test`)
+ * plus every row that FK-references them (Session, AuditLog, Release, etc.).
+ *
+ * Safe because the only non-test user is `admin@signex.local` which does NOT
+ * match the `.test` suffix pattern. Idempotent — deleteMany never throws on
+ * zero rows matched, so aborted/re-run test suites never accumulate orphans.
+ *
+ * FK resolution order (RESTRICT constraints require manual ordering):
+ *   PublishedPointer → Release → (Session CASCADE, AuditLog SET NULL) → User
+ */
 export async function cleanupEditorUser(): Promise<void> {
-  const user = await prisma.user.findUnique({
-    where: { email: E2E_EDITOR_EMAIL },
-    select: { id: true },
+  const emailFilter = { email: { endsWith: '.test' } } as const;
+  // Release.createdById is RESTRICT — must delete referencing rows first.
+  // PublishedPointer.releaseId is RESTRICT — delete those before Release.
+  await prisma.publishedPointer.deleteMany({
+    where: { release: { createdBy: emailFilter } },
   });
-  if (!user) return;
-  await prisma.session.deleteMany({ where: { userId: user.id } });
-  await prisma.auditLog.deleteMany({ where: { userId: user.id } });
-  await prisma.user.delete({ where: { id: user.id } });
+  await prisma.release.deleteMany({ where: { createdBy: emailFilter } });
+  // Session has onDelete: Cascade from User, but explicit delete is cleaner.
+  await prisma.session.deleteMany({ where: { user: emailFilter } });
+  // AuditLog.userId is SET NULL — no FK issue, but clean it up anyway.
+  await prisma.auditLog.deleteMany({ where: { user: emailFilter } });
+  await prisma.user.deleteMany({ where: emailFilter });
 }

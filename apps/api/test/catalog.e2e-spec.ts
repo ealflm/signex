@@ -43,12 +43,13 @@ describe('Catalog write path (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Clean up: delete products first (FK), then the category.
-    if (categoryId) {
-      await prisma.product.deleteMany({ where: { categoryId } });
-    }
-    await prisma.category.deleteMany({ where: { slug: 'e2e-pvc' } });
-    // Remove the test EDITOR user + their sessions.
+    // Pattern-based cleanup: delete ALL products under any e2e-% category,
+    // then delete the categories themselves. Idempotent on re-runs/aborts.
+    await prisma.product.deleteMany({
+      where: { category: { slug: { startsWith: 'e2e-' } } },
+    });
+    await prisma.category.deleteMany({ where: { slug: { startsWith: 'e2e-' } } });
+    // Remove all test users (*.test emails) + their sessions/audit-logs.
     await cleanupEditorUser();
     await app.close();
   });
