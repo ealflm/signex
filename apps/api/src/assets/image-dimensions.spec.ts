@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { readImageDimensions } from './image-dimensions';
 
 // 1x1 transparent PNG (real bytes); width/height in IHDR at offset 16.
@@ -59,5 +61,36 @@ describe('readImageDimensions', () => {
   });
   it('returns null for unknown bytes', () => {
     expect(readImageDimensions(Buffer.from('not an image'), 'image/png')).toBeNull();
+  });
+
+  describe('AVIF (ispe box parsing)', () => {
+    // Real .avif from apps/web/public/assets/images/ — smallest file (16 021 B)
+    // Binary inspection confirmed: ispe box at offset 188, width=480, height=640
+    const avifPath = path.resolve(
+      __dirname,
+      '../../../../apps/web/public/assets/images/69a9a63112d835814c29e175_Tropical_Sunset_Relaxation__1_.avif',
+    );
+
+    it('reads real AVIF file dimensions (image/avif)', () => {
+      const buf = fs.readFileSync(avifPath);
+      const dims = readImageDimensions(buf, 'image/avif');
+      expect(dims).toEqual({ width: 480, height: 640 });
+    });
+
+    it('returns null for non-AVIF buffer with image/avif mime', () => {
+      expect(readImageDimensions(Buffer.from('not avif data at all'), 'image/avif')).toBeNull();
+    });
+
+    it('reads second real AVIF file (sanity check dims are positive)', () => {
+      // 69ac6f71e2f6cf6c0843aa68 — binary confirmed: width=1280, height=1920
+      const buf = fs.readFileSync(
+        path.resolve(
+          __dirname,
+          '../../../../apps/web/public/assets/images/69ac6f71e2f6cf6c0843aa68_pexels-julia-volk-7292958.avif',
+        ),
+      );
+      const dims = readImageDimensions(buf, 'image/avif');
+      expect(dims).toEqual({ width: 1280, height: 1920 });
+    });
   });
 });

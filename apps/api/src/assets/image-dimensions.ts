@@ -78,6 +78,44 @@ function readSvg(buf: Buffer): Dimensions | null {
   return null;
 }
 
+function isAvifBrand(buf: Buffer): boolean {
+  // ISOBMFF ftyp box: bytes 4..7 == 'ftyp', then major brand at 8..11 and
+  // compatible brands at 12+ (4 bytes each). Brands that indicate AVIF/HEIF.
+  if (buf.length < 12) return false;
+  if (buf.subarray(4, 8).toString('ascii') !== 'ftyp') return false;
+  const avifBrands = new Set(['avif', 'avis', 'mif1', 'heic', 'heix', 'msf1']);
+  // Major brand
+  if (avifBrands.has(buf.subarray(8, 12).toString('ascii'))) return true;
+  // Compatible brands (each 4 bytes starting at offset 16)
+  for (let off = 16; off + 4 <= buf.length; off += 4) {
+    if (avifBrands.has(buf.subarray(off, off + 4).toString('ascii'))) return true;
+  }
+  return false;
+}
+
+function readAvif(buf: Buffer): Dimensions | null {
+  // Scan buffer for the 'ispe' FullBox (ImageSpatialExtentsProperty).
+  // Layout: [4B box-size][4B 'ispe'][1B version][3B flags][4B width BE][4B height BE]
+  // We search for the ASCII marker 'ispe' and then read width/height after the
+  // 4-byte version+flags field.
+  const marker = Buffer.from('ispe');
+  let searchFrom = 0;
+  while (searchFrom < buf.length) {
+    const idx = buf.indexOf(marker, searchFrom);
+    if (idx === -1) break;
+    // Need 4 bytes version/flags + 4 bytes width + 4 bytes height after the marker
+    if (idx + 4 + 4 + 4 <= buf.length) {
+      const width = buf.readUInt32BE(idx + 4 + 4);
+      const height = buf.readUInt32BE(idx + 4 + 8);
+      if (width > 0 && height > 0) {
+        return { width, height };
+      }
+    }
+    searchFrom = idx + 1;
+  }
+  return null;
+}
+
 export function readImageDimensions(buf: Buffer, mime: string): Dimensions | null {
   switch (mime) {
     case 'image/png':
@@ -90,6 +128,10 @@ export function readImageDimensions(buf: Buffer, mime: string): Dimensions | nul
       return readWebp(buf);
     case 'image/svg+xml':
       return readSvg(buf);
+    case 'image/avif':
+    case 'image/heic':
+    case 'image/heif':
+      return isAvifBrand(buf) ? readAvif(buf) : null;
     default:
       return null;
   }
