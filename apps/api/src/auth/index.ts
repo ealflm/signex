@@ -1,2 +1,2 @@
-export type { AuthedUser } from './auth.types';
-export { publicUser } from './auth.types';
+export type { AuthedUser, PublicUserRow } from './auth.types';
+export { publicUser, publicUserRow } from './auth.types';

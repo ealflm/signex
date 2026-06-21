@@ -7,6 +7,7 @@ function makePrisma(overrides: Record<string, any> = {}) {
     create: jest.fn(),
     update: jest.fn(),
     findUnique: jest.fn(),
+    findMany: jest.fn(),
     ...overrides.user,
   };
   const session = {
@@ -127,5 +128,73 @@ describe('UsersService', () => {
       data: { isActive: false },
     });
     expect(prisma.client.session.updateMany).toHaveBeenCalled();
+  });
+
+  it('findAll returns users in public shape (no passwordHash) ordered by createdAt asc', async () => {
+    const now = new Date('2024-01-01T00:00:00Z');
+    const rows = [
+      {
+        id: 'u1',
+        email: 'a@b.com',
+        name: 'Alice',
+        passwordHash: 'scrypt$secret',
+        role: 'ADMIN',
+        isActive: true,
+        lastLoginAt: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 'u2',
+        email: 'b@b.com',
+        name: 'Bob',
+        passwordHash: 'scrypt$other',
+        role: 'EDITOR',
+        isActive: false,
+        lastLoginAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+    const prisma = makePrisma({
+      user: {
+        findMany: jest.fn().mockResolvedValue(rows),
+      },
+    });
+    const svc = new UsersService(prisma);
+    const out = await svc.findAll();
+
+    // Should be called with correct orderBy
+    expect(prisma.client.user.findMany).toHaveBeenCalledWith({
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Returns 2 users
+    expect(out).toHaveLength(2);
+
+    // No passwordHash in any row
+    for (const u of out) {
+      expect((u as Record<string, unknown>).passwordHash).toBeUndefined();
+    }
+
+    // Has the expected public fields including lastLoginAt and createdAt
+    expect(out[0]).toEqual({
+      id: 'u1',
+      email: 'a@b.com',
+      name: 'Alice',
+      role: 'ADMIN',
+      isActive: true,
+      lastLoginAt: now,
+      createdAt: now,
+    });
+    expect(out[1]).toEqual({
+      id: 'u2',
+      email: 'b@b.com',
+      name: 'Bob',
+      role: 'EDITOR',
+      isActive: false,
+      lastLoginAt: null,
+      createdAt: now,
+    });
   });
 });

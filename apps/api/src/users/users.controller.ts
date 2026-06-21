@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Patch,
   Post,
@@ -11,7 +12,7 @@ import { createUserSchema, z, type RoleName } from '@signex/shared';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { UsersService } from './users.service';
-import type { AuthedUser } from '../auth/auth.types';
+import type { AuthedUser, PublicUserRow } from '../auth/auth.types';
 
 // Patch schema: name/role/isActive are all optional.
 const updateUserSchema = z.object({
@@ -36,6 +37,11 @@ interface UpdateBody {
 @Roles('ADMIN')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
+
+  @Get()
+  findAll(): Promise<PublicUserRow[]> {
+    return this.users.findAll();
+  }
 
   @Post()
   @UsePipes(new ZodValidationPipe(createUserSchema))

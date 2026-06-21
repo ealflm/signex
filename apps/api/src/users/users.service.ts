@@ -1,7 +1,12 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashPassword } from '../common/crypto/password';
-import { publicUser, type AuthedUser } from '../auth/auth.types';
+import {
+  publicUser,
+  publicUserRow,
+  type AuthedUser,
+  type PublicUserRow,
+} from '../auth/auth.types';
 import type { RoleName } from '@signex/shared';
 
 interface CreateUserInput {
@@ -19,6 +24,13 @@ interface UpdateUserInput {
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async findAll(): Promise<PublicUserRow[]> {
+    const rows = await this.prisma.client.user.findMany({
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map(publicUserRow);
+  }
 
   async create(dto: CreateUserInput): Promise<AuthedUser> {
     try {
