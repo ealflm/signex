@@ -1,23 +1,19 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { SITE_URL } from "@/app/lib/seo";
+import { napView } from "@/app/lib/nap";
 
-// Site-wide schema.org structured data: an Organization + WebSite @graph, rendered as a
-// <script type="application/ld+json"> (Next's Metadata API has no JSON-LD field). All values are
-// pulled from the dictionary footer NAP so they stay single-sourced + bilingual.
-//
-// Organization (NOT LocalBusiness): SIGNEX is a B2B OEM manufacturer selling to brands, not a
-// walk-in storefront — no opening hours / local-pack signals apply. The Office + Factory are ONE
-// legal entity at two sites, so `address` is an array (avoids splitting the brand into two nodes).
+// Site-wide schema.org Organization + WebSite @graph from the UNIFIED businessContact NAP
+// (single source — footer/home/contactPage read the same projection). social[].href feeds sameAs.
 export function OrgJsonLd({ dict }: { dict: Dictionary }) {
-  const f = dict.footer;
-  // "(+84) 979 700 072" → E.164 "+84979700072"
-  const telephone = "+" + f.tel.replace(/\D/g, "");
-  const address = [f.office, f.factory].map((line) => ({
+  const nap = napView(dict.businessContact);
+  const telephone = "+" + nap.tel.replace(/\D/g, ""); // "(+84) 979 700 072" -> "+84979700072"
+  const address = [nap.office, nap.factory].filter(Boolean).map((line) => ({
     "@type": "PostalAddress",
     streetAddress: line.replace(/,?\s*Viet\s?Nam\.?\s*$/i, "").trim(),
     addressLocality: "Ho Chi Minh City",
     addressCountry: "VN",
   }));
+  const sameAs = nap.social.map((s) => s.href).filter((h) => h && h !== "#");
 
   const graph = {
     "@context": "https://schema.org",
@@ -26,19 +22,20 @@ export function OrgJsonLd({ dict }: { dict: Dictionary }) {
         "@type": "Organization",
         "@id": `${SITE_URL}/#organization`,
         name: "SIGNEX",
-        legalName: f.company,
+        legalName: nap.company,
         url: SITE_URL,
         logo: `${SITE_URL}/assets/images/signex-logo.svg`,
         image: `${SITE_URL}/assets/images/signex-og.png`,
-        email: f.email,
+        email: nap.email,
         telephone,
-        taxID: f.tax,
+        taxID: nap.tax,
         address,
+        ...(sameAs.length ? { sameAs } : {}),
         contactPoint: {
           "@type": "ContactPoint",
           contactType: "sales",
           telephone,
-          email: f.email,
+          email: nap.email,
           areaServed: "VN",
           availableLanguage: ["vi", "en"],
         },

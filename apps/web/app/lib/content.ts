@@ -59,6 +59,16 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
   const fFields = fc.fields;
 
   return {
+    businessContact: {
+      legalName: t(bc.legalName, lang),
+      brand: t(bc.brand, lang),
+      emails: bc.emails,
+      phones: bc.phones.map((p) => ({ kind: p.kind, label: t(p.label, lang), value: p.value })),
+      taxId: bc.taxId,
+      taxLabel: t(bc.taxLabel, lang),
+      sites: bc.sites.map((s) => ({ kind: s.kind, label: t(s.label, lang), address: t(s.address, lang) })),
+      social: bc.social.map((s) => ({ kind: s.kind, href: s.href })),
+    },
     hero: {
       titleTop: t(b.hero.titleTop, lang),
       titleBottom: t(b.hero.titleBottom, lang),

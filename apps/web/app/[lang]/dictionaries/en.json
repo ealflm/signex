@@ -141,6 +141,26 @@
       }
     ]
   },
+  "businessContact": {
+    "legalName": "SIGNEX BRAND IDENTITY PRODUCTS MANUFACTURING CO., LTD",
+    "brand": "SIGNEX",
+    "emails": ["core@signex.vn", "nhuadeo@gmail.com"],
+    "phones": [
+      { "kind": "tel", "label": "Tel", "value": "(+84) 979 700 072" },
+      { "kind": "zalo", "label": "Zalo", "value": "(+84) 94 9999 326" }
+    ],
+    "taxId": "0319401172",
+    "taxLabel": "Tax",
+    "sites": [
+      { "kind": "office", "label": "Office", "address": "25/88/13 Bui Quang La, An Hoi Tay ward, Ho Chi Minh city, Viet Nam." },
+      { "kind": "factory", "label": "Factory", "address": "85/45 Duong Thi Muoi, Trung My Tay ward, Ho Chi Minh city, Viet Nam." }
+    ],
+    "social": [
+      { "kind": "facebook", "href": "#" },
+      { "kind": "youtube", "href": "#" },
+      { "kind": "zalo", "href": "#" }
+    ]
+  },
   "contact": {
     "eyebrow": "Reach Out",
     "title": "Get In ",
