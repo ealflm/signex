@@ -282,8 +282,33 @@ DESCRIBE('Schema invariants (e2e)', () => {
 
 // ── Concurrency invariants ────────────────────────────────────────────────────
 DESCRIBE('Concurrency invariants (e2e)', () => {
-  it('two parallel publishes never collide on version', async () => {
-    // Bump revision so both requests see a dirty working state.
+  it('two parallel publishes: advisory-lock serializes into exactly 1 published + 1 noop', async () => {
+    // Capture version count before the race so we can assert exactly 1 new mint.
+    const beforeVersions = await prisma.client.release.findMany({
+      select: { version: true },
+    });
+    const beforeCount = beforeVersions.length;
+    const beforeMax = Math.max(...beforeVersions.map((v) => v.version));
+
+    // Make the working state genuinely dirty relative to the current PUBLISHED
+    // release's checksum. The monotonic test just published with the mutated taxId,
+    // so we must make a further content change so the new snapshot differs.
+    // We append a unique suffix to businessContact.taxId — the same field as the
+    // monotonic test but with a different timestamp (guaranteed different checksum).
+    const blockNow = await prisma.client.contentBlock.findUnique({
+      where: { kind_key: MUTATE_BLOCK },
+    });
+    const dataRace = {
+      ...(blockNow!.data as Record<string, unknown>),
+      taxId: `race-${Date.now()}`,
+    };
+    await prisma.client.contentBlock.update({
+      where: { kind_key: MUTATE_BLOCK },
+      data: { data: dataRace as any },
+    });
+
+    // Bump revision so both requests see a dirty working state
+    // (revision > lastPublishedRevision required for a non-noop publish).
     await prisma.client.workingState.update({
       where: { id: 'singleton' },
       data: { revision: { increment: 1 } },
@@ -299,30 +324,48 @@ DESCRIBE('Concurrency invariants (e2e)', () => {
         .post('/api/releases/publish')
         .send({ note: 'race-b', expectedRevision: fresh!.revision }),
     ]);
-    const codes = results.map((r) =>
-      r.status === 'fulfilled' ? r.value.status : 0,
+
+    // No 5xx from either request.
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(0);
+    const bodies = results.map((r) =>
+      r.status === 'fulfilled'
+        ? (r.value.body as { status: string; version?: number })
+        : null,
     );
-    // Both requests succeed (2xx). The advisory-lock serializes them inside the
-    // transaction: the first mints a new release; the second sees the matching
-    // checksum and returns a noop (no new release). Neither yields a 500.
-    expect(codes.every((c) => c >= 200 && c < 500)).toBe(true);
-    expect(codes.filter((c) => c === 500)).toHaveLength(0);
-    // PRIMARY INVARIANT: all minted versions are distinct (sequence guarantee).
-    const versions = await prisma.client.release.findMany({
+    const statuses = bodies.map((b) => b?.status);
+
+    // PRIMARY LOCK INVARIANT: the advisory lock serializes the two requests.
+    // Whichever wins the lock mints a new release (status:'published'); the
+    // other re-serializes the same working state → checksum match → noop.
+    // If the lock were broken, both would return 'published' — this assertion
+    // would FAIL, proving the lock is required.
+    expect(statuses.filter((s) => s === 'published')).toHaveLength(1);
+    expect(statuses.filter((s) => s === 'noop')).toHaveLength(1);
+
+    // EXACTLY ONE new release minted (not two).
+    const afterVersions = await prisma.client.release.findMany({
       select: { version: true },
     });
-    expect(new Set(versions.map((v) => v.version)).size).toBe(versions.length);
+    expect(afterVersions).toHaveLength(beforeCount + 1);
+
+    // All minted versions are still distinct (sequence guarantee).
+    expect(new Set(afterVersions.map((v) => v.version)).size).toBe(
+      afterVersions.length,
+    );
+
     // SINGLE-PUBLISHED: exactly one PUBLISHED release after both requests settle.
     const publishedCount = await prisma.client.release.count({
       where: { status: 'PUBLISHED' },
     });
     expect(publishedCount).toBe(1);
-    // POINTER: PublishedPointer targets the highest version.
+
+    // POINTER: PublishedPointer targets the highest version (> beforeMax).
     const pointer = await prisma.client.publishedPointer.findUnique({
       where: { id: 'singleton' },
     });
-    const maxVersion = Math.max(...versions.map((v) => v.version));
-    expect(pointer!.publishedVersion).toBe(maxVersion);
+    const afterMax = Math.max(...afterVersions.map((v) => v.version));
+    expect(afterMax).toBeGreaterThan(beforeMax);
+    expect(pointer!.publishedVersion).toBe(afterMax);
   });
 
   it('stale expectedRevision yields 409 STALE_DRAFT, never a 500', async () => {
@@ -347,10 +390,15 @@ DESCRIBE('Concurrency invariants (e2e)', () => {
 
 // ── Importer conformance ──────────────────────────────────────────────────────
 DESCRIBE('Importer conformance (e2e)', () => {
-  it('imported 4 categories, 6 products each, unique slugs', async () => {
+  it('imported 4 categories, 6 products each, unique slugs, contiguous sortOrders', async () => {
     const cats = await prisma.client.category.findMany({
       where: { deletedAt: null },
-      include: { products: { where: { deletedAt: null } } },
+      include: {
+        products: {
+          where: { deletedAt: null },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
       orderBy: { sortOrder: 'asc' },
     });
     expect(cats).toHaveLength(4);
@@ -361,6 +409,16 @@ DESCRIBE('Importer conformance (e2e)', () => {
       const ps = c.products.map((p) => p.slug);
       expect(new Set(ps).size).toBe(ps.length);
     }
+
+    // SORTORDER CONTIGUITY: category sortOrders must be 0..3 (no gaps/dupes).
+    const catOrders = cats.map((c) => c.sortOrder);
+    expect(catOrders).toEqual([0, 1, 2, 3]);
+
+    // Per-category: product sortOrders must be 0..5 (contiguous, no gaps/dupes).
+    for (const c of cats) {
+      const productOrders = c.products.map((p) => p.sortOrder);
+      expect(productOrders).toEqual([0, 1, 2, 3, 4, 5]);
+    }
   });
 
   it('every imported ContentBlock re-parses through its registry schema', async () => {
@@ -370,6 +428,19 @@ DESCRIBE('Importer conformance (e2e)', () => {
     );
     for (const b of blocks) {
       expect(() => parseBlock(b.kind, b.key, b.data)).not.toThrow();
+    }
+
+    // PER-KEY COVERAGE: every BLOCK_REGISTRY key must be present in the DB.
+    // Map each ContentBlock's key to its registry key (last dot-segment, e.g.
+    // 'home.hero' → 'hero'; plain 'hero' stays 'hero').
+    const presentKeys = new Set(
+      blocks.map((b) => {
+        const parts = b.key.split('.');
+        return parts[parts.length - 1];
+      }),
+    );
+    for (const registryKey of Object.keys(BLOCK_REGISTRY)) {
+      expect(presentKeys.has(registryKey)).toBe(true);
     }
   });
 

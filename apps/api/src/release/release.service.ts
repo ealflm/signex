@@ -82,6 +82,20 @@ export class ReleaseService {
           throw new ConflictException('STALE_DRAFT');
         }
 
+        // CHECKSUM re-check inside the lock: if the first concurrent publish
+        // already committed a release with this exact checksum, the second
+        // request (now holding the lock) sees the updated pointer and no-ops.
+        // This is the critical dedup that proves the advisory lock is effective:
+        // without the lock, both would pass the outer noop check simultaneously
+        // (before either commits) and both would mint — violating the invariant.
+        const liveAfterLock = await tx.publishedPointer.findUnique({
+          where: { id: 'singleton' },
+          include: { release: { select: { checksum: true } } },
+        });
+        if (liveAfterLock?.release?.checksum === checksum) {
+          return null; // noop — sibling already published identical state
+        }
+
         // Monotonic version from Postgres sequence (NEVER max+1)
         const seq = await tx.$queryRaw<Array<{ nextval: bigint }>>`
           SELECT nextval('release_version_seq')`;
@@ -157,6 +171,11 @@ export class ReleaseService {
       },
       { timeout: 10000, maxWait: 5000 },
     );
+
+    // null means the in-lock checksum re-check caught a concurrent duplicate mint.
+    if (result === null) {
+      return { status: 'noop' };
+    }
 
     // 4. AFTER commit — non-fatal revalidation (failure must NOT roll back)
     await this.revalidation.revalidate({}).catch(() => {
