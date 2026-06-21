@@ -51,7 +51,7 @@ export class ReleaseService {
       where: { id: 'singleton' },
       include: { release: { select: { checksum: true } } },
     });
-    if (live?.release.checksum === checksum) {
+    if (live?.release?.checksum === checksum) {
       return { status: 'noop' };
     }
 
@@ -143,7 +143,7 @@ export class ReleaseService {
     );
 
     // 4. AFTER commit — non-fatal revalidation (failure must NOT roll back)
-    await this.revalidation.revalidate({});
+    await this.revalidation.revalidate({}).catch(() => { /* non-fatal: published release stands; reFire() can retry */ });
 
     return {
       status: 'published',

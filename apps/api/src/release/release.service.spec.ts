@@ -180,4 +180,16 @@ describe('ReleaseService.publish', () => {
     const res = await service.publish(ACTOR, { expectedRevision: 7 });
     expect(res.status).toBe('published');
   });
+
+  it('publish resolves {status:published} even when revalidation REJECTS (call-site non-fatal guarantee)', async () => {
+    revalidation.revalidate.mockRejectedValue(new Error('web down'));
+    const res = await service.publish(ACTOR, { expectedRevision: 7 });
+    expect(res).toEqual({
+      status: 'published',
+      version: 42,
+      releaseId: 'crel0000000000000000001',
+    });
+    // tx ran and created the release
+    expect(tx.release.create).toHaveBeenCalledTimes(1);
+  });
 });
