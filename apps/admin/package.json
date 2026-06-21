@@ -6,10 +6,12 @@
     "dev": "next dev -p 3061",
     "build": "next build",
     "start": "next start -p 3061",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run"
   },
   "dependencies": {
-    "next": "16.2.9",
+    "@signex/shared": "*",
+    "next": "16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -17,8 +19,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
-    "typescript": "^5"
+    "eslint-config-next": "16.2.7",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^3"
   }
 }

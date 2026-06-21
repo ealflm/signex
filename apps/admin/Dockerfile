@@ -21,6 +21,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# @signex/shared must be compiled to CJS dist/ BEFORE next build: Next does not bundle
+# workspace deps; it require()s ./dist and must trace runtime values (ROLE_RANK) into standalone.
+RUN npm run build --workspace @signex/shared
 RUN npm run build --workspace @signex/admin
 
 # ---------- runner: Next standalone server (monorepo-nested layout) ----------
@@ -38,6 +41,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/static ./apps/admin/.next/static
 # 3) public assets -> mirrored nested app path.
 COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/public ./apps/admin/public
+# 4) CJS dist for @signex/shared (require()d at runtime by server components).
+COPY --from=builder --chown=nextjs:nodejs /app/packages/shared/dist ./packages/shared/dist
 USER nextjs
 EXPOSE 3061
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s \
