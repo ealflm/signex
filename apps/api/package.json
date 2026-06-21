@@ -13,6 +13,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "content:import": "node dist/importer/importer.command",
     "auth:seed": "node dist/auth/seed",
     "auth:seed:dev": "ts-node -r tsconfig-paths/register src/auth/seed.ts",
     "db:deploy": "npm run migrate:deploy -w @signex/db && npm run auth:seed -w @signex/api",
