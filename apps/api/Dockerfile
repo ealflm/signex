@@ -35,7 +35,7 @@ RUN npm run build --workspace @signex/api
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-ENV API_PORT=4000
+ENV API_PORT=3060
 # OpenSSL for the Prisma query engine at runtime.
 RUN apk add --no-cache openssl
 RUN addgroup --system --gid 1001 nodejs \
@@ -59,8 +59,8 @@ COPY --from=build --chown=nestjs:nodejs /app/packages/db/generated ./packages/db
 # Schema + migrations, needed by `prisma migrate deploy` at start.
 COPY --from=build --chown=nestjs:nodejs /app/packages/db/prisma ./packages/db/prisma
 USER nestjs
-EXPOSE 4000
+EXPOSE 3060
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s \
-  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:4000/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3060/api/health || exit 1
 # Apply pending migrations against the prod DB, then start the compiled app.
 CMD ["sh", "-c", "npx prisma migrate deploy --schema packages/db/prisma/schema.prisma && node apps/api/dist/main"]

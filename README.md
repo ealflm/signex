@@ -4,9 +4,9 @@ Full-stack monorepo managed by **npm workspaces + Turborepo**.
 
 | Workspace | Package | Stack | Port |
 |-----------|---------|-------|------|
-| `apps/web` | `@signex/web` | Next.js 16 (public site) | 2051 |
-| `apps/admin` | `@signex/admin` | Next.js (admin skeleton) | 2052 |
-| `apps/api` | `@signex/api` | NestJS 11 (REST API) | 4000 |
+| `apps/web` | `@signex/web` | Next.js 16 (public site) | 3062 |
+| `apps/admin` | `@signex/admin` | Next.js (admin skeleton) | 3061 |
+| `apps/api` | `@signex/api` | NestJS 11 (REST API) | 3060 |
 | `packages/db` | `@signex/db` | Prisma client + schema | — |
 | `packages/shared` | `@signex/shared` | Shared types + zod | — |
 | (Compose) | `postgres:16-alpine` | PostgreSQL | 5432 |
@@ -29,12 +29,12 @@ Start Postgres (only the DB) in the background, then run all apps via Turborepo:
 
 ```bash
 docker compose up -d postgres   # database on :5432
-npm run dev                     # turbo runs api (:4000), web (:2051), admin (:2052)
+npm run dev                     # turbo runs api (:3060), web (:3062), admin (:3061)
 ```
 
-- Web:   http://localhost:2051  (`/` redirects to the detected locale, e.g. `/vi`; `/en` also serves)
-- Admin: http://localhost:2052
-- API health: http://localhost:4000/api/health  → `{ "status": "ok" }`
+- Web:   http://localhost:3062  (`/` redirects to the detected locale, e.g. `/vi`; `/en` also serves)
+- Admin: http://localhost:3061
+- API health: http://localhost:3060/api/health  → `{ "status": "ok" }`
 
 ### Database tooling
 
@@ -51,9 +51,9 @@ Build and run all four containers (postgres, api, web, admin) on the `signex-net
 docker compose up -d --build
 ```
 
-- Web:   http://localhost:2051
-- Admin: http://localhost:2052
-- API:   http://localhost:4000/api/health
+- Web:   http://localhost:3062
+- Admin: http://localhost:3061
+- API:   http://localhost:3060/api/health
 - Postgres: localhost:5432
 
 Tear down (keep the `pgdata` volume):

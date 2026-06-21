@@ -29,7 +29,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=2051
+ENV PORT=3062
 ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs
@@ -40,8 +40,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/
 # 3) vendored Webflow public/ assets -> mirrored nested app path.
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 USER nextjs
-EXPOSE 2051
+EXPOSE 3062
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s \
-  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:2051/en || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3062/en || exit 1
 # Run the PER-APP server.js (not the standalone-root launcher).
 CMD ["node", "apps/web/server.js"]

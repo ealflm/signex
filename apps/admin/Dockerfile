@@ -28,7 +28,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=2052
+ENV PORT=3061
 ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs
@@ -39,8 +39,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/static ./apps/ad
 # 3) public assets -> mirrored nested app path.
 COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/public ./apps/admin/public
 USER nextjs
-EXPOSE 2052
+EXPOSE 3061
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s \
-  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:2052/ || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3061/ || exit 1
 # Run the PER-APP server.js (not the standalone-root launcher).
 CMD ["node", "apps/admin/server.js"]
