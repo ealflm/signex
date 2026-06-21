@@ -1,16 +1,26 @@
 import { apiServer } from "@/app/lib/api";
 
-interface LiveStatus {
+interface DiffStatus {
+  dirty: boolean;
   revision: number;
   lastPublishedRevision: number;
-  livePublishedVersion: number | null;
+}
+
+interface LiveStatus {
+  version: number;
+  checksum: string;
+  publishedAt: string;
 }
 
 export default async function DashboardPage() {
-  const res = await apiServer<LiveStatus>("/api/releases/live");
-  const status = res.ok ? res.data : null;
-  // Dirty = working-state revision has moved past the last published revision (§7.4).
-  const dirty = status ? status.revision !== status.lastPublishedRevision : false;
+  const [diffRes, liveRes] = await Promise.all([
+    apiServer<DiffStatus>("/api/releases/diff"),
+    apiServer<LiveStatus>("/api/releases/live"),
+  ]);
+
+  const diff = diffRes.ok ? diffRes.data : null;
+  const live = liveRes.ok ? liveRes.data : null;
+  const dirty = diff?.dirty ?? false;
 
   return (
     <section className="flex flex-col gap-6">
@@ -19,24 +29,24 @@ export default async function DashboardPage() {
         <p className="text-sm text-gray-500">Working-state status and live release summary.</p>
       </div>
 
-      {!status && (
+      {!diff || !live && (
         <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Could not load release status. The API may be unavailable.
         </p>
       )}
 
-      {status && (
+      {diff && (
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <dl className="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-3 text-sm">
             <dt className="text-gray-500">Working revision</dt>
-            <dd className="font-mono font-medium text-gray-900 text-right">{status.revision}</dd>
+            <dd className="font-mono font-medium text-gray-900 text-right">{diff.revision}</dd>
 
             <dt className="text-gray-500">Last published revision</dt>
-            <dd className="font-mono font-medium text-gray-900 text-right">{status.lastPublishedRevision}</dd>
+            <dd className="font-mono font-medium text-gray-900 text-right">{diff.lastPublishedRevision}</dd>
 
             <dt className="text-gray-500">Live version</dt>
             <dd className="font-mono font-medium text-gray-900 text-right">
-              {status.livePublishedVersion != null ? status.livePublishedVersion : "—"}
+              {live?.version != null ? live.version : "—"}
             </dd>
 
             <dt className="text-gray-500">Status</dt>

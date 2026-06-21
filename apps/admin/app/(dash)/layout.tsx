@@ -65,6 +65,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
             <form action="/admin-api/auth/logout" method="post">
               <button
                 type="submit"
+                aria-label="Sign out"
                 className="rounded px-2 py-1.5 text-xs font-medium text-red-600 transition-colors
                            hover:bg-red-50
                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1"
