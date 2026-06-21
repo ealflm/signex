@@ -94,3 +94,30 @@ export const CategoryDTO = z.object({
   products: z.array(ProductDTO).optional(),
 });
 export type CategoryDTO = z.infer<typeof CategoryDTO>;
+
+// ===== Input schemas (create/update payloads; no generated fields) =====
+
+export const categoryInputSchema = z.object({
+  slug: z.string().min(1),
+  sortOrder: z.number().int(),
+  title: LocalizedText,
+  tag: LocalizedText,
+  intro: LocalizedText,
+  productCount: z.number().int(),
+  materialCount: z.number().int(),
+  imageId: z.string().optional().nullable(),
+  imageAlt: LocalizedText.optional().nullable(),
+});
+export type CategoryInput = z.infer<typeof categoryInputSchema>;
+
+export const productInputSchema = z.object({
+  categoryId: z.string().min(1),
+  slug: z.string().min(1),
+  sortOrder: z.number().int(),
+  title: LocalizedText,
+  tag: LocalizedText,
+  desc: LocalizedText,
+  imageId: z.string().optional().nullable(),
+  imageAlt: LocalizedText.optional().nullable(),
+});
+export type ProductInput = z.infer<typeof productInputSchema>;
