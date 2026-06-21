@@ -16,7 +16,8 @@
     "db:migrate": "npm run migrate --workspace @signex/db",
     "test:acceptance": "bash test/acceptance.sh",
     "test:invariants": "npm run test:e2e -w @signex/api -- invariants",
-    "test:all": "npm run build && npm run test -w @signex/api && npm run test:invariants"
+    "test:all": "npm run build && npm run test -w @signex/api && npm run test:invariants",
+    "test:docker-build": "docker compose build"
   },
   "devDependencies": {
     "turbo": "^2.5.0"
