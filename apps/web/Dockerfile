@@ -22,6 +22,9 @@ WORKDIR /app
 # openssl required by the Prisma query engine (linux-musl-openssl-3.0.x) at generate time.
 RUN apk add --no-cache openssl
 COPY --from=deps /app/node_modules ./node_modules
+# npm did not hoist `next` to the root (it lives per-workspace), so bring the web
+# workspace's node_modules too — otherwise `next build` fails with `next: not found`.
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 # @signex/db + @signex/shared are require()d by the web read-path at runtime; they must be

@@ -19,6 +19,9 @@ RUN npm ci
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+# npm did not hoist `next` to the root (it lives per-workspace), so bring the admin
+# workspace's node_modules too — otherwise `next build` fails with `next: not found`.
+COPY --from=deps /app/apps/admin/node_modules ./apps/admin/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 # @signex/shared must be compiled to CJS dist/ BEFORE next build: Next does not bundle
