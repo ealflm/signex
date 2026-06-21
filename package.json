@@ -13,7 +13,10 @@
     "start": "turbo run start",
     "test": "turbo run test",
     "db:generate": "turbo run generate --filter=@signex/db",
-    "db:migrate": "npm run migrate --workspace @signex/db"
+    "db:migrate": "npm run migrate --workspace @signex/db",
+    "test:acceptance": "bash test/acceptance.sh",
+    "test:invariants": "npm run test:e2e -w @signex/api -- invariants",
+    "test:all": "npm run build && npm run test -w @signex/api && npm run test:invariants"
   },
   "devDependencies": {
     "turbo": "^2.5.0"

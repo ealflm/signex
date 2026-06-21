@@ -14,6 +14,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { AssetsModule } from './assets/assets.module';
 import { ReleaseModule } from './release/release.module';
 import { FormsModule } from './forms/forms.module';
+import { PreviewModule } from './preview/preview.module';
 import { OriginGuard, ALLOWED_ORIGINS } from './auth/guards/origin.guard';
 import { SessionAuthGuard } from './auth/guards/session-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -32,6 +33,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AssetsModule,
     ReleaseModule,
     FormsModule,
+    PreviewModule,
   ],
   controllers: [AppController],
   providers: [

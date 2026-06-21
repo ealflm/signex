@@ -38,6 +38,7 @@ export class ReleaseController {
     version: number;
     checksum: string;
     publishedAt: Date;
+    snapshot: unknown;
   } | null> {
     return this.releases.getLive();
   }

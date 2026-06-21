@@ -314,12 +314,18 @@ export class ReleaseService {
     version: number;
     checksum: string;
     publishedAt: Date;
+    snapshot: unknown;
   } | null> {
     const live = await this.prisma.client.publishedPointer.findUnique({
       where: { id: 'singleton' },
       include: {
         release: {
-          select: { version: true, checksum: true, publishedAt: true },
+          select: {
+            version: true,
+            checksum: true,
+            publishedAt: true,
+            snapshot: true,
+          },
         },
       },
     });
@@ -328,6 +334,7 @@ export class ReleaseService {
       version: live.release.version,
       checksum: live.release.checksum,
       publishedAt: live.release.publishedAt as Date,
+      snapshot: live.release.snapshot,
     };
   }
 
