@@ -1,6 +1,6 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import type { BlockKind, Prisma } from '@signex/db';
-import { parseBlock } from '@signex/shared';
+import { parseBlock, UnknownBlockKeyError } from '@signex/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkingStateService } from '../working-state/working-state.service';
 import { AuditService } from '../audit/audit.service';
@@ -49,6 +49,12 @@ export class ContentService {
           code: 'INVALID_BLOCK',
           message: `Block ${kind}:${key} failed validation`,
           issues: (e as { issues: unknown }).issues,
+        });
+      }
+      if (e instanceof UnknownBlockKeyError) {
+        throw new UnprocessableEntityException({
+          code: 'UNKNOWN_BLOCK',
+          message: e.message,
         });
       }
       throw e;

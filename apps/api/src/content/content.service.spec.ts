@@ -2,11 +2,17 @@ import { ConflictException, UnprocessableEntityException } from '@nestjs/common'
 import { ContentService } from './content.service';
 
 // Mock the shared registry so the service test is deterministic and offline.
+// Spread jest.requireActual so that UnknownBlockKeyError (a real class) is preserved
+// for instanceof checks, while parseBlock is replaced with a jest.fn().
 jest.mock('@signex/shared', () => ({
+  ...jest.requireActual('@signex/shared'),
   parseBlock: jest.fn(),
 }));
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { parseBlock } = require('@signex/shared') as { parseBlock: jest.Mock };
+const { parseBlock, UnknownBlockKeyError } = require('@signex/shared') as {
+  parseBlock: jest.Mock;
+  UnknownBlockKeyError: typeof import('@signex/shared').UnknownBlockKeyError;
+};
 
 function buildTx() {
   return {
@@ -66,6 +72,17 @@ describe('ContentService.updateBlock', () => {
     const tx = buildTx();
     const svc = buildService(tx);
     await expect(svc.updateBlock({ id: 'u' }, 'PAGE' as any, 'home.hero', {}, 2))
+      .rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(tx.contentBlock.upsert).not.toHaveBeenCalled();
+  });
+
+  it('throws 422 UNKNOWN_BLOCK (4xx) when parseBlock throws UnknownBlockKeyError', async () => {
+    parseBlock.mockImplementation(() => {
+      throw new UnknownBlockKeyError('seo.home', 'home');
+    });
+    const tx = buildTx();
+    const svc = buildService(tx);
+    await expect(svc.updateBlock({ id: 'u' }, 'PAGE' as any, 'seo.home', {}, 2))
       .rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(tx.contentBlock.upsert).not.toHaveBeenCalled();
   });

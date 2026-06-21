@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ZodError } from "zod";
-import { BLOCK_REGISTRY, BLOCK_KEYS, parseBlock } from "./registry";
+import { BLOCK_REGISTRY, BLOCK_KEYS, parseBlock, UnknownBlockKeyError } from "./registry";
 import enDict from "../../../../apps/web/app/[lang]/dictionaries/en.json";
 import viDict from "../../../../apps/web/app/[lang]/dictionaries/vi.json";
 
@@ -111,6 +111,34 @@ describe("parseBlock", () => {
         // payments missing -> ZodError
       }),
     ).toThrow(ZodError);
+  });
+
+  // 3-arg form tests
+  it("3-arg: throws UnknownBlockKeyError when dbKey's last segment is not in the registry", () => {
+    expect(() => parseBlock("PAGE", "seo.home", {})).toThrow(UnknownBlockKeyError);
+    expect(() => parseBlock("PAGE", "seo.home", {})).toThrow("UNKNOWN_BLOCK_KEY");
+  });
+
+  it("3-arg: UnknownBlockKeyError carries dbKey and registryKey", () => {
+    try {
+      parseBlock("PAGE", "seo.home", {});
+      expect.fail("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(UnknownBlockKeyError);
+      const err = e as UnknownBlockKeyError;
+      expect(err.dbKey).toBe("seo.home");
+      expect(err.registryKey).toBe("home");
+      expect(err.name).toBe("UnknownBlockKeyError");
+    }
+  });
+
+  it("3-arg: validates a valid key via derived segment", () => {
+    const result = parseBlock("PAGE", "home.businessContact", goodBusinessContact);
+    expect(result.taxId).toBe("0319401172");
+  });
+
+  it("3-arg: throws ZodError on invalid data for a valid key", () => {
+    expect(() => parseBlock("PAGE", "home.hero", {})).toThrow(ZodError);
   });
 });
 
