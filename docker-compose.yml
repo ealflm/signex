@@ -119,6 +119,11 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       API_URL: ${API_URL:-http://api:3060}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3060}
+      ADMIN_ORIGIN: ${ADMIN_ORIGIN:-http://localhost:3061}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3061}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-changeme-revalidate}
+      PREVIEW_SECRET: ${PREVIEW_SECRET:-changeme-preview}
+      NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL:-http://localhost:3062}
     ports:
       - "${ADMIN_PORT:-3061}:3061"
     healthcheck:
