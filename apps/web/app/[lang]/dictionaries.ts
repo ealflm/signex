@@ -1,15 +1,13 @@
 // app/[lang]/dictionaries.ts
-// Server-only dictionary loader (the idiomatic App Router i18n pattern). Translation
-// JSON never ships to the client bundle — only the resolved strings are server-rendered.
+// LEGACY SHIM. The site now reads CMS Release snapshots (app/lib/content.ts), not the static
+// en/vi JSON. `Dictionary` is aliased to the resolved snapshot view `SiteContent` (a structural
+// superset of the old dict), so every ({ dict }) => JSX component compiles unchanged. The dict
+// JSON files remain only as the importer's source (migrated once into Release v1).
 import "server-only";
 import type { Locale } from "@/app/lib/i18n-config";
+import { getSiteContent, type SiteContent } from "@/app/lib/content";
 
-const dictionaries = {
-  en: () => import("./dictionaries/en.json").then((m) => m.default),
-  vi: () => import("./dictionaries/vi.json").then((m) => m.default),
-};
+export type Dictionary = SiteContent;
 
-export type Dictionary = Awaited<ReturnType<(typeof dictionaries)["en"]>>;
-
-export const getDictionary = (locale: Locale): Promise<Dictionary> =>
-  dictionaries[locale]();
+// Back-compat alias for any caller still importing getDictionary; routes to the published path.
+export const getDictionary = (locale: Locale): Promise<Dictionary> => getSiteContent(locale);

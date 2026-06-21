@@ -1,0 +1,356 @@
+// apps/web/app/lib/content.ts
+// PUBLIC read-path. The published snapshot is read straight from Postgres via @signex/db
+// (one indexed row, no api at request time), validated by the SAME zod schema the api used to
+// write it, and resolved to a per-locale view. The published loader is `'use cache'` +
+// cacheTag('release') so Publish (api -> /api/revalidate) can mark the whole site stale with
+// one tag. It reads NO draft-mode() — doing so at the caller would force the shell dynamic under
+// cacheComponents and forfeit SSG (spec §10.1). Any Prisma/parse error -> INITIAL_SNAPSHOT,
+// so the site never 500s on data (spec §13).
+import "server-only";
+import { cacheTag } from "next/cache";
+import { prisma } from "@signex/db";
+import { ReleaseSnapshotSchema, type ReleaseSnapshot } from "@signex/shared";
+import type { Locale } from "@/app/lib/i18n-config";
+import { INITIAL_SNAPSHOT } from "@/app/lib/initial-snapshot";
+
+// SiteContent is the resolved per-locale view — a structural superset of the old Dictionary.
+// Components keep importing `Dictionary` (aliased to SiteContent in dictionaries.ts shim).
+// The shape is derived from en.json to stay in sync with the ~30 ({ dict }) => JSX components.
+import type enJson from "@/app/[lang]/dictionaries/en.json";
+export type SiteContent = typeof enJson;
+
+// Asset URLs are NEVER frozen into the snapshot — only the r2Key is. Resolve at read time so the
+// site survives a CDN/domain migration (spec §3.1.3). Empty base = relative key (dev only).
+export function resolveAssetUrl(r2Key: string): string {
+  const base = (process.env.MEDIA_PUBLIC_BASE ?? "").replace(/\/+$/, "");
+  return base ? `${base}/${r2Key}` : `/${r2Key}`;
+}
+
+// Bilingual leaf helpers
+function t(node: { en: string; vi: string } | undefined, lang: Locale, fallback = ""): string {
+  return node?.[lang] ?? fallback;
+}
+function ta(node: { en: string[]; vi: string[] } | undefined, lang: Locale): string[] {
+  return node?.[lang] ?? [];
+}
+
+// Full structural transform: snapshot (ReleaseSnapshot) → SiteContent (Dictionary shape).
+// This is the inverse of the importer's buildBlocks. Every field is explicitly mapped.
+function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
+  const b = snap.blocks;
+  const bc = b.businessContact;
+
+  // businessContact helpers — phones and sites may be in any order
+  const tel = bc.phones.find((p) => p.kind === "tel");
+  const zalo = bc.phones.find((p) => p.kind === "zalo");
+  const office = bc.sites.find((s) => s.kind === "office");
+  const factory = bc.sites.find((s) => s.kind === "factory");
+
+  // formConfig block
+  const fc = b.formConfig;
+  const fFields = fc.fields;
+
+  return {
+    hero: {
+      titleTop: t(b.hero.titleTop, lang),
+      titleBottom: t(b.hero.titleBottom, lang),
+      subtitle: t(b.hero.subtitle, lang),
+      // hero.image is AssetRef { assetId, alt? }; resolve alt, falling back to empty string
+      imageAlt: t(b.hero.image.alt, lang),
+    },
+    form: {
+      name: t(fFields.name.label, lang),
+      namePlaceholder: t(fFields.name.placeholder, lang),
+      email: t(fFields.email.label, lang),
+      emailPlaceholder: t(fFields.email.placeholder, lang),
+      phone: t(fFields.phone.label, lang),
+      phonePlaceholder: t(fFields.phone.placeholder, lang),
+      quantity: t(fFields.quantity.label, lang),
+      quantityPlaceholder: t(fFields.quantity.placeholder, lang),
+      standard: t(fFields.standard.label, lang),
+      standardPlaceholder: t(fFields.standard.placeholder, lang),
+      standardOptions: fc.standardOptions.map((o) => t(o.label, lang)),
+      height: t(fFields.height.label, lang),
+      heightPlaceholder: t(fFields.height.placeholder, lang),
+      width: t(fFields.width.label, lang),
+      widthPlaceholder: t(fFields.width.placeholder, lang),
+      thickness: t(fFields.thickness.label, lang),
+      thicknessPlaceholder: t(fFields.thickness.placeholder, lang),
+      upload: t(fFields.upload.label, lang),
+      uploadHelp: t(fc.uploadHelp, lang),
+      message: t(fFields.message.label, lang),
+      messagePlaceholder: t(fFields.message.placeholder, lang),
+      submit: t(fc.submit, lang),
+      success: t(fc.success, lang),
+      fail: t(fc.fail, lang),
+    },
+    features: {
+      eyebrow: t(b.features.eyebrow, lang),
+      titleTop: t(b.features.title.lead, lang),
+      titleBottom: t(b.features.title.accent, lang),
+      cta: t(b.features.cta.label, lang),
+      // video.media is VideoRef? — asset refs resolved via assets map; fields used as URLs below
+      videoTitle: t(b.features.video.title, lang),
+      videoText: t(b.features.video.text, lang),
+      featured: {
+        title: t(b.features.featured.title, lang),
+        desc: t(b.features.featured.desc, lang),
+      },
+      cards: b.features.cards.map((card) => ({
+        title: t(card.title, lang),
+        desc: t(card.desc, lang),
+      })),
+    },
+    about: {
+      eyebrow: t(b.about.eyebrow, lang),
+      title: t(b.about.title.lead, lang),
+      titleAccent: t(b.about.title.accent, lang),
+      body: t(b.about.body, lang),
+      mission: {
+        title: t(b.about.mission.title, lang),
+        body: t(b.about.mission.body, lang),
+        items: ta(b.about.mission.items, lang),
+      },
+      vision: {
+        title: t(b.about.vision.title, lang),
+        body: t(b.about.vision.body, lang),
+      },
+      values: {
+        title: t(b.about.values.title, lang),
+        body: t(b.about.values.body, lang),
+      },
+    },
+    products: {
+      eyebrow: t(b.productsHeader.eyebrow, lang),
+      title: t(b.productsHeader.title.lead, lang),
+      titleAccent: t(b.productsHeader.title.accent, lang),
+      body: t(b.productsHeader.body, lang),
+      statLabels: {
+        products: t(b.productsHeader.statLabels.products, lang),
+        materials: t(b.productsHeader.statLabels.materials, lang),
+      },
+      detail: {
+        listTitle: t(b.productsHeader.detail.listTitle.lead, lang),
+        listTitleAccent: t(b.productsHeader.detail.listTitle.accent, lang),
+      },
+      product: {
+        categoryLabel: t(b.productsHeader.product.categoryLabel, lang),
+        materialLabel: t(b.productsHeader.product.materialLabel, lang),
+        cta: t(b.productsHeader.product.cta, lang),
+        back: t(b.productsHeader.product.back, lang),
+        zoomHint: t(b.productsHeader.product.zoomHint, lang),
+      },
+      // Catalog categories: images are FrozenAsset inline (r2Key present)
+      categories: snap.catalog.categories.map((cat) => ({
+        tag: t(cat.tag, lang),
+        title: t(cat.title, lang),
+        slug: cat.slug,
+        products: cat.productCount,
+        materials: cat.materialCount,
+        intro: t(cat.intro, lang),
+        items: cat.items.map((item) => ({
+          slug: item.slug,
+          title: t(item.title, lang),
+          tag: t(item.tag, lang),
+          desc: t(item.desc, lang),
+        })),
+      })),
+    },
+    contact: {
+      eyebrow: lang === "vi" ? "Liên Hệ" : "Reach Out",
+      title: t(b.contactPage.hero.title.lead, lang),
+      titleAccent: t(b.contactPage.hero.title.accent, lang),
+      subtitle: t(b.contactPage.hero.subtitle, lang),
+      cards: [
+        {
+          title: "Email",
+          lines: bc.emails,
+        },
+        {
+          title: "Phone",
+          lines: [
+            ...(tel ? [`${t(tel.label, lang)}: ${tel.value}`] : []),
+            ...(zalo ? [`${t(zalo.label, lang)}: ${zalo.value}`] : []),
+          ],
+        },
+        {
+          title: "Address",
+          lines: [
+            ...(office ? [t(office.address, lang)] : []),
+            ...(factory ? [t(factory.address, lang)] : []),
+          ],
+        },
+      ],
+    },
+    footer: {
+      brand: `${t(bc.brand, lang)} – Manufacturing Brand Identity`,
+      tagline: ta(b.footer.tagline, lang),
+      contactHeading: t(b.footer.contactHeading, lang),
+      company: t(bc.legalName, lang),
+      email: bc.emails[0] ?? "",
+      tel: tel?.value ?? "",
+      zalo: zalo?.value ?? "",
+      tax: bc.taxId,
+      office: office ? t(office.address, lang) : "",
+      factory: factory ? t(factory.address, lang) : "",
+      quickHeading: t(b.footer.quickHeading, lang),
+      links: b.footer.links.map((l) => ({
+        label: t(l.label, lang),
+        href: l.href,
+      })),
+      shipLabel: t(b.footer.shipLabel, lang),
+      payLabel: t(b.footer.payLabel, lang),
+      payments: b.footer.payments,
+    },
+    nav: {
+      skip: t(b.nav.skip, lang),
+      cta: t(b.nav.cta.label, lang),
+      links: b.nav.links.map((l) => ({
+        label: t(l.label, lang),
+        href: l.href,
+      })),
+    },
+    aboutPage: {
+      hero: {
+        title: t(b.aboutPage.hero.title.lead, lang),
+        titleAccent: t(b.aboutPage.hero.title.accent, lang),
+        subtitle: t(b.aboutPage.hero.subtitle, lang),
+      },
+      testimonial: {
+        eyebrow: t(b.aboutPage.testimonial.eyebrow, lang),
+        title: t(b.aboutPage.testimonial.title.lead, lang),
+        titleAccent: t(b.aboutPage.testimonial.title.accent, lang),
+        body: ta(b.aboutPage.testimonial.body, lang),
+      },
+      approach: b.aboutPage.approach.map((a) => ({
+        title: t(a.title, lang),
+        body: ta(a.body, lang),
+      })),
+      intro: {
+        eyebrow: t(b.aboutPage.intro.eyebrow, lang),
+        title: t(b.aboutPage.intro.title.lead, lang),
+        titleAccent: t(b.aboutPage.intro.title.accent, lang),
+        body: t(b.aboutPage.intro.body, lang),
+      },
+      capability: {
+        eyebrow: t(b.aboutPage.capability.eyebrow, lang),
+        title: t(b.aboutPage.capability.title.lead, lang),
+        titleAccent: t(b.aboutPage.capability.title.accent, lang),
+        body: t(b.aboutPage.capability.body, lang),
+        groups: b.aboutPage.capability.groups.map((g) => ({
+          title: t(g.title, lang),
+          items: ta(g.items, lang),
+        })),
+        closing: ta(b.aboutPage.capability.closing, lang),
+      },
+      process: {
+        eyebrow: t(b.aboutPage.process.eyebrow, lang),
+        title: t(b.aboutPage.process.title.lead, lang),
+        titleAccent: t(b.aboutPage.process.title.accent, lang),
+        body: t(b.aboutPage.process.body, lang),
+        steps: b.aboutPage.process.steps.map((s) => ({
+          title: t(s.title, lang),
+          body: t(s.body, lang),
+        })),
+      },
+      timeline: {
+        eyebrow: t(b.aboutPage.timeline.eyebrow, lang),
+        title: t(b.aboutPage.timeline.title.lead, lang),
+        titleAccent: t(b.aboutPage.timeline.title.accent, lang),
+        body: t(b.aboutPage.timeline.body, lang),
+        intro: ta(b.aboutPage.timeline.intro, lang),
+        milestones: b.aboutPage.timeline.milestones.map((m) => ({
+          num: m.num,
+          title: t(m.title, lang),
+          body: t(m.body, lang),
+          ...(m.items !== undefined ? { items: ta(m.items, lang) } : {}),
+          ...(m.note !== undefined ? { note: t(m.note, lang) } : {}),
+        })),
+      },
+    },
+    contactPage: {
+      hero: {
+        title: t(b.contactPage.hero.title.lead, lang),
+        titleAccent: t(b.contactPage.hero.title.accent, lang),
+        subtitle: t(b.contactPage.hero.subtitle, lang),
+      },
+      cards: [
+        {
+          title: "Email",
+          lines: bc.emails,
+        },
+        {
+          title: "Phone",
+          lines: [
+            ...(tel ? [`${t(tel.label, lang)}: ${tel.value}`] : []),
+            ...(zalo ? [`${t(zalo.label, lang)}: ${zalo.value}`] : []),
+          ],
+        },
+        {
+          title: "Address",
+          company: t(bc.legalName, lang),
+          details: [
+            ...(office
+              ? [{ label: t(office.label, lang), value: t(office.address, lang) }]
+              : []),
+            ...(factory
+              ? [{ label: t(factory.label, lang), value: t(factory.address, lang) }]
+              : []),
+            { label: t(bc.taxLabel, lang), value: bc.taxId },
+          ],
+        },
+      ],
+      map: {
+        eyebrow: t(b.contactPage.map.eyebrow, lang),
+        title: t(b.contactPage.map.title.lead, lang),
+        titleAccent: t(b.contactPage.map.title.accent, lang),
+      },
+    },
+    notFound: {
+      eyebrow: t(b.notFound.eyebrow, lang),
+      title: t(b.notFound.title.lead, lang),
+      titleAccent: t(b.notFound.title.accent, lang),
+      body: t(b.notFound.body, lang),
+      cta: t(b.notFound.cta.label, lang),
+      imageAlt: t(b.notFound.image.alt, lang),
+    },
+    meta: {
+      siteName: b.meta.siteName,
+      title: t(b.meta.title, lang),
+      description: t(b.meta.description, lang),
+      ogImageAlt: t(b.meta.ogImage.alt, lang),
+      about: {
+        title: t(b.meta.about.title, lang),
+        description: t(b.meta.about.description, lang),
+      },
+      contact: {
+        title: t(b.meta.contact.title, lang),
+        description: t(b.meta.contact.description, lang),
+      },
+    },
+  } as unknown as SiteContent;
+}
+
+// PUBLISHED path — cached + tagged. Draft-mode-free.
+export async function getPublishedSnapshot(lang: Locale): Promise<SiteContent> {
+  "use cache";
+  cacheTag("release"); // single site-wide invalidation handle (Publish -> revalidateTag('release'))
+  try {
+    const rel = await prisma.release.findFirst({
+      where: { status: "PUBLISHED" },
+      orderBy: { version: "desc" },
+      select: { snapshot: true },
+    });
+    if (!rel) return resolveForLang(INITIAL_SNAPSHOT, lang);
+    return resolveForLang(ReleaseSnapshotSchema.parse(rel.snapshot), lang);
+  } catch {
+    // ANY Prisma/parse error -> last-known-good build constant. Site never 500s on data.
+    return resolveForLang(INITIAL_SNAPSHOT, lang);
+  }
+}
+
+// The name pages call. Today it is purely the published path; the preview island is a separate
+// non-cached island (see app/components/preview-bar.tsx) so the shell stays cached + SSG.
+export async function getSiteContent(lang: Locale): Promise<SiteContent> {
+  return getPublishedSnapshot(lang);
+}
