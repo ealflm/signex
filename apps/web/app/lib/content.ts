@@ -359,3 +359,18 @@ export async function getPublishedSnapshot(lang: Locale): Promise<SiteContent> {
 export async function getSiteContent(lang: Locale): Promise<SiteContent> {
   return getPublishedSnapshot(lang);
 }
+
+// PREVIEW path — live working state via the api. NEVER cached, NEVER on the published path.
+// Called only from the <Suspense>-wrapped preview island (app/components/preview-bar.tsx) so the
+// public shell stays static. Reads PREVIEW_SECRET server-side.
+export async function getPreviewSnapshot(lang: Locale): Promise<SiteContent> {
+  const base = process.env.API_URL ?? "http://api:3060";
+  const res = await fetch(`${base}/api/preview/snapshot`, {
+    method: "POST",
+    headers: { "x-preview-secret": process.env.PREVIEW_SECRET ?? "" },
+    cache: "no-store",
+  });
+  if (!res.ok) return getPublishedSnapshot(lang);
+  const snap = ReleaseSnapshotSchema.parse(await res.json());
+  return resolveForLang(snap, lang);
+}

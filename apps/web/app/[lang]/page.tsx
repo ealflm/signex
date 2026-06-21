@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/app/lib/i18n-config";
-import { getDictionary } from "./dictionaries";
+import { getSiteContent } from "@/app/lib/content";
 import { Hero } from "@/app/components/home/hero";
 import { Features } from "@/app/components/home/features";
 import { ProductCategories } from "@/app/components/home/product-categories";
@@ -9,8 +9,8 @@ import { Contact } from "@/app/components/home/contact";
 
 export default async function HomePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
-  if (!hasLocale(lang)) notFound(); // also narrows `lang` to Locale for getDictionary
-  const dict = await getDictionary(lang);
+  if (!hasLocale(lang)) notFound(); // also narrows `lang` to Locale for getSiteContent
+  const dict = await getSiteContent(lang);
 
   return (
     <>

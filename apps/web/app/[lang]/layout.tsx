@@ -5,7 +5,8 @@ import { Footer } from "@/app/components/footer";
 import { WebflowRuntime } from "@/app/components/webflow-runtime";
 import { WebflowPageAttrs } from "@/app/components/webflow-page-attrs";
 import { LOCALES, hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
-import { getDictionary } from "./dictionaries";
+import { getSiteContent } from "@/app/lib/content";
+import { PreviewBar } from "@/app/components/preview-bar";
 import { buildMetadata, THEME_COLOR } from "@/app/lib/seo";
 import { siteAttrs } from "@/app/lib/webflow-bundles";
 import { OrgJsonLd } from "@/app/components/org-json-ld";
@@ -31,7 +32,7 @@ export const viewport: Viewport = {
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
-  const dict = await getDictionary(locale);
+  const dict = await getSiteContent(locale);
   return buildMetadata({ locale, meta: dict.meta, title: dict.meta.title, description: dict.meta.description });
 }
 
@@ -50,8 +51,8 @@ export default async function RootLayout({
 }) {
   const { lang } = await params;
   // dynamicParams=false + generateStaticParams restrict this to LOCALES; the guard
-  // just narrows the string to Locale for getDictionary (Footer is dict-driven, EN + VI).
-  const dict = await getDictionary(hasLocale(lang) ? lang : DEFAULT_LOCALE);
+  // just narrows the string to Locale for getSiteContent (Footer is dict-driven, EN + VI).
+  const dict = await getSiteContent(hasLocale(lang) ? lang : DEFAULT_LOCALE);
   const { domain, site } = siteAttrs(); // single source for the Webflow site attrs
   return (
     // suppressHydrationWarning: the WF_MOD_SHIM script adds w-mod-js/w-mod-touch to <html> before
@@ -85,6 +86,7 @@ export default async function RootLayout({
           </main>
         </div>
         <OrgJsonLd dict={dict} />
+        <PreviewBar />
         <WebflowPageAttrs />
         <WebflowRuntime />
       </body>

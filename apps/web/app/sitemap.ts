@@ -4,7 +4,7 @@
 // routes to ROUTES; the 404 catch-all and the bare redirecting paths are intentionally excluded.
 import type { MetadataRoute } from "next";
 import { LOCALES, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
-import { getDictionary } from "@/app/[lang]/dictionaries";
+import { getSiteContent } from "@/app/lib/content";
 import { SITE_URL } from "@/app/lib/seo";
 
 // Stable <lastmod> — a fixed date (bump it when page content meaningfully changes). NOT
@@ -15,7 +15,7 @@ const LAST_MODIFIED = "2026-06-16";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Indexable routes, path WITHOUT the locale prefix ("" = home). Category-detail pages are
   // derived from the dict so the sitemap stays in sync when categories change.
-  const { products } = await getDictionary(DEFAULT_LOCALE);
+  const { products } = await getSiteContent(DEFAULT_LOCALE);
   const routes = [
     "", "/about", "/contact",
     ...products.categories.map((c) => `/products/${c.slug}`),

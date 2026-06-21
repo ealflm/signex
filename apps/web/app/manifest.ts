@@ -2,12 +2,12 @@
 // installability + a consistent browser theme color. Locale-neutral, so it lives at the app root
 // and sources copy from the default-locale (vi) dictionary to match the rest of the site.
 import type { MetadataRoute } from "next";
-import { getDictionary } from "@/app/[lang]/dictionaries";
+import { getSiteContent } from "@/app/lib/content";
 import { DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { THEME_COLOR } from "@/app/lib/seo";
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  const { meta } = await getDictionary(DEFAULT_LOCALE);
+  const { meta } = await getSiteContent(DEFAULT_LOCALE);
   return {
     name: meta.title,
     short_name: meta.siteName,

@@ -8,13 +8,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
-import { getDictionary } from "../dictionaries";
+import { getSiteContent } from "@/app/lib/content";
 import { buildMetadata } from "@/app/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
-  const m = (await getDictionary(locale)).meta;
+  const m = (await getSiteContent(locale)).meta;
   return buildMetadata({ locale, meta: m, title: `${m.about.title} | ${m.siteName}`, description: m.about.description, path: "/about" });
 }
 
@@ -52,7 +52,7 @@ const APPROACH_ICONS = [
 export default async function AboutPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   if (!hasLocale(lang)) notFound(); // narrows lang to Locale; rejects unknown locales with a 404
-  const dict = await getDictionary(lang); // localised copy for the sections being customised (EN + VI)
+  const dict = await getSiteContent(lang); // localised copy for the sections being customised (EN + VI)
   return (
     <>
       <section className="section_hero-home-c">
