@@ -39,7 +39,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     {
       provide: ALLOWED_ORIGINS,
       useFactory: (): string[] =>
-        (process.env.ALLOWED_ORIGINS ?? '')
+        (process.env.AUTH_ALLOWED_ORIGINS ?? '')
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean),

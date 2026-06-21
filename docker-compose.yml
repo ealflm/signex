@@ -50,6 +50,9 @@ services:
       R2_PRESIGN_TTL: ${R2_PRESIGN_TTL:-300}
       # MEDIA_PUBLIC_BASE must NOT be unset or an r2.dev host (the publish gate rejects those).
       MEDIA_PUBLIC_BASE: ${MEDIA_PUBLIC_BASE:-https://media.signex.local}
+      # CORS + OriginGuard allow-list. Browser origin is the host-published URL even inside
+      # the Compose network (the browser connects to the host, not the container name).
+      AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:3062,http://localhost:3061}
     ports:
       - "${API_PORT:-3060}:3060"
     healthcheck:
