@@ -56,6 +56,7 @@ export default async function AboutPage({ params }: { params: Promise<{ lang: st
   return (
     <>
       <section className="section_hero-home-c">
+        {/* about hero video: no video field in aboutPageBlock schema — stays hardcoded (Task 61b) */}
         <div
           className="master_hero-home-c w-background-video w-background-video-atom"
           data-autoplay="true"
@@ -186,6 +187,7 @@ export default async function AboutPage({ params }: { params: Promise<{ lang: st
                       </div>
                     </div>
                     <div className="right_testimonial-v2" id="w-node-af30d5d7-8441-26c7-d69a-89a24d922243-4d92222b">
+                      {/* testimonial image: no image field in aboutPageBlock schema — stays hardcoded (Task 61b) */}
                       <img alt="Pexels stephanlouis 19119918" className="image_cover" loading="lazy" src="/assets/images/69ac691927961ac98c560fe2_pexels-stephanlouis-19119918.avif" />
                       {/* Gradient scrim kept (height:100%/inset:0 in Caladan CSS renders the full
                           gradient even when empty); the Daniel Novak / Adventure Seeker name was removed. */}

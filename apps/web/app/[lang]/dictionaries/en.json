@@ -3,7 +3,8 @@
     "titleTop": "Manufacturing",
     "titleBottom": "Brand Identity",
     "subtitle": "Specialized in manufacturing logos, emblems, labels, badges, and custom identity components for the garment and fashion industry.",
-    "imageAlt": "Contemporary cliffside house at twilight"
+    "imageAlt": "Contemporary cliffside house at twilight",
+    "imageUrl": "/assets/images/69b04fc10fe79a2becaf38a8_Contemporary_Cliffside_House_at_Twilight.avif"
   },
   "form": {
     "name": "Name",
@@ -38,6 +39,11 @@
     "cta": "Request a Quote",
     "videoTitle": "Inside Our Workshop",
     "videoText": "See how we hold tolerances from sample to finished batch.",
+    "videoMedia": {
+      "posterUrl": "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg",
+      "mp4Url": "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_mp4.mp4",
+      "webmUrl": "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm"
+    },
     "featured": {
       "title": "Consistent Production Quality",
       "desc": "Stable, repeatable quality across every production batch."
@@ -170,6 +176,7 @@
   "nav": {
     "skip": "Skip to content",
     "cta": "Quote Now",
+    "logoUrl": "/assets/images/signex-logo.svg",
     "links": [
       { "label": "Home", "href": "/" },
       { "label": "About", "href": "/about" },
@@ -355,13 +362,15 @@
     "titleAccent": "lost the thread",
     "body": "The page you're looking for has moved or no longer exists. Let's get you back on track — Signex is ready to bring your brand identity to life.",
     "cta": "Back to homepage",
-    "imageAlt": "Signex production floor"
+    "imageAlt": "Signex production floor",
+    "imageUrl": "/assets/images/69ac691927961ac98c560fe2_pexels-stephanlouis-19119918.avif"
   },
   "meta": {
     "siteName": "SIGNEX",
     "title": "SIGNEX — Brand Identity Products Manufacturer",
     "description": "SIGNEX manufactures brand identity products in Vietnam — plastic logos and emblems, woven and printed labels, badges, nameplates and custom OEM components for fashion and lifestyle brands. Consistent quality, batch after batch.",
     "ogImageAlt": "SIGNEX — Manufacturing Brand Identity",
+    "ogImageUrl": "/assets/images/signex-og.png",
     "about": {
       "title": "About Us",
       "description": "Inside SIGNEX — our manufacturing capability, approach and process for producing consistent, high-quality brand identity products: logos, emblems, labels, badges, nameplates and custom OEM components."

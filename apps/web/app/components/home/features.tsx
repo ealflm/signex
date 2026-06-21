@@ -54,6 +54,7 @@ export function Features({ dict }: { dict: Dictionary["features"] }) {
               {/* ① Featured value — Consistent Production Quality */}
               <div className="image_features">
                 <div className="image-inner_features" data-w-id="d354a09c-1c94-8247-3fc0-60e3f5ed678a">
+                  {/* featured tile image: no AssetRef field in featuresBlock schema — stays hardcoded (Task 61b) */}
                   <img alt="Pexels saeb mahajna 14125913 6297105" className="image_cover is-parallax" loading="lazy" src="/assets/images/69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif" />
                   <div className="overlay_dark-16">
                   </div>
@@ -151,10 +152,20 @@ export function Features({ dict }: { dict: Dictionary["features"] }) {
               {/* Complementary workshop/process video (added content) */}
               <div className="video_features" id="w-node-_7592271b-69fa-3faa-e7e1-e8f1255559a7-5e872ff7">
                 <div className="image-inner_features" data-w-id="7592271b-69fa-3faa-e7e1-e8f1255559a8">
-                  <div className="video_cover w-background-video w-background-video-atom" data-autoplay="true" data-loop="true" data-poster-url="/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg" data-video-urls="/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_mp4.mp4,/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm" data-wf-ignore="true">
-                    <video autoPlay data-object-fit="cover" data-wf-ignore="true" id="40581aae-5301-9d32-a680-8d7bb2717107-video" loop muted playsInline style={{ backgroundImage: 'url("/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg")' }}>
-                      <source data-wf-ignore="true" src="/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_mp4.mp4" />
-                      <source data-wf-ignore="true" src="/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm" />
+                  <div
+                    className="video_cover w-background-video w-background-video-atom"
+                    data-autoplay="true"
+                    data-loop="true"
+                    data-poster-url={t.videoMedia.posterUrl || "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg"}
+                    data-video-urls={[
+                      t.videoMedia.mp4Url || "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_mp4.mp4",
+                      t.videoMedia.webmUrl || "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm",
+                    ].filter(Boolean).join(",")}
+                    data-wf-ignore="true"
+                  >
+                    <video autoPlay data-object-fit="cover" data-wf-ignore="true" id="40581aae-5301-9d32-a680-8d7bb2717107-video" loop muted playsInline style={{ backgroundImage: `url("${t.videoMedia.posterUrl || "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg"}")` }}>
+                      <source data-wf-ignore="true" src={t.videoMedia.mp4Url || "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_mp4.mp4"} />
+                      <source data-wf-ignore="true" src={t.videoMedia.webmUrl || "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm"} />
                     </video>
                     <noscript dangerouslySetInnerHTML={{ __html: `<style>
                [data-wf-bgvideo-fallback-img] {
@@ -171,7 +182,7 @@ export function Features({ dict }: { dict: Dictionary["features"] }) {
     }
   }
               </style>
-              <img alt="" data-wf-bgvideo-fallback-img="true" src="/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg"/>` }} />
+              <img alt="" data-wf-bgvideo-fallback-img="true" src="${t.videoMedia.posterUrl || "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg"}"/>` }} />
                     <div aria-live="polite">
                       <button aria-controls="40581aae-5301-9d32-a680-8d7bb2717107-video" className="w-backgroundvideo-backgroundvideoplaypausebutton button_play-pause w-background-video--control" data-w-bg-video-control="true" type="button">
                         <span className="play-state">

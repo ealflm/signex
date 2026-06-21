@@ -9,7 +9,9 @@ import type { Dictionary } from "@/app/[lang]/dictionaries";
 
 export const SITE_URL = "https://signex.vn";
 export const THEME_COLOR = "#071522"; // brand deep-navy (browser theme-color + PWA manifest)
-const OG_IMAGE = "/assets/images/signex-og.png";
+// Fallback OG image path (used when no snapshot-resolved URL is available — INITIAL_SNAPSHOT path).
+// When the snapshot is published, meta.ogImageUrl carries the CDN URL (Task 61b).
+const OG_IMAGE_FALLBACK = "/assets/images/signex-og.png";
 // Favicons (favicon.io set: SIGNEX lotus mark). The .ico is auto-served from app/favicon.ico;
 // these PNGs add the type/size hints modern browsers + Apple devices prefer.
 const ICONS = {
@@ -37,6 +39,8 @@ export function buildMetadata({
   const url = `/${locale}${path}`;
   const ogLocale = locale === "vi" ? "vi_VN" : "en_US";
   const altLocale = locale === "vi" ? "en_US" : "vi_VN";
+  // Prefer the snapshot-resolved CDN URL (meta.ogImageUrl); fall back to the bundled path.
+  const ogImage = meta.ogImageUrl || OG_IMAGE_FALLBACK;
   return {
     metadataBase: new URL(SITE_URL),
     title,
@@ -56,13 +60,13 @@ export function buildMetadata({
       url,
       locale: ogLocale,
       alternateLocale: altLocale,
-      images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: meta.ogImageAlt, type: "image/png" }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: meta.ogImageAlt, type: "image/png" }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [OG_IMAGE],
+      images: [ogImage],
     },
     icons: ICONS,
   };

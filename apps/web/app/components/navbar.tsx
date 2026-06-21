@@ -85,8 +85,19 @@ export function Navbar({ dict }: { dict: Dictionary["nav"] }) {
             <a className="brand_navbar w-nav-brand" href="/">
               {/* Signex logo rendered as a CSS mask filled with the nav links' ink token
                   (tone--strong) so it matches "Trang chủ / Về chúng tôi / Liên hệ" exactly and
-                  tracks them in every navbar state. Sized by height (aspect ratio ≈2.4:1). */}
-              <span className="signex-logo-nav" role="img" aria-label="Signex" />
+                  tracks them in every navbar state. Sized by height (aspect ratio ≈2.4:1).
+                  When logoUrl is available from the snapshot, override the CSS mask-image inline
+                  so the live CDN URL is used instead of the bundled /assets path (Task 61b). */}
+              <span
+                className="signex-logo-nav"
+                role="img"
+                aria-label="Signex"
+                style={
+                  dict.logoUrl
+                    ? { WebkitMaskImage: `url("${dict.logoUrl}")`, maskImage: `url("${dict.logoUrl}")` }
+                    : undefined
+                }
+              />
             </a>
             <div className="nav_corners-wrap">
               <div className="nav_side w-embed">

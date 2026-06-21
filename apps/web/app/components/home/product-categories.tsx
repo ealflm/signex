@@ -61,7 +61,7 @@ export function ProductCategories({ dict }: { dict: Dictionary["products"] }) {
                           </div>
                         </div>
                       </div>
-                      <img alt="" className="image_cover is-parallax" loading="lazy" src={categoryImage(i)} />
+                      <img alt="" className="image_cover is-parallax" loading="lazy" src={cat.image.url || categoryImage(i)} />
                     </div>
                     <div className="wrap_content-resort-v1">
                       <div className="text-size-large text_body-bold">

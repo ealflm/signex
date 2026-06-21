@@ -40,6 +40,14 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
   const b = snap.blocks;
   const bc = b.businessContact;
 
+  // Resolve an assetId (from AssetRef or VideoRef) to a public URL via the snapshot's
+  // flat asset map. Returns "" when the assetId is absent from the map (INITIAL_SNAPSHOT
+  // path with no DB record — callers should || fallback to the en.json URL literal).
+  function assetUrl(assetId: string): string {
+    const asset = snap.assets[assetId];
+    return asset ? resolveAssetUrl(asset.r2Key) : "";
+  }
+
   // businessContact helpers — phones and sites may be in any order
   const tel = bc.phones.find((p) => p.kind === "tel");
   const zalo = bc.phones.find((p) => p.kind === "zalo");
@@ -55,8 +63,9 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
       titleTop: t(b.hero.titleTop, lang),
       titleBottom: t(b.hero.titleBottom, lang),
       subtitle: t(b.hero.subtitle, lang),
-      // hero.image is AssetRef { assetId, alt? }; resolve alt, falling back to empty string
+      // hero.image is AssetRef { assetId, alt? }; resolve alt and URL from the assets map
       imageAlt: t(b.hero.image.alt, lang),
+      imageUrl: assetUrl(b.hero.image.assetId),
     },
     form: {
       name: t(fFields.name.label, lang),
@@ -89,9 +98,18 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
       titleTop: t(b.features.title.lead, lang),
       titleBottom: t(b.features.title.accent, lang),
       cta: t(b.features.cta.label, lang),
-      // video.media is VideoRef? — asset refs resolved via assets map; fields used as URLs below
+      // video.media is VideoRef? — resolve asset refs to URLs; falls back to "" when absent
       videoTitle: t(b.features.video.title, lang),
       videoText: t(b.features.video.text, lang),
+      videoMedia: b.features.video.media
+        ? {
+            posterUrl: assetUrl(b.features.video.media.posterAssetId),
+            mp4Url: assetUrl(b.features.video.media.mp4AssetId),
+            webmUrl: b.features.video.media.webmAssetId
+              ? assetUrl(b.features.video.media.webmAssetId)
+              : "",
+          }
+        : { posterUrl: "", mp4Url: "", webmUrl: "" },
       featured: {
         title: t(b.features.featured.title, lang),
         desc: t(b.features.featured.desc, lang),
@@ -210,6 +228,8 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
     nav: {
       skip: t(b.nav.skip, lang),
       cta: t(b.nav.cta.label, lang),
+      // nav.logo is AssetRef — resolve to a URL so Navbar can override the CSS mask at runtime
+      logoUrl: assetUrl(b.nav.logo.assetId),
       links: b.nav.links.map((l) => ({
         label: t(l.label, lang),
         href: l.href,
@@ -318,12 +338,17 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
       body: t(b.notFound.body, lang),
       cta: t(b.notFound.cta.label, lang),
       imageAlt: t(b.notFound.image.alt, lang),
+      // notFound.image is AssetRef — URL resolves from the assets map; falls back to "" for
+      // INITIAL_SNAPSHOT (the not-found-view.tsx 'use client' component stays hardcoded; see Task 61b)
+      imageUrl: assetUrl(b.notFound.image.assetId),
     },
     meta: {
       siteName: b.meta.siteName,
       title: t(b.meta.title, lang),
       description: t(b.meta.description, lang),
       ogImageAlt: t(b.meta.ogImage.alt, lang),
+      // meta.ogImage is AssetRef — resolve URL so seo.ts can serve the CDN path in og:image
+      ogImageUrl: assetUrl(b.meta.ogImage.assetId),
       about: {
         title: t(b.meta.about.title, lang),
         description: t(b.meta.about.description, lang),

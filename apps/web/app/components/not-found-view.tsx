@@ -59,6 +59,9 @@ export function NotFoundView() {
             </a>
           </div>
           <div className="image_404">
+            {/* not-found image: stays hardcoded — this is a 'use client' component; cannot
+                consume server-only SiteContent (Task 61b). notFound.imageUrl is populated in
+                content.ts + en.json for schema completeness but unused here. */}
             <img
               alt={t.alt}
               className="image_cover"

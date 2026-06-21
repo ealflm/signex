@@ -40,7 +40,7 @@ export function Hero({ dict }: { dict: Dictionary }) {
                 />
               </div>
               <div className="image_hero-home-a" data-w-id="e727a2b9-869a-7dcf-ee76-b8e98292f051">
-                <img alt={t.imageAlt} className="image_cover is-parallax" loading="lazy" src="/assets/images/69b04fc10fe79a2becaf38a8_Contemporary_Cliffside_House_at_Twilight.avif" />
+                <img alt={t.imageAlt} className="image_cover is-parallax" loading="lazy" src={t.imageUrl || "/assets/images/69b04fc10fe79a2becaf38a8_Contemporary_Cliffside_House_at_Twilight.avif"} />
                 <div className="overlay_home-b-hero">
                 </div>
               </div>
