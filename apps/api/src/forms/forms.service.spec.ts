@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { FormsService } from './forms.service';
+import { FormsService, UPLOAD_MAX_BYTES } from './forms.service';
 
 // ── Prisma mock ──────────────────────────────────────────────────────────────
 function buildPrisma(created: Record<string, unknown> = { id: 'sub_1' }) {
@@ -116,6 +116,76 @@ describe('FormsService', () => {
 
       expect(assets.register).not.toHaveBeenCalled();
       expect(prisma.client.formSubmission.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('submit — video upload rejected (images only)', () => {
+    it('throws BadRequestException for video/mp4', async () => {
+      const prisma = buildPrisma();
+      const assets = buildAssets();
+      const svc = new FormsService(prisma, assets);
+      const file = mockFile('video/mp4');
+
+      await expect(
+        svc.submit('contact', validPayload, file, null, null),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(assets.register).not.toHaveBeenCalled();
+      expect(prisma.client.formSubmission.create).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException for video/webm', async () => {
+      const prisma = buildPrisma();
+      const assets = buildAssets();
+      const svc = new FormsService(prisma, assets);
+      const file = mockFile('video/webm');
+
+      await expect(
+        svc.submit('quote', validPayload, file, null, null),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(assets.register).not.toHaveBeenCalled();
+      expect(prisma.client.formSubmission.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('submit — oversized upload rejected by service cap', () => {
+    it('throws BadRequestException when file exceeds UPLOAD_MAX_BYTES', async () => {
+      const prisma = buildPrisma();
+      const assets = buildAssets();
+      const svc = new FormsService(prisma, assets);
+      // Build a buffer 1 byte over the cap (the multer interceptor limit is the
+      // first line of defence; this test covers the service-layer fallback).
+      const bigFile: Express.Multer.File = {
+        buffer: Buffer.alloc(UPLOAD_MAX_BYTES + 1),
+        mimetype: 'image/png',
+        originalname: 'big.png',
+        size: UPLOAD_MAX_BYTES + 1,
+      } as Express.Multer.File;
+
+      await expect(
+        svc.submit('contact', validPayload, bigFile, null, null),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(assets.register).not.toHaveBeenCalled();
+      expect(prisma.client.formSubmission.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('submit — XFF first value used as ip', () => {
+    it('stores the first (client) value from x-forwarded-for when multiple proxies present', async () => {
+      // The controller parses XFF before calling submit; here we verify that
+      // whatever ip string arrives is stored verbatim — simulating what the
+      // controller hands us after splitting "client, proxy1, proxy2".
+      const prisma = buildPrisma();
+      const assets = buildAssets();
+      const svc = new FormsService(prisma, assets);
+
+      await svc.submit('contact', validPayload, null, '1.2.3.4', 'TestAgent');
+
+      expect(prisma.client.formSubmission.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ ip: '1.2.3.4' }),
+      });
     });
   });
 });

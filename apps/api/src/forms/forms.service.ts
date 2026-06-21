@@ -13,8 +13,15 @@ import {
   type SubmitInput,
 } from './dto/forms.dto';
 
-/** File upload size cap for form attachments (10 MB). */
-const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+/** File upload size cap for form attachments (10 MB). Exported so the multer
+ *  interceptor can share the same constant and they can never drift. */
+export const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+
+/** MIME types accepted on the forms upload field (images / SVG only).
+ *  Video types in MIME_ALLOWLIST are NOT accepted here. */
+export const FORMS_IMAGE_MIMES = new Set(
+  Object.keys(MIME_ALLOWLIST).filter((m) => m.startsWith('image/')),
+);
 
 @Injectable()
 export class FormsService {
@@ -38,9 +45,9 @@ export class FormsService {
     // 2. Handle optional file upload
     let uploadAssetId: string | null = null;
     if (file) {
-      if (!(file.mimetype in MIME_ALLOWLIST)) {
+      if (!FORMS_IMAGE_MIMES.has(file.mimetype)) {
         throw new BadRequestException(
-          `File type ${file.mimetype} is not accepted`,
+          `File type ${file.mimetype} is not accepted; images only`,
         );
       }
       if (file.buffer.length > UPLOAD_MAX_BYTES) {

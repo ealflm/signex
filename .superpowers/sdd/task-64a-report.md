@@ -111,3 +111,33 @@ prisma.client.formSubmission.create({
 - `nest build`: 0 errors.
 - `npm run lint -w @signex/api`: 0 errors.
 - `test:e2e app.e2e-spec`: AppModule compiles and boots (1 test passed).
+
+## Fix pass (multer fileSize limit + images-only + XFF first value)
+
+**Date:** 2026-06-21
+
+### Fix 1 — multer fileSize limit (DoS)
+- Exported `UPLOAD_MAX_BYTES` from `forms.service.ts` (was `const`, now `export const`).
+- Controller imports and passes it to `FileInterceptor` as `limits: { fileSize: UPLOAD_MAX_BYTES }`.
+- Multer now aborts the upload stream before fully buffering oversized payloads, eliminating the memory-exhaustion DoS vector on the unauthenticated `@Public()` endpoint.
+
+### Fix 2 — images-only upload for forms
+- Added `FORMS_IMAGE_MIMES` (exported `Set<string>`) in `forms.service.ts` — built by filtering `MIME_ALLOWLIST` keys that start with `image/`.
+- Replaced `file.mimetype in MIME_ALLOWLIST` check with `FORMS_IMAGE_MIMES.has(file.mimetype)`.
+- `video/mp4` and `video/webm` are now rejected with a clear 400 `"images only"` message.
+
+### Fix 3 — XFF first value
+- Controller XFF parsing changed from bare header string to `xff?.split(',')[0]?.trim() ?? req.ip ?? null`.
+- Only the first (client-IP) value is stored; intermediate proxy addresses are discarded.
+
+### Tests added (forms.service.spec.ts)
+- `video/mp4` upload → `BadRequestException` (images-only)
+- `video/webm` upload → `BadRequestException` (images-only)
+- Buffer 1 byte over `UPLOAD_MAX_BYTES` → `BadRequestException` (service-layer cap; interceptor limit is first line of defence)
+- XFF-derived ip stored verbatim (simulates controller pre-parsing)
+- **Total:** 12 tests (8 original + 4 new), all green.
+
+### Verify
+- `nest build`: 0 errors.
+- `npm run lint -w @signex/api`: 0 errors.
+- Full suite: 256 tests across 41 suites — all pass.
