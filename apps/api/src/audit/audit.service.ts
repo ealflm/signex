@@ -22,4 +22,9 @@ export class AuditService {
       },
     });
   }
+
+  /** Alias for writeAudit — preferred name for new callers. */
+  async record(tx: Prisma.TransactionClient, entry: AuditEntry): Promise<void> {
+    return this.writeAudit(tx, entry);
+  }
 }
