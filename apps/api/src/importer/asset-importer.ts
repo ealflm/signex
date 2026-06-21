@@ -30,7 +30,13 @@ function dtoToFrozen(dto: AssetDto, mime: string): FrozenAssetEntry {
 /**
  * Reads each manifest file from apps/web/public/assets, pushes it through
  * AssetsService.register (sha256 compute + SVG sanitize + R2 put + READY row).
- * register dedups by sha256, so byte-identical logos/OG collapse to one Asset row.
+ *
+ * Files that appear under multiple logicalIds (e.g. `logo` and `logoFooter` both
+ * point at signex-logo.svg) are read and uploaded ONCE — grouped by relPath before
+ * the loop. All logicalIds that share a relPath are mapped to the same
+ * FrozenAssetEntry, so there is a single register call (and therefore a single Asset
+ * row) per unique file, regardless of how many logical slots reference it.
+ *
  * Returns a logicalId -> FrozenAssetEntry map keyed for catalog + block builders.
  */
 export async function importAssets(deps: {
@@ -40,14 +46,30 @@ export async function importAssets(deps: {
   const root = deps.repoRoot ?? resolveRepoRoot();
   const out = new Map<string, FrozenAssetEntry>();
 
+  // Group manifest entries by relPath so each unique file is uploaded exactly once.
+  const byRelPath = new Map<string, (typeof ASSET_MANIFEST)[number][]>();
   for (const entry of ASSET_MANIFEST) {
-    const bytes = readFileSync(join(root, ASSETS_DIR, entry.relPath));
+    const group = byRelPath.get(entry.relPath) ?? [];
+    group.push(entry);
+    byRelPath.set(entry.relPath, group);
+  }
+
+  for (const [relPath, entries] of byRelPath) {
+    // Read the file once and upload once — dedup by relPath.
+    const bytes = readFileSync(join(root, ASSETS_DIR, relPath));
+    // Use the first entry's metadata for the register call; all entries in the group
+    // share the same file so kind/mime are identical.
+    const primary = entries[0];
     const dto = await deps.assets.register(SYSTEM_ACTOR, {
       bytes,
-      mime: entry.mime,
-      originalName: entry.relPath.split('/').pop()!,
+      mime: primary.mime,
+      originalName: relPath.split('/').pop()!,
     });
-    out.set(entry.logicalId, dtoToFrozen(dto, entry.mime));
+    const frozen = dtoToFrozen(dto, primary.mime);
+    // Map every logicalId that references this file to the single FrozenAssetEntry.
+    for (const entry of entries) {
+      out.set(entry.logicalId, frozen);
+    }
   }
 
   return out;

@@ -69,7 +69,11 @@ export const productImageLogicalId = (j: number): string =>
 
 export const ASSET_MANIFEST: ReadonlyArray<AssetManifestEntry> = [
   // --- brand / chrome ---
+  // signex-logo.svg is used in TWO places: the navbar brand link (CSS mask) and the
+  // footer brand column (<img>). Both logicalIds point at the same relPath so the
+  // importer dedup collapses them to ONE upload / ONE Asset row.
   SVG('logo', 'signex-logo.svg'),
+  SVG('logoFooter', 'signex-logo.svg'),
   SVG('lotus', 'lotus.svg'),
   SVG('lotusFooter', 'lotus-footer.svg'),
   PNG('og', 'signex-og.png'),

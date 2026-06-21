@@ -93,18 +93,24 @@ describe('importAssets', () => {
     expect(first).toHaveProperty('r2Key');
     expect(first).toHaveProperty('mime');
 
-    // dedup: if the logo appears under several logicalIds, it is uploaded once
-    const logoIds = ASSET_MANIFEST.filter((m) =>
-      m.relPath.endsWith('signex-logo.svg'),
-    ).map((m) => m.logicalId);
-    if (logoIds.length > 1) {
-      const keys = new Set(logoIds.map((id) => map.get(id)!.r2Key));
-      expect(keys.size).toBe(1);
-    }
+    // --- LIVE dedup assertions ---
+    // signex-logo.svg is legitimately referenced under TWO logicalIds:
+    //   'logo'       — navbar brand link (CSS mask)
+    //   'logoFooter' — footer brand column (<img>)
+    // importAssets groups by relPath and calls register ONCE for the file, so both
+    // logicalIds must resolve to the SAME FrozenAssetEntry (same assetId and r2Key).
+    const navLogoEntry = map.get('logo')!;
+    const footerLogoEntry = map.get('logoFooter')!;
+    expect(navLogoEntry).toBeTruthy();
+    expect(footerLogoEntry).toBeTruthy();
+    expect(navLogoEntry.assetId).toBe(footerLogoEntry.assetId);
+    expect(navLogoEntry.r2Key).toBe(footerLogoEntry.r2Key);
 
-    // dedup by sha256: register called for every manifest entry but real uploads
-    // are fewer (byte-identical assets are short-circuited inside the mock too)
-    expect(registerMock).toHaveBeenCalledTimes(ASSET_MANIFEST.length);
+    // Number of distinct uploads (register calls) must be LESS THAN the number of
+    // manifest entries, because the duplicate relPath collapsed to one call.
+    const uniqueRelPaths = new Set(ASSET_MANIFEST.map((m) => m.relPath)).size;
+    expect(registerMock).toHaveBeenCalledTimes(uniqueRelPaths);
+    expect(registerMock.mock.calls.length).toBeLessThan(ASSET_MANIFEST.length);
 
     // bytes come from apps/web/public/assets on disk
     const firstEntry = ASSET_MANIFEST[0];
