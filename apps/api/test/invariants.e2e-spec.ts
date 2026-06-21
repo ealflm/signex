@@ -29,7 +29,11 @@ import cookieParser from 'cookie-parser';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
-import { ReleaseSnapshotSchema } from '@signex/shared';
+import {
+  ReleaseSnapshotSchema,
+  parseBlock,
+  BLOCK_REGISTRY,
+} from '@signex/shared';
 
 // Gate: skip the entire suite when there is no real database wired up.
 const DESCRIBE = process.env.DATABASE_URL ? describe : describe.skip;
@@ -273,5 +277,107 @@ DESCRIBE('Schema invariants (e2e)', () => {
     expect(() => ReleaseSnapshotSchema.parse(live!.snapshot)).not.toThrow();
     const parsed = ReleaseSnapshotSchema.parse(live!.snapshot);
     expect(parsed.catalog.categories.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+// ── Concurrency invariants ────────────────────────────────────────────────────
+DESCRIBE('Concurrency invariants (e2e)', () => {
+  it('two parallel publishes never collide on version', async () => {
+    // Bump revision so both requests see a dirty working state.
+    await prisma.client.workingState.update({
+      where: { id: 'singleton' },
+      data: { revision: { increment: 1 } },
+    });
+    const fresh = await prisma.client.workingState.findUnique({
+      where: { id: 'singleton' },
+    });
+    const results = await Promise.allSettled([
+      agent
+        .post('/api/releases/publish')
+        .send({ note: 'race-a', expectedRevision: fresh!.revision }),
+      agent
+        .post('/api/releases/publish')
+        .send({ note: 'race-b', expectedRevision: fresh!.revision }),
+    ]);
+    const codes = results.map((r) =>
+      r.status === 'fulfilled' ? r.value.status : 0,
+    );
+    // Both requests succeed (2xx). The advisory-lock serializes them inside the
+    // transaction: the first mints a new release; the second sees the matching
+    // checksum and returns a noop (no new release). Neither yields a 500.
+    expect(codes.every((c) => c >= 200 && c < 500)).toBe(true);
+    expect(codes.filter((c) => c === 500)).toHaveLength(0);
+    // PRIMARY INVARIANT: all minted versions are distinct (sequence guarantee).
+    const versions = await prisma.client.release.findMany({
+      select: { version: true },
+    });
+    expect(new Set(versions.map((v) => v.version)).size).toBe(versions.length);
+    // SINGLE-PUBLISHED: exactly one PUBLISHED release after both requests settle.
+    const publishedCount = await prisma.client.release.count({
+      where: { status: 'PUBLISHED' },
+    });
+    expect(publishedCount).toBe(1);
+    // POINTER: PublishedPointer targets the highest version.
+    const pointer = await prisma.client.publishedPointer.findUnique({
+      where: { id: 'singleton' },
+    });
+    const maxVersion = Math.max(...versions.map((v) => v.version));
+    expect(pointer!.publishedVersion).toBe(maxVersion);
+  });
+
+  it('stale expectedRevision yields 409 STALE_DRAFT, never a 500', async () => {
+    const ws = await prisma.client.workingState.findUnique({
+      where: { id: 'singleton' },
+    });
+    // Capture current revision as stale, then bump underneath the publisher.
+    const stale = ws!.revision;
+    await prisma.client.workingState.update({
+      where: { id: 'singleton' },
+      data: { revision: { increment: 1 } },
+    });
+    const res = await agent
+      .post('/api/releases/publish')
+      .send({ note: 'stale', expectedRevision: stale });
+    expect(res.status).toBe(409);
+    expect(String(res.body.message ?? res.body.error ?? '')).toMatch(
+      /STALE_DRAFT|stale/i,
+    );
+  });
+});
+
+// ── Importer conformance ──────────────────────────────────────────────────────
+DESCRIBE('Importer conformance (e2e)', () => {
+  it('imported 4 categories, 6 products each, unique slugs', async () => {
+    const cats = await prisma.client.category.findMany({
+      where: { deletedAt: null },
+      include: { products: { where: { deletedAt: null } } },
+      orderBy: { sortOrder: 'asc' },
+    });
+    expect(cats).toHaveLength(4);
+    for (const c of cats) expect(c.products).toHaveLength(6);
+    const slugs = cats.map((c) => c.slug);
+    expect(new Set(slugs).size).toBe(slugs.length);
+    for (const c of cats) {
+      const ps = c.products.map((p) => p.slug);
+      expect(new Set(ps).size).toBe(ps.length);
+    }
+  });
+
+  it('every imported ContentBlock re-parses through its registry schema', async () => {
+    const blocks = await prisma.client.contentBlock.findMany();
+    expect(blocks.length).toBeGreaterThanOrEqual(
+      Object.keys(BLOCK_REGISTRY).length,
+    );
+    for (const b of blocks) {
+      expect(() => parseBlock(b.kind, b.key, b.data)).not.toThrow();
+    }
+  });
+
+  it('en/vi locale parity on a localized block (businessContact legalName)', async () => {
+    const bc = await prisma.client.contentBlock.findUnique({
+      where: { kind_key: { kind: 'SETTINGS', key: 'businessContact' } },
+    });
+    const data = bc!.data as { legalName: Record<string, unknown> };
+    expect(Object.keys(data.legalName).sort()).toEqual(['en', 'vi']);
   });
 });
