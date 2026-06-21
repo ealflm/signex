@@ -39,6 +39,10 @@ services:
       API_PORT: ${API_PORT:-3060}
       # Inside the Compose network the DB host is the service name "postgres", not localhost.
       DATABASE_URL: postgresql://${POSTGRES_USER:-signex}:${POSTGRES_PASSWORD:-signex}@postgres:5432/${POSTGRES_DB:-signex}?schema=public
+      # Seed admin (auth:seed creates a deterministic SYSTEM/ADMIN user before the importer runs).
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@signex.local}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Signex Admin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-change-me-please-32chars-long}
       # Cloudflare R2 (media). REQUIRED for the api to boot (AssetsModule R2_CONFIG factory
       # validates these at startup). Dev-placeholder defaults so the stack boots out-of-the-box;
       # override with real R2 credentials via host env / secrets in production.
@@ -49,7 +53,12 @@ services:
       R2_REGION: ${R2_REGION:-auto}
       R2_PRESIGN_TTL: ${R2_PRESIGN_TTL:-300}
       # MEDIA_PUBLIC_BASE must NOT be unset or an r2.dev host (the publish gate rejects those).
-      MEDIA_PUBLIC_BASE: ${MEDIA_PUBLIC_BASE:-https://media.signex.local}
+      MEDIA_PUBLIC_BASE: ${MEDIA_PUBLIC_BASE:-http://localhost:9000/signex-media}
+      # Control-plane secrets shared by api <-> web <-> admin route handlers.
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-dev-revalidate-secret-change-me}
+      PREVIEW_SECRET: ${PREVIEW_SECRET:-dev-preview-secret-change-me}
+      # URL the api's RevalidationService calls to trigger Next.js on-demand ISR on the web service.
+      WEB_REVALIDATE_URL: ${WEB_REVALIDATE_URL:-http://web:3062/api/revalidate}
       # CORS + OriginGuard allow-list. Browser origin is the host-published URL even inside
       # the Compose network (the browser connects to the host, not the container name).
       AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:3062,http://localhost:3061}
@@ -84,10 +93,10 @@ services:
       # Web PUBLIC read-path queries Postgres directly via @signex/db (one indexed row).
       DATABASE_URL: postgresql://${POSTGRES_USER:-signex}:${POSTGRES_PASSWORD:-signex}@postgres:5432/${POSTGRES_DB:-signex}?schema=public
       # Asset URLs are resolved at read time: MEDIA_PUBLIC_BASE + '/' + r2Key.
-      MEDIA_PUBLIC_BASE: ${MEDIA_PUBLIC_BASE:-}
+      MEDIA_PUBLIC_BASE: ${MEDIA_PUBLIC_BASE:-http://localhost:9000/signex-media}
       # Secret-gated on-demand revalidation + draft-mode entry (called by the api post-publish).
-      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
-      PREVIEW_SECRET: ${PREVIEW_SECRET:-}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-dev-revalidate-secret-change-me}
+      PREVIEW_SECRET: ${PREVIEW_SECRET:-dev-preview-secret-change-me}
       # Server-side calls to the api (preview snapshot, form submit forwarding if proxied).
       API_URL: ${API_URL:-http://api:3060}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3060}
@@ -120,9 +129,9 @@ services:
       API_URL: ${API_URL:-http://api:3060}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3060}
       ADMIN_ORIGIN: ${ADMIN_ORIGIN:-http://localhost:3061}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3061}
-      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-changeme-revalidate}
-      PREVIEW_SECRET: ${PREVIEW_SECRET:-changeme-preview}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3061,http://localhost:3062}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-dev-revalidate-secret-change-me}
+      PREVIEW_SECRET: ${PREVIEW_SECRET:-dev-preview-secret-change-me}
       NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL:-http://localhost:3062}
     ports:
       - "${ADMIN_PORT:-3061}:3061"
