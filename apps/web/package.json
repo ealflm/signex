@@ -6,9 +6,13 @@
     "dev": "next dev -p 3062",
     "build": "next build",
     "start": "next start -p 3062",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:readpath": "node scripts/verify-readpath.mjs",
+    "verify:dynamic-params": "node scripts/verify-dynamic-params.mjs"
   },
   "dependencies": {
+    "@signex/db": "*",
+    "@signex/shared": "*",
     "next": "16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4"

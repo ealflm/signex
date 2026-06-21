@@ -2,14 +2,16 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const nextConfig: NextConfig = {
-  // Emit a self-contained production server at .next/standalone (server.js + only the traced
-  // node_modules) for a small Docker image. Static assets (.next/static) and public/ are NOT
-  // included by standalone — the Dockerfile copies them in. No effect on `next dev`.
+  // Emit a self-contained production server at .next/standalone (see Dockerfile).
   output: "standalone",
-  // Monorepo: trace files from the repo root so the standalone bundle spans the whole workspace
-  // (hoisted root node_modules + this app). With this set, the standalone server is emitted at
-  // .next/standalone/apps/web/server.js with node_modules hoisted to the standalone root.
+  // Monorepo: trace files from the repo root so the standalone bundle spans the workspace.
   outputFileTracingRoot: path.join(__dirname, "../../"),
+  // Required for `'use cache'` + `cacheTag('release')` in app/lib/content.ts (Next 16.2).
+  cacheComponents: true,
+  // Keep @prisma/client + the generated @signex/db client OUT of the bundler so the
+  // native query engine (linux-musl-openssl-3.0.x binaryTarget) is required() at runtime
+  // and traced into standalone rather than mangled by the build.
+  serverExternalPackages: ["@prisma/client", "@signex/db"],
 };
 
 export default nextConfig;

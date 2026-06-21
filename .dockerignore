@@ -19,8 +19,10 @@ node_modules
 # ---- NestJS build artifacts (regenerated in the builder stage) ----
 apps/api/dist
 
-# ---- Prisma generated client + engine (MUST be generated inside the Linux build stage) ----
-packages/db/generated
+# ---- Prisma generated client + engine ----
+# Regenerated inside the Linux builder stage (`db generate`) for both api AND web images.
+# NOT ignored: the web standalone trace must be able to resolve packages/db/generated.
+# (Keeping a host copy out of context is unnecessary now that two images consume it.)
 
 # ---- TS / Next incremental ----
 **/*.tsbuildinfo

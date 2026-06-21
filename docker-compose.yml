@@ -69,6 +69,8 @@ services:
     container_name: signex-web
     restart: unless-stopped
     depends_on:
+      postgres:
+        condition: service_healthy
       api:
         condition: service_healthy
     environment:
@@ -76,7 +78,14 @@ services:
       PORT: 3062
       HOSTNAME: 0.0.0.0
       NEXT_TELEMETRY_DISABLED: "1"
-      # Server-side calls use the Compose service DNS; client-side uses the public placeholder.
+      # Web PUBLIC read-path queries Postgres directly via @signex/db (one indexed row).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-signex}:${POSTGRES_PASSWORD:-signex}@postgres:5432/${POSTGRES_DB:-signex}?schema=public
+      # Asset URLs are resolved at read time: MEDIA_PUBLIC_BASE + '/' + r2Key.
+      MEDIA_PUBLIC_BASE: ${MEDIA_PUBLIC_BASE:-}
+      # Secret-gated on-demand revalidation + draft-mode entry (called by the api post-publish).
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
+      PREVIEW_SECRET: ${PREVIEW_SECRET:-}
+      # Server-side calls to the api (preview snapshot, form submit forwarding if proxied).
       API_URL: ${API_URL:-http://api:3060}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3060}
     ports:
