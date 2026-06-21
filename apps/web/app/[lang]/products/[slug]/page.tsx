@@ -7,26 +7,27 @@
 // startsWith "/products/"). The data-w-ids below are therefore kept VERBATIM from blog-b (page id
 // matches → reveals/parallax fire), exactly like the /about (home-c) and /contact (contact-c) ports.
 //
-// Static: generateStaticParams enumerates the dict's category slugs; dynamicParams=false → an
-// unknown slug 404s. Content is dict-driven (products.categories[].intro/items, EN + VI).
+// Data source: getSiteContent(lang) — the published, cached read-path (spec §10.2). Catalog images
+// come from the frozen snapshot's resolved asset URL (cat.image.url / item.image.url), not the
+// old index-cycling product-images helpers. Unknown slugs → notFound() (replaces dynamicParams=false
+// under cacheComponents, which forbids that config entirely).
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
-import { getDictionary } from "../../dictionaries";
+import { getSiteContent } from "@/app/lib/content";
 import { buildMetadata } from "@/app/lib/seo";
-import { categoryImage, productImage } from "@/app/lib/product-images";
 
 // Under cacheComponents the `dynamicParams` route config is not allowed; slugs
 // not in generateStaticParams render on demand then cache (invalid → notFound in-render).
 export async function generateStaticParams() {
-  const dict = await getDictionary(DEFAULT_LOCALE);
-  return dict.products.categories.map((c) => ({ slug: c.slug }));
+  const { products } = await getSiteContent(DEFAULT_LOCALE);
+  return products.categories.map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string }> }): Promise<Metadata> {
   const { lang, slug } = await params;
   const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
-  const dict = await getDictionary(locale);
+  const dict = await getSiteContent(locale);
   const cat = dict.products.categories.find((c) => c.slug === slug);
   if (!cat) return {};
   const m = dict.meta;
@@ -36,13 +37,12 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 export default async function CategoryDetailPage({ params }: { params: Promise<{ lang: string; slug: string }> }) {
   const { lang, slug } = await params;
   if (!hasLocale(lang)) notFound();
-  const dict = await getDictionary(lang);
-  const idx = dict.products.categories.findIndex((c) => c.slug === slug);
-  if (idx === -1) notFound(); // unknown category → 404
-  const cat = dict.products.categories[idx];
+  const dict = await getSiteContent(lang);
+  const cat = dict.products.categories.find((c) => c.slug === slug);
+  if (!cat) notFound(); // unknown category → 404
   const stats = dict.products.statLabels;
   const t = dict.products.detail;
-  const heroImg = categoryImage(idx);
+  const heroImg = cat.image.url;
 
   return (
     <>
@@ -113,13 +113,13 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
             </div>
             <div className="blogs w-dyn-list" data-w-id="2a5ebab5-4e4d-85db-43cb-631c22168ac4" style={{ opacity: 0, filter: 'blur(5px)' }}>
               <div className="grid_blog-b w-dyn-items" role="list">
-                {cat.items.map((p, i) => (
+                {cat.items.map((p) => (
                   <div className="w-dyn-item" role="listitem" key={p.slug}>
                     {/* Each card links to the product detail page (zoomable image + info). */}
                     <a className="card_blog-b w-inline-block" href={`/products/${cat.slug}/${p.slug}`}>
                       <div className="wrap_image-blog-b" data-w-id="2a5ebab5-4e4d-85db-43cb-631c22168ac8">
                         <div className="image_blog-a">
-                          <img alt={p.title} className="image_cover is-parallax" loading="lazy" src={productImage(i)} />
+                          <img alt={p.title} className="image_cover is-parallax" loading="lazy" src={p.image.url} />
                         </div>
                         <div className="overlay_tag-home">
                           <div className="master_label w-variant-84e91bde-75c3-dd4c-a083-7846b4ae6170" data-wf--tag--variant="lighter">

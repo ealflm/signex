@@ -3,36 +3,40 @@
 // eyebrow, name, material, description) + a "Request a Quote" CTA. Built from Caladan primitives
 // (padding-global / container-large / master_label / heading-style / cta_primary) + scoped
 // .product-detail_* layout in globals.css. Rendered statically (no IX2 scroll-reveal — the zoom
-// is the interaction). Static params: every category × product (× en/vi); dynamicParams=false.
+// is the interaction). Static params: every category × product (× en/vi).
+//
+// Data source: getSiteContent(lang) — the published, cached read-path (spec §10.2). Product image
+// comes from the frozen snapshot's resolved asset URL (item.image.url), not the old index-cycling
+// productImage() helper. Unknown slugs → notFound() (replaces dynamicParams=false under
+// cacheComponents, which forbids that config entirely).
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
-import { getDictionary } from "../../../dictionaries";
+import { getSiteContent, type SiteContent } from "@/app/lib/content";
 import { buildMetadata } from "@/app/lib/seo";
 import { ProductImageZoom } from "@/app/components/product-image-zoom";
-import { productImage } from "@/app/lib/product-images";
 
 // Under cacheComponents the `dynamicParams` route config is not allowed; slugs
 // not in generateStaticParams render on demand then cache (invalid → notFound in-render).
 export async function generateStaticParams() {
-  const dict = await getDictionary(DEFAULT_LOCALE);
-  return dict.products.categories.flatMap((c) =>
+  const { products } = await getSiteContent(DEFAULT_LOCALE);
+  return products.categories.flatMap((c) =>
     c.items.map((it) => ({ slug: c.slug, product: it.slug }))
   );
 }
 
-function locate(dict: Awaited<ReturnType<typeof getDictionary>>, slug: string, product: string) {
+function locate(dict: SiteContent, slug: string, product: string) {
   const cat = dict.products.categories.find((c) => c.slug === slug);
   if (!cat) return null;
-  const itemIdx = cat.items.findIndex((it) => it.slug === product);
-  if (itemIdx === -1) return null;
-  return { cat, item: cat.items[itemIdx], itemIdx };
+  const item = cat.items.find((it) => it.slug === product);
+  if (!item) return null;
+  return { cat, item };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string; product: string }> }): Promise<Metadata> {
   const { lang, slug, product } = await params;
   const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
-  const dict = await getDictionary(locale);
+  const dict = await getSiteContent(locale);
   const found = locate(dict, slug, product);
   if (!found) return {};
   const m = dict.meta;
@@ -48,12 +52,12 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 export default async function ProductDetailPage({ params }: { params: Promise<{ lang: string; slug: string; product: string }> }) {
   const { lang, slug, product } = await params;
   if (!hasLocale(lang)) notFound();
-  const dict = await getDictionary(lang);
+  const dict = await getSiteContent(lang);
   const found = locate(dict, slug, product);
   if (!found) notFound(); // unknown category or product → 404
-  const { cat, item, itemIdx } = found;
+  const { cat, item } = found;
   const pl = dict.products.product;
-  const image = productImage(itemIdx);
+  const image = item.image.url;
 
   return (
     <section className="section_product-detail">

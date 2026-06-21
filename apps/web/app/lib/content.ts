@@ -140,7 +140,10 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
         back: t(b.productsHeader.product.back, lang),
         zoomHint: t(b.productsHeader.product.zoomHint, lang),
       },
-      // Catalog categories: images are FrozenAsset inline (r2Key present)
+      // Catalog categories: images are FrozenAsset inline (r2Key present).
+      // Resolve r2Key → URL at read time so a CDN/domain migration never requires a
+      // snapshot re-publish (spec §3.1.3). Falls back to empty string when no image
+      // is attached yet (caller should guard or use a placeholder).
       categories: snap.catalog.categories.map((cat) => ({
         tag: t(cat.tag, lang),
         title: t(cat.title, lang),
@@ -148,11 +151,13 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale): SiteContent {
         products: cat.productCount,
         materials: cat.materialCount,
         intro: t(cat.intro, lang),
+        image: { url: cat.image ? resolveAssetUrl(cat.image.r2Key) : "" },
         items: cat.items.map((item) => ({
           slug: item.slug,
           title: t(item.title, lang),
           tag: t(item.tag, lang),
           desc: t(item.desc, lang),
+          image: { url: item.image ? resolveAssetUrl(item.image.r2Key) : "" },
         })),
       })),
     },
