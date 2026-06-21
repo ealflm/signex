@@ -89,11 +89,11 @@ export class SnapshotSerializer {
       where: { deletedAt: null },
       orderBy: { sortOrder: 'asc' },
       include: {
-        image: true,
+        image: { include: { poster: true } },
         products: {
           where: { deletedAt: null },
           orderBy: { sortOrder: 'asc' },
-          include: { image: true },
+          include: { image: { include: { poster: true } } },
         },
       },
     });
@@ -108,6 +108,7 @@ export class SnapshotSerializer {
           title: p.title,
           tag: p.tag,
           desc: p.desc,
+          // Omit the field entirely when no image — never emit image: null (fails FrozenAsset.optional())
           ...(p.image
             ? { image: this.freezeAsset(p.image, p.imageAlt ?? undefined) }
             : {}),
@@ -128,11 +129,26 @@ export class SnapshotSerializer {
       };
     });
 
+    // 4b. Query Asset table for ALL referenced assetIds and build the assets map.
+    // This covers both block AssetRef/VideoRef ids and catalog image ids.
+    const allAssetIds = [...assetIds];
+    const assetRows: AssetRow[] = allAssetIds.length
+      ? await (client as any).asset.findMany({
+          where: { id: { in: allAssetIds } },
+          include: { poster: true },
+        })
+      : [];
+    const assetsMap: Record<string, unknown> = {};
+    for (const row of assetRows) {
+      assetsMap[row.id] = this.freezeAsset(row);
+    }
+
     // 5. Assemble candidate and validate via schema
     const candidate = {
       schemaVersion: 1 as const,
       blocks,
       catalog: { categories: catalogCategories },
+      assets: assetsMap,
     };
 
     const snapshot = ReleaseSnapshotSchema.parse(candidate);

@@ -14,6 +14,9 @@ function makeAsset(over: Partial<any> = {}) {
   };
 }
 
+// The AREF assetId used in blocks.fixture (hero.image, nav.logo, meta.ogImage, notFound.image)
+const BLOCK_ASSET_ID = 'clqt5s0000000000000000001';
+
 function makeClient(over: Partial<any> = {}) {
   const catImg = makeAsset({
     id: 'clqt5s0000000000000000002',
@@ -24,6 +27,12 @@ function makeClient(over: Partial<any> = {}) {
     id: 'clqt5s0000000000000000003',
     r2Key: 'originals/cccc/prod.jpg',
     mime: 'image/jpeg',
+  });
+  // Block asset (referenced by hero.image, nav.logo, meta.ogImage, notFound.image in fixture)
+  const blockAsset = makeAsset({
+    id: BLOCK_ASSET_ID,
+    r2Key: 'originals/aaaa/logo.svg',
+    mime: 'image/svg+xml',
   });
   return {
     workingState: {
@@ -65,6 +74,13 @@ function makeClient(over: Partial<any> = {}) {
           ],
         },
       ]),
+    },
+    asset: {
+      findMany: jest.fn().mockImplementation(({ where }: any) => {
+        const allAssets = [blockAsset, catImg, prodImg];
+        const ids: string[] = where?.id?.in ?? [];
+        return Promise.resolve(allAssets.filter((a) => ids.includes(a.id)));
+      }),
     },
     ...over,
   } as any;
@@ -110,6 +126,67 @@ describe('SnapshotSerializer', () => {
     for (const match of allR2Keys) {
       expect(match).not.toMatch(/https?:\/\//);
     }
+  });
+
+  it('populates snapshot.assets with FrozenAssets for block-referenced AND catalog assetIds', async () => {
+    const client = makeClient();
+    const { snapshot } = await serializer.serialize(client);
+
+    // Block asset (e.g. hero.image, nav.logo, meta.ogImage, notFound.image in fixture)
+    expect(snapshot.assets[BLOCK_ASSET_ID]).toBeDefined();
+    expect((snapshot.assets[BLOCK_ASSET_ID] as any).r2Key).toBe('originals/aaaa/logo.svg');
+    expect((snapshot.assets[BLOCK_ASSET_ID] as any).variants).toEqual([]);
+
+    // Catalog image asset
+    const catAssetId = 'clqt5s0000000000000000002';
+    expect(snapshot.assets[catAssetId]).toBeDefined();
+    expect((snapshot.assets[catAssetId] as any).r2Key).toBe('originals/bbbb/cat.jpg');
+
+    // Product image asset
+    const prodAssetId = 'clqt5s0000000000000000003';
+    expect(snapshot.assets[prodAssetId]).toBeDefined();
+    expect((snapshot.assets[prodAssetId] as any).r2Key).toBe('originals/cccc/prod.jpg');
+  });
+
+  it('serializes a product without an image cleanly (no image: null, snapshot parses)', async () => {
+    const clientNoImage = makeClient({
+      category: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'clqt5s0000000000000000010',
+            slug: 'pvc',
+            sortOrder: 0,
+            title: { en: 'PVC', vi: 'PVC' },
+            tag: { en: 'PVC', vi: 'PVC' },
+            intro: { en: 'i', vi: 'i' },
+            productCount: 18,
+            materialCount: 4,
+            imageId: null,
+            image: null,
+            imageAlt: null,
+            products: [
+              {
+                id: 'clqt5s0000000000000000020',
+                slug: 'p-no-img',
+                sortOrder: 0,
+                title: { en: 'No Image', vi: 'No Image' },
+                tag: { en: 't', vi: 't' },
+                desc: { en: 'd', vi: 'd' },
+                imageId: null,
+                image: null,  // no image
+                imageAlt: null,
+              },
+            ],
+          },
+        ]),
+      },
+    });
+    const { snapshot } = await serializer.serialize(clientNoImage);
+    const prod = (snapshot.catalog.categories[0] as any).items[0];
+    // image must be absent (not null) — FrozenProduct.image is optional(), null fails it
+    expect('image' in prod).toBe(false);
+    // The whole snapshot must parse (ReleaseSnapshotSchema.parse already ran in serialize)
+    expect(snapshot.schemaVersion).toBe(1);
   });
 
   it('freezes video poster + webm r2Keys', async () => {

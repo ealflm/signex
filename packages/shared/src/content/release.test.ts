@@ -193,6 +193,7 @@ describe("ReleaseSnapshotSchema", () => {
       schemaVersion: 2,
       blocks: VALID_BLOCKS,
       catalog: { categories: [] },
+      assets: {},
     });
     expect(r.success).toBe(false);
   });
@@ -202,18 +203,60 @@ describe("ReleaseSnapshotSchema", () => {
       schemaVersion: 1,
       blocks: {},
       catalog: { categories: [] },
+      assets: {},
     });
     expect(r.success).toBe(false);
   });
 
-  it("parses a minimal valid snapshot (schemaVersion 1, all blocks, empty catalog)", () => {
+  it("parses a minimal valid snapshot (schemaVersion 1, all blocks, empty catalog, empty assets)", () => {
     const r = ReleaseSnapshotSchema.safeParse({
       schemaVersion: 1,
       blocks: VALID_BLOCKS,
       catalog: { categories: [] },
+      assets: {},
     });
     if (!r.success) console.error(JSON.stringify(r.error.format(), null, 2));
     expect(r.success).toBe(true);
+  });
+
+  it("parses a snapshot with a populated assets map (block + catalog assetIds)", () => {
+    const frozenAsset = {
+      assetId: CUID,
+      r2Key: "originals/ab/logo.svg",
+      mime: "image/svg+xml",
+    };
+    const r = ReleaseSnapshotSchema.safeParse({
+      schemaVersion: 1,
+      blocks: VALID_BLOCKS,
+      catalog: { categories: [] },
+      assets: { [CUID]: frozenAsset },
+    });
+    if (!r.success) console.error(JSON.stringify(r.error.format(), null, 2));
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.assets[CUID]).toMatchObject({ r2Key: "originals/ab/logo.svg", mime: "image/svg+xml" });
+      expect(r.data.assets[CUID].variants).toEqual([]);
+    }
+  });
+
+  it("rejects a snapshot missing the assets map", () => {
+    const r = ReleaseSnapshotSchema.safeParse({
+      schemaVersion: 1,
+      blocks: VALID_BLOCKS,
+      catalog: { categories: [] },
+      // assets intentionally omitted
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects an assets map with a FrozenAsset missing r2Key", () => {
+    const r = ReleaseSnapshotSchema.safeParse({
+      schemaVersion: 1,
+      blocks: VALID_BLOCKS,
+      catalog: { categories: [] },
+      assets: { [CUID]: { assetId: CUID, mime: "image/png" } }, // missing r2Key
+    });
+    expect(r.success).toBe(false);
   });
 
   it("parses a snapshot with one category + one product + FrozenAsset image", () => {
@@ -254,6 +297,7 @@ describe("ReleaseSnapshotSchema", () => {
           },
         ],
       },
+      assets: { [CUID]: { assetId: CUID, r2Key: "originals/ab/cat.jpg", mime: "image/jpeg" } },
     });
     if (!r.success) console.error(JSON.stringify(r.error.format(), null, 2));
     expect(r.success).toBe(true);
