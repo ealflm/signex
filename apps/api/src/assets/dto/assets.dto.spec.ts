@@ -10,6 +10,7 @@ import {
 describe('assets dto helpers', () => {
   it('maps mime to kind', () => {
     expect(kindForMime('image/png')).toBe('IMAGE');
+    expect(kindForMime('image/avif')).toBe('IMAGE');
     expect(kindForMime('image/svg+xml')).toBe('SVG');
     expect(kindForMime('video/mp4')).toBe('VIDEO');
   });
@@ -27,6 +28,7 @@ describe('assets dto helpers', () => {
 
   it('derives extension from mime', () => {
     expect(extForMime('image/jpeg')).toBe('jpg');
+    expect(extForMime('image/avif')).toBe('avif');
     expect(extForMime('image/svg+xml')).toBe('svg');
     expect(extForMime('video/webm')).toBe('webm');
   });
@@ -39,6 +41,16 @@ describe('assets dto helpers', () => {
       originalName: 'x.png',
     });
     expect(r.mime).toBe('image/png');
+  });
+
+  it('presignSchema accepts a valid avif request', () => {
+    const r = presignSchema.parse({
+      mime: 'image/avif',
+      bytes: 1000,
+      sha256: 'a'.repeat(64),
+      originalName: 'x.avif',
+    });
+    expect(r.mime).toBe('image/avif');
   });
 
   it('presignSchema rejects a disallowed mime', () => {
@@ -78,6 +90,7 @@ describe('assets dto helpers', () => {
     expect(MIME_ALLOWLIST['image/jpeg'].kind).toBe('IMAGE');
     expect(MIME_ALLOWLIST['image/webp'].kind).toBe('IMAGE');
     expect(MIME_ALLOWLIST['image/gif'].kind).toBe('IMAGE');
+    expect(MIME_ALLOWLIST['image/avif'].kind).toBe('IMAGE');
     expect(MIME_ALLOWLIST['image/svg+xml'].kind).toBe('SVG');
     expect(MIME_ALLOWLIST['video/mp4'].kind).toBe('VIDEO');
     expect(MIME_ALLOWLIST['video/webm'].kind).toBe('VIDEO');

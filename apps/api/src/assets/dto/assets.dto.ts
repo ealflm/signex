@@ -1,4 +1,4 @@
-import { z, Id, LocalizedText } from '@signex/shared';
+import { z, LocalizedText } from '@signex/shared';
 import type { AssetKind } from '@signex/db';
 
 const MB = 1024 * 1024;
@@ -8,6 +8,7 @@ export const MIME_ALLOWLIST: Record<string, { kind: AssetKind; maxBytes: number 
   'image/jpeg': { kind: 'IMAGE', maxBytes: 15 * MB },
   'image/webp': { kind: 'IMAGE', maxBytes: 15 * MB },
   'image/gif': { kind: 'IMAGE', maxBytes: 15 * MB },
+  'image/avif': { kind: 'IMAGE', maxBytes: 15 * MB },
   'image/svg+xml': { kind: 'SVG', maxBytes: 2 * MB },
   'video/mp4': { kind: 'VIDEO', maxBytes: 200 * MB },
   'video/webm': { kind: 'VIDEO', maxBytes: 200 * MB },
@@ -18,6 +19,7 @@ const EXT_BY_MIME: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
   'image/gif': 'gif',
+  'image/avif': 'avif',
   'image/svg+xml': 'svg',
   'video/mp4': 'mp4',
   'video/webm': 'webm',
