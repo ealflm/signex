@@ -292,4 +292,8 @@ export class ReleaseService {
       orderBy: { version: 'desc' },
     });
   }
+
+  async getByVersion(version: number): Promise<Release | null> {
+    return this.prisma.client.release.findUnique({ where: { version } });
+  }
 }
