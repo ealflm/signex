@@ -209,6 +209,14 @@ DESCRIBE('Release concurrency (integration)', () => {
     // SECONDARY INVARIANT: at least one publish succeeded.
     expect(published.length).toBeGreaterThanOrEqual(1);
 
+    // SINGLE-PUBLISHED INVARIANT: advisory lock serializes both publishes so the
+    // second waits for the first to commit, then demotes the newly-PUBLISHED row
+    // before creating its own. Exactly ONE Release.status='PUBLISHED' must exist.
+    const publishedCount = await prisma.release.count({
+      where: { status: 'PUBLISHED' },
+    });
+    expect(publishedCount).toBe(1);
+
     // POINTER INVARIANT: exactly one PublishedPointer singleton at all times.
     // The upsert inside the tx guarantees this regardless of race outcome.
     const pointers = await prisma.publishedPointer.count();

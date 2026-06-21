@@ -19,6 +19,7 @@ function makeTx() {
         .mockResolvedValue({ id: 'singleton', revision: 7 }),
       update: jest.fn().mockResolvedValue({}),
     },
+    $executeRaw: jest.fn().mockResolvedValue(1),
     $queryRaw: jest.fn().mockResolvedValue([{ nextval: 42n }]),
     release: {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -217,6 +218,7 @@ describe('ReleaseService rollback / diff / live / list', () => {
           .fn()
           .mockResolvedValue({ id: 'crel-new', version: 9 }),
       },
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $queryRaw: jest.fn().mockResolvedValue([{ nextval: 9n }]),
       publishedPointer: { upsert: jest.fn().mockResolvedValue({}) },
       releaseAssetRef: { createMany: jest.fn().mockResolvedValue({ count: 2 }) },

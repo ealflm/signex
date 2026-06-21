@@ -12,6 +12,17 @@ import type { PublishInput } from './dto/release.dto';
 
 const SCHEMA_VERSION = 1;
 
+/**
+ * Application-scoped advisory lock key for the publish/rollback critical section.
+ * pg_advisory_xact_lock(key) serializes concurrent publish/rollback transactions
+ * so only one runs at a time — ensuring the single-PUBLISHED invariant holds even
+ * under READ COMMITTED (the Postgres default). The lock is auto-released at
+ * transaction commit or rollback.
+ *
+ * Key: 0x163AB (91051 decimal) — stable, arbitrary, app-wide constant.
+ */
+const RELEASE_LOCK_KEY = 91051;
+
 export type PublishResult =
   | { status: 'noop' }
   | { status: 'published'; version: number; releaseId: string };
@@ -58,6 +69,11 @@ export class ReleaseService {
     // 3. SHORT tx — revision guard + sequence version + writes
     const result = await this.prisma.client.$transaction(
       async (tx) => {
+        // Serialize concurrent publish/rollback operations: only one critical
+        // section runs at a time. The second publish waits here until the first
+        // commits, then re-reads the demoted PUBLISHED → single-PUBLISHED invariant.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${RELEASE_LOCK_KEY})`;
+
         // TOCTOU guard: re-read WorkingState inside tx
         const ws = await tx.workingState.findUniqueOrThrow({
           where: { id: 'singleton' },
@@ -160,6 +176,9 @@ export class ReleaseService {
 
     const result = await this.prisma.client.$transaction(
       async (tx) => {
+        // Serialize rollback vs concurrent publish/rollback — same lock as publish.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${RELEASE_LOCK_KEY})`;
+
         const target = await tx.release.findUniqueOrThrow({
           where: { version: input.toVersion },
           include: { assetRefs: { select: { assetId: true } } },
