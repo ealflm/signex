@@ -28,7 +28,7 @@ export function UserMenu({ email, role }: { email: string; role: string }) {
           className="flex items-center rounded-full outline-none ring-offset-background transition-[box-shadow,opacity] duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Avatar className="size-8 border border-border">
-            <AvatarFallback className="bg-muted text-[11px] font-semibold tabular-nums text-foreground">
+            <AvatarFallback className="bg-muted text-xs font-semibold tabular-nums text-foreground">
               {initials(email)}
             </AvatarFallback>
           </Avatar>
@@ -40,7 +40,7 @@ export function UserMenu({ email, role }: { email: string; role: string }) {
             <UserIcon className="size-3.5 text-muted-foreground" />
             <span className="truncate">{email}</span>
           </span>
-          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
             {role}
           </span>
         </DropdownMenuLabel>

@@ -66,7 +66,7 @@ export default function LoginPage() {
           <span className="text-sm font-semibold tracking-tight text-foreground">
             SIGNEX
           </span>
-          <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
             Admin
           </span>
         </span>

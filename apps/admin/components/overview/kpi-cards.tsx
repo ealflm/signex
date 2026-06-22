@@ -14,7 +14,7 @@ function KpiCard({ children }: { children: React.ReactNode }) {
 
 function KpiLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[13px] font-medium text-muted-foreground">{children}</p>
+    <p className="text-sm font-medium text-muted-foreground">{children}</p>
   );
 }
 

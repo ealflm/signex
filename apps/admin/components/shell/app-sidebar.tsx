@@ -76,7 +76,7 @@ export function AppSidebar({ canManageUsers }: { canManageUsers: boolean }) {
             <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">
               SIGNEX
             </span>
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Admin
             </span>
           </span>

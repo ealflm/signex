@@ -64,6 +64,9 @@
   --font-sans: var(--font-geist-sans); --font-mono: var(--font-geist-mono);
   --radius-sm: calc(var(--radius) - 4px); --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius); --radius-xl: calc(var(--radius) + 4px);
+  /* Brief type scale: 2xl=28px, 3xl=36px (Tailwind v4 defaults are 24/30) */
+  --text-2xl: 1.75rem; --text-2xl--line-height: 2.125rem;
+  --text-3xl: 2.25rem; --text-3xl--line-height: 2.5rem;
 }
 @layer base {
   * { @apply border-border outline-ring/50; }

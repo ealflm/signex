@@ -162,17 +162,6 @@ export async function getOverviewData(range: 7 | 30 | 90): Promise<OverviewData>
   // Compute deltaPct: this-period vs previous-period of equal length.
   let leadsCurrentPeriod = 0;
   let leadsPreviousPeriod = 0;
-  if (fullSeries.length >= range) {
-    leadsCurrentPeriod = slicedSeries.reduce((acc, s) => acc + s.count, 0);
-    const prevSlice = fullSeries.slice(-(range * 2), -range);
-    leadsPreviousPeriod = prevSlice.reduce((acc, s) => acc + s.count, 0);
-  } else {
-    leadsCurrentPeriod = slicedSeries.reduce((acc, s) => acc + s.count, 0);
-    // Not enough history for a prior window
-    leadsPreviousPeriod = 0;
-  }
-
-  // Fallback: also try summing directly from series if we have the data
   if (fullSeries.length > 0) {
     const todayStr = new Date().toISOString().slice(0, 10);
     leadsCurrentPeriod = sumSeriesWindow(fullSeries, todayStr, range);
