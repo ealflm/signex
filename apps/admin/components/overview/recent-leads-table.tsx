@@ -38,8 +38,13 @@ type StatusFilter = "ALL" | "NEW" | "READ" | "ARCHIVED";
 function StatusBadge({ status }: { status: string }) {
   // Tinh tế: NEW = accent tint, READ = muted, ARCHIVED = neutral outline.
   if (status === "NEW") {
+    // Accent tint reads as "new", but the label stays foreground for AA contrast
+    // in both themes; the primary dot carries the accent (not color-alone — text says "New").
     return (
-      <Badge className="border-primary/25 bg-primary/10 text-primary">New</Badge>
+      <Badge className="gap-1.5 border-primary/25 bg-primary/10 text-foreground">
+        <span aria-hidden className="size-1.5 rounded-full bg-primary" />
+        New
+      </Badge>
     );
   }
   if (status === "READ") {
@@ -255,7 +260,7 @@ export function RecentLeadsTable({ items }: { items: RecentLead[] }) {
                 {table.getHeaderGroups().map((hg) => (
                   <TableRow key={hg.id} className="hover:bg-transparent">
                     {hg.headers.map((header) => (
-                      <TableHead key={header.id} className="h-10 px-5">
+                      <TableHead key={header.id} scope="col" className="h-10 px-5">
                         {header.isPlaceholder
                           ? null
                           : flexRender(

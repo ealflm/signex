@@ -22,9 +22,9 @@ export default async function DashLayout({
       <AppSidebar canManageUsers={canManageUsers} />
       <SidebarInset className="bg-background">
         <Topbar email={user.email} role={user.role} />
-        <main className="flex-1 px-4 py-6 sm:px-6">
+        <div className="flex-1 px-4 py-6 sm:px-6">
           <div className="mx-auto w-full max-w-screen-2xl">{children}</div>
-        </main>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

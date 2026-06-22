@@ -89,11 +89,13 @@ export function AppSidebar({ canManageUsers }: { canManageUsers: boolean }) {
             Workspace
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
-              {items.map((item) => (
-                <NavLink key={item.href} item={item} active={isActive(pathname, item.match)} />
-              ))}
-            </SidebarMenu>
+            <nav aria-label="Primary">
+              <SidebarMenu className="gap-0.5">
+                {items.map((item) => (
+                  <NavLink key={item.href} item={item} active={isActive(pathname, item.match)} />
+                ))}
+              </SidebarMenu>
+            </nav>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
