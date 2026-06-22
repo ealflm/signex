@@ -4,6 +4,8 @@ import { apiServer } from "@/app/lib/api";
 import { BLOCK_REGISTRY, type BlockKey } from "@signex/shared";
 import { deriveFields } from "@/app/lib/zodform-fields";
 import { ZodForm } from "./zod-form";
+import { PageHeader } from "@/components/admin/page-header";
+import { SectionCard } from "@/components/admin/section-card";
 
 // ---------------------------------------------------------------------------
 // (kind, key) resolution
@@ -107,24 +109,30 @@ export default async function ContentBlockPage({
   return (
     <section className="flex flex-col gap-6">
       {/* Page header */}
-      <header className="flex flex-col gap-1">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold text-gray-900">
+      <PageHeader
+        title={
+          <>
             Content block:{" "}
-            <code className="rounded bg-gray-100 px-1.5 py-0.5 text-lg font-mono">{blockKey}</code>
-          </h1>
-        </div>
-        <p className="text-xs text-gray-500">
-          Kind:{" "}
-          <span className="font-medium text-gray-700">{kind}</span>
-          {" · "}
-          Registry key:{" "}
-          <span className="font-medium text-gray-700">{registryKey}</span>
-          {" · "}
-          Working revision:{" "}
-          <span className="font-mono font-medium text-gray-700">{expectedRevision}</span>
-        </p>
-      </header>
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-lg text-foreground">
+              {blockKey}
+            </code>
+          </>
+        }
+        subtitle={
+          <span className="text-xs text-muted-foreground">
+            Kind:{" "}
+            <span className="font-medium text-foreground">{kind}</span>
+            {" · "}
+            Registry key:{" "}
+            <span className="font-medium text-foreground">{registryKey}</span>
+            {" · "}
+            Working revision:{" "}
+            <span className="font-mono tabular-nums font-medium text-foreground">
+              {expectedRevision}
+            </span>
+          </span>
+        }
+      />
 
       {/* Block navigator */}
       <nav aria-label="Content blocks" className="flex flex-wrap gap-1.5">
@@ -135,11 +143,13 @@ export default async function ContentBlockPage({
             <a
               key={k}
               href={`/content/${k}`}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-1 ${
+              className={[
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                 isActive
-                  ? "border-gray-900 bg-gray-900 text-white"
-                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900"
-              }`}
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground",
+              ].join(" ")}
               aria-current={isActive ? "page" : undefined}
             >
               {k}
@@ -152,7 +162,7 @@ export default async function ContentBlockPage({
       {!blockRes.ok && blockRes.status !== 404 && (
         <p
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           Could not load block data ({blockRes.status}): {blockRes.error}
         </p>
@@ -160,14 +170,14 @@ export default async function ContentBlockPage({
       {!diffRes.ok && (
         <p
           role="alert"
-          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+          className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
         >
           Could not read working revision from /api/releases/diff — optimistic lock will use revision 0.
         </p>
       )}
 
       {/* Editor */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <SectionCard title="Edit block">
         <ZodForm
           kind={kind}
           blockKey={blockKey}
@@ -176,7 +186,7 @@ export default async function ContentBlockPage({
           expectedRevision={expectedRevision}
           assets={assets}
         />
-      </div>
+      </SectionCard>
     </section>
   );
 }

@@ -1,6 +1,19 @@
 import { requireSession } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
 import { atLeast } from "@signex/shared";
+import { Rocket } from "lucide-react";
+import { PageHeader } from "@/components/admin/page-header";
+import { SectionCard } from "@/components/admin/section-card";
+import { EmptyState } from "@/components/admin/empty-state";
+import { StatusBadge } from "@/components/admin/status-badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PublishForm } from "./publish-form";
 import { RollbackForm } from "./rollback-form";
 
@@ -55,59 +68,51 @@ export default async function ReleasesPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-gray-900">Releases</h1>
-        <p className="text-sm text-gray-500">
-          Publish working-state changes and manage release history.
-        </p>
-      </div>
+      <PageHeader
+        title="Releases"
+        subtitle="Publish working-state changes and manage release history."
+      />
 
       {/* API error banner */}
       {apiError && (
         <p
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           Could not load release data. The API may be unavailable.
         </p>
       )}
 
       {/* Status + Publish card */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <SectionCard>
         <dl className="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-3 text-sm">
-          <dt className="text-gray-500">Live version</dt>
-          <dd className="text-right font-mono font-medium text-gray-900">
-            {live?.version != null ? live.version : "—"}
+          <dt className="text-muted-foreground">Live version</dt>
+          <dd className="text-right font-mono tabular-nums font-medium text-foreground">
+            {live?.version != null ? live.version : <span className="text-muted-foreground">—</span>}
           </dd>
 
-          <dt className="text-gray-500">Working revision</dt>
-          <dd className="text-right font-mono font-medium text-gray-900">
-            {diff?.revision ?? "—"}
+          <dt className="text-muted-foreground">Working revision</dt>
+          <dd className="text-right font-mono tabular-nums font-medium text-foreground">
+            {diff?.revision ?? <span className="text-muted-foreground">—</span>}
           </dd>
 
-          <dt className="text-gray-500">Last published revision</dt>
-          <dd className="text-right font-mono font-medium text-gray-900">
-            {diff?.lastPublishedRevision ?? "—"}
+          <dt className="text-muted-foreground">Last published revision</dt>
+          <dd className="text-right font-mono tabular-nums font-medium text-foreground">
+            {diff?.lastPublishedRevision ?? <span className="text-muted-foreground">—</span>}
           </dd>
 
-          <dt className="text-gray-500">Status</dt>
+          <dt className="text-muted-foreground">Status</dt>
           <dd className="text-right">
             {dirty ? (
-              <span className="inline-flex items-center gap-1.5 font-semibold text-amber-600">
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-2 w-2 rounded-full bg-amber-400"
-                />
+              <StatusBadge tone="warning">
+                <span className="size-1.5 rounded-full bg-current" aria-hidden />
                 Unpublished changes
-              </span>
+              </StatusBadge>
             ) : (
-              <span className="inline-flex items-center gap-1.5 font-semibold text-green-700">
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-2 w-2 rounded-full bg-green-500"
-                />
+              <StatusBadge tone="success">
+                <span className="size-1.5 rounded-full bg-current" aria-hidden />
                 Up to date
-              </span>
+              </StatusBadge>
             )}
           </dd>
         </dl>
@@ -115,94 +120,105 @@ export default async function ReleasesPage() {
         {/* Publish form — affordance: only shown to Publisher+ */}
         {canPublish ? (
           <>
-            <hr className="my-4 border-gray-100" />
+            <hr className="my-4 border-border" />
             <PublishForm
               expectedRevision={currentRevision}
               dirty={dirty}
             />
           </>
         ) : (
-          <p className="mt-4 text-sm text-gray-500">
-            Publishing requires the <strong>Publisher</strong> role.
+          <p className="mt-4 text-sm text-muted-foreground">
+            Publishing requires the <strong className="text-foreground">Publisher</strong> role.
           </p>
         )}
-      </div>
+      </SectionCard>
 
       {/* Release history table */}
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 px-6 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">
-            Release history
-          </h2>
-        </div>
-
+      <SectionCard title="Release history" bodyClassName="p-0">
         {releases.length === 0 ? (
-          <p className="px-6 py-8 text-center text-sm text-gray-400">
-            No releases yet.
-          </p>
+          <EmptyState
+            icon={Rocket}
+            title="No releases yet."
+            description="Publish the working state to create the first release."
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                  <th className="px-6 py-3">Version</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Note</th>
-                  <th className="px-6 py-3">Published at</th>
-                  <th className="px-6 py-3">From version</th>
-                  {canPublish && <th className="px-6 py-3">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
+            <Table>
+              <TableHeader>
+                <TableRow className="h-10">
+                  <TableHead scope="col" className="px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Version
+                  </TableHead>
+                  <TableHead scope="col" className="px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Status
+                  </TableHead>
+                  <TableHead scope="col" className="px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Note
+                  </TableHead>
+                  <TableHead scope="col" className="px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Published at
+                  </TableHead>
+                  <TableHead scope="col" className="px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    From version
+                  </TableHead>
+                  {canPublish && (
+                    <TableHead scope="col" className="px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Actions
+                    </TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {releases.map((r) => (
-                  <tr
+                  <TableRow
                     key={r.id}
-                    className="transition-colors hover:bg-gray-50"
+                    className="border-b border-border last:border-0 transition-colors duration-150 hover:bg-muted/50"
                   >
-                    <td className="px-6 py-3 font-mono font-medium text-gray-900">
+                    <TableCell className="px-5 py-3 font-mono tabular-nums font-medium text-foreground">
                       {r.version}
-                    </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={
-                          r.status === "PUBLISHED"
-                            ? "inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20"
-                            : "inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
-                        }
-                      >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-gray-600">
-                      {r.note ?? <span className="text-gray-400">—</span>}
-                    </td>
-                    <td className="px-6 py-3 text-gray-600">
+                    </TableCell>
+                    <TableCell className="px-5 py-3">
+                      {r.status === "PUBLISHED" ? (
+                        <StatusBadge tone="success">
+                          <span className="size-1.5 rounded-full bg-current" aria-hidden />
+                          PUBLISHED
+                        </StatusBadge>
+                      ) : (
+                        <StatusBadge tone="neutral">
+                          ARCHIVED
+                        </StatusBadge>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-5 py-3 text-muted-foreground">
+                      {r.note ?? <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="px-5 py-3 font-mono tabular-nums text-xs text-muted-foreground">
                       {r.publishedAt
                         ? new Date(r.publishedAt).toLocaleString()
-                        : <span className="text-gray-400">—</span>}
-                    </td>
-                    <td className="px-6 py-3 font-mono text-gray-600">
+                        : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="px-5 py-3 font-mono tabular-nums text-muted-foreground">
                       {r.rolledBackFromVersion ?? (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
-                    </td>
+                    </TableCell>
                     {canPublish && (
-                      <td className="px-6 py-3">
+                      <TableCell className="px-5 py-3">
                         {/* Only ARCHIVED versions can be rolled back; live version has no rollback */}
                         {r.status === "ARCHIVED" ? (
                           <RollbackForm toVersion={r.version} />
                         ) : (
-                          <span className="text-xs text-gray-400">—</span>
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
-                      </td>
+                      </TableCell>
                     )}
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
-      </div>
+      </SectionCard>
     </section>
   );
 }

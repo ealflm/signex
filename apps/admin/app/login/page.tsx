@@ -1,5 +1,31 @@
 "use client";
 import { useState } from "react";
+import { SectionCard } from "@/components/admin/section-card";
+import { Field } from "@/components/admin/field";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+/** Tiny geometric "S" mark — two interlocking strokes, drawn in currentColor. */
+function BrandMark() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      className="text-primary-foreground"
+    >
+      <path
+        d="M11.5 4.2C10.7 3.3 9.5 3 8.2 3 6 3 4.6 4.1 4.6 5.7c0 1.5 1.2 2.2 3.2 2.6 2 .4 2.6.8 2.6 1.6 0 .8-.8 1.4-2.2 1.4-1.4 0-2.5-.5-3.3-1.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -28,70 +54,79 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">SIGNEX Admin</h1>
-        <p className="text-sm text-gray-500">Sign in to your account</p>
+      {/* Brand lockup — matches the sidebar */}
+      <div className="flex items-center gap-2.5">
+        <span
+          aria-hidden
+          className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm"
+        >
+          <BrandMark />
+        </span>
+        <span className="flex flex-col leading-none">
+          <span className="text-sm font-semibold tracking-tight text-foreground">
+            SIGNEX
+          </span>
+          <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Admin
+          </span>
+        </span>
       </div>
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-gray-700">
-            Email
-          </label>
-          <input
-            id="email"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
-                       outline-none transition
-                       focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-offset-1
-                       disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            autoComplete="username"
-            required
-            disabled={busy}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="password" className="text-sm font-medium text-gray-700">
-            Password
-          </label>
-          <input
-            id="password"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
-                       outline-none transition
-                       focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-offset-1
-                       disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            autoComplete="current-password"
-            required
-            disabled={busy}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-
-        {error && (
-          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
+      <SectionCard bodyClassName="p-6">
+        <div className="mb-6 flex flex-col gap-1">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Sign in
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Enter your credentials to access the admin panel.
           </p>
-        )}
+        </div>
 
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-1 rounded-md bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white
-                     outline-none transition
-                     hover:bg-gray-700
-                     focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2
-                     disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+          <Field label="Email" htmlFor="email" required>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              autoComplete="username"
+              required
+              disabled={busy}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
+
+          <Field label="Password" htmlFor="password" required>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              autoComplete="current-password"
+              required
+              disabled={busy}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Field>
+
+          {error && (
+            <p
+              role="alert"
+              className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
+              {error}
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            disabled={busy}
+            className="mt-1 w-full"
+          >
+            {busy ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+      </SectionCard>
     </main>
   );
 }

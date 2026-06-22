@@ -1,6 +1,11 @@
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
 import { Uploader } from "./uploader";
+import { PageHeader } from "@/components/admin/page-header";
+import { SectionCard } from "@/components/admin/section-card";
+import { EmptyState } from "@/components/admin/empty-state";
+import { StatusBadge } from "@/components/admin/status-badge";
+import { ImagePlus } from "lucide-react";
 
 // Matches AssetDto from apps/api/src/assets/assets.service.ts
 interface AssetRow {
@@ -30,19 +35,16 @@ export default async function MediaPage() {
   return (
     <section className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-gray-900">Media</h1>
-        <p className="text-sm text-gray-500">
-          Upload images and videos. Assets are deduplicated by content hash.
-          Use the picker in Catalog/Content to attach them.
-        </p>
-      </div>
+      <PageHeader
+        title="Media"
+        subtitle="Upload images and videos. Assets are deduplicated by content hash. Use the picker in Catalog/Content to attach them."
+      />
 
       {/* API error banner */}
       {apiError && (
         <p
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           Could not load assets. The API may be unavailable.
         </p>
@@ -52,22 +54,25 @@ export default async function MediaPage() {
       <Uploader />
 
       {/* Asset grid — doubles as picker source */}
-      <div className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold text-gray-900">
-          Assets
-          {assets.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-gray-400">
-              ({assets.length})
-            </span>
-          )}
-        </h2>
-
+      <SectionCard
+        title={
+          <>
+            Assets
+            {assets.length > 0 && (
+              <span className="ml-2 font-mono tabular-nums text-xs font-normal text-muted-foreground">
+                ({assets.length})
+              </span>
+            )}
+          </>
+        }
+        bodyClassName={assets.length === 0 ? "p-0" : "p-4"}
+      >
         {assets.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 px-6 py-12 text-center">
-            <p className="text-sm text-gray-400">
-              No assets yet. Upload one above.
-            </p>
-          </div>
+          <EmptyState
+            icon={ImagePlus}
+            title="No assets yet"
+            description="Upload one above."
+          />
         ) : (
           <ul
             role="list"
@@ -77,12 +82,12 @@ export default async function MediaPage() {
             {assets.map((a) => (
               <li key={a.id}>
                 <article
-                  className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-white p-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500"
+                  className="flex flex-col gap-1 rounded-xl border border-border bg-card p-2 transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring outline-none hover:bg-muted/50"
                   tabIndex={0}
                   aria-label={`${a.originalName} — ${a.kind} — ${a.status}`}
                 >
                   {/* Thumbnail */}
-                  <div className="aspect-square w-full overflow-hidden rounded bg-gray-100">
+                  <div className="aspect-square w-full overflow-hidden rounded-lg bg-muted">
                     {a.kind === "IMAGE" && a.url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -94,7 +99,7 @@ export default async function MediaPage() {
                     ) : (
                       <div
                         aria-hidden="true"
-                        className="flex h-full w-full items-center justify-center text-xs font-medium text-gray-400"
+                        className="flex h-full w-full items-center justify-center text-xs font-medium text-muted-foreground"
                       >
                         {a.kind}
                       </div>
@@ -103,7 +108,7 @@ export default async function MediaPage() {
 
                   {/* Metadata */}
                   <p
-                    className="truncate text-xs font-medium text-gray-700"
+                    className="truncate text-xs font-medium text-foreground"
                     title={a.originalName}
                   >
                     {a.originalName}
@@ -111,7 +116,7 @@ export default async function MediaPage() {
 
                   {/* Dims */}
                   {(a.width != null || a.duration != null) && (
-                    <p className="text-[10px] text-gray-400">
+                    <p className="font-mono tabular-nums text-[10px] text-muted-foreground">
                       {a.width != null && a.height != null
                         ? `${a.width}×${a.height}`
                         : null}
@@ -122,20 +127,17 @@ export default async function MediaPage() {
                   )}
 
                   {/* Status badge */}
-                  <span
-                    className={[
-                      "self-start rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                      a.status === "READY"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-amber-100 text-amber-700",
-                    ].join(" ")}
+                  <StatusBadge
+                    tone={a.status === "READY" ? "success" : "warning"}
+                    className="self-start text-[10px]"
                   >
+                    <span className="size-1.5 rounded-full bg-current" aria-hidden />
                     {a.status}
-                  </span>
+                  </StatusBadge>
 
                   {/* Asset ID (for picker reference) */}
                   <code
-                    className="truncate text-[9px] text-gray-300"
+                    className="truncate font-mono tabular-nums text-[9px] text-muted-foreground/60"
                     title={a.id}
                   >
                     {a.id}
@@ -145,7 +147,7 @@ export default async function MediaPage() {
             ))}
           </ul>
         )}
-      </div>
+      </SectionCard>
     </section>
   );
 }

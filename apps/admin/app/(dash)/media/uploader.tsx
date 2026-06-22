@@ -2,6 +2,9 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { SectionCard } from "@/components/admin/section-card";
+import { Field } from "@/components/admin/field";
+import { Button } from "@/components/ui/button";
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", buf);
@@ -184,25 +187,19 @@ export function Uploader() {
   const isDone = state.phase === "done";
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-sm font-semibold text-gray-700">Upload asset</h2>
-
-      <label
-        htmlFor="media-upload"
-        className="mb-2 block text-sm font-medium text-gray-600"
-      >
-        Choose file
-      </label>
-      <input
-        id="media-upload"
-        ref={inputRef}
-        type="file"
-        accept={ACCEPT}
-        disabled={busy}
-        onChange={onFile}
-        aria-describedby={state.message ? "media-upload-status" : undefined}
-        className="block w-full cursor-pointer rounded-md border border-gray-300 text-sm text-gray-700 file:mr-3 file:cursor-pointer file:rounded-l-md file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-      />
+    <SectionCard title="Upload asset">
+      <Field label="Choose file" htmlFor="media-upload">
+        <input
+          id="media-upload"
+          ref={inputRef}
+          type="file"
+          accept={ACCEPT}
+          disabled={busy}
+          onChange={onFile}
+          aria-describedby={state.message ? "media-upload-status" : undefined}
+          className="block w-full cursor-pointer rounded-md border border-input bg-transparent text-sm text-foreground transition-colors duration-150 file:mr-3 file:cursor-pointer file:rounded-l-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+      </Field>
 
       {state.message && (
         <p
@@ -210,30 +207,35 @@ export function Uploader() {
           role={isError ? "alert" : "status"}
           aria-live={isError ? "assertive" : "polite"}
           className={[
-            "mt-2 rounded-md px-3 py-2 text-sm",
+            "mt-3 rounded-md border px-4 py-3 text-sm",
             isError
-              ? "bg-red-50 text-red-700"
+              ? "border-destructive/30 bg-destructive/10 text-destructive"
               : isDone
-                ? "bg-green-50 text-green-700"
-                : "bg-blue-50 text-blue-700",
+                ? "border-success/30 bg-success/10 text-success"
+                : "border-primary/30 bg-primary/10 text-primary",
           ].join(" ")}
         >
           {busy && (
-            <span className="mr-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent align-middle" />
+            <span
+              className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent align-middle"
+              aria-hidden
+            />
           )}
           {state.message}
         </p>
       )}
 
       {(isError || isDone) && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => setPhase("idle", "")}
-          className="mt-2 text-xs text-gray-500 underline hover:text-gray-700"
+          className="mt-2 text-muted-foreground"
         >
           Clear
-        </button>
+        </Button>
       )}
-    </div>
+    </SectionCard>
   );
 }

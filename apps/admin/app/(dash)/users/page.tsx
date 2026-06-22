@@ -3,6 +3,22 @@ import { apiServer } from "@/app/lib/api";
 import type { RoleName } from "@signex/shared";
 import { createUser } from "./actions";
 import { UpdateRoleForm, DeactivateForm } from "./user-forms";
+import { PageHeader } from "@/components/admin/page-header";
+import { SectionCard } from "@/components/admin/section-card";
+import { EmptyState } from "@/components/admin/empty-state";
+import { StatusBadge } from "@/components/admin/status-badge";
+import { Field } from "@/components/admin/field";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import { Users } from "lucide-react";
 
 interface UserRow {
   id: string;
@@ -26,12 +42,10 @@ export default async function UsersPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-gray-900">Users</h1>
-        <p className="text-sm text-gray-500">
-          Manage admin panel users. Only admins can access this page.
-        </p>
-      </div>
+      <PageHeader
+        title="Users"
+        subtitle="Manage admin panel users. Only admins can access this page."
+      />
 
       {/*
         FLAG: GET /api/users is NOT implemented in the API.
@@ -42,7 +56,7 @@ export default async function UsersPage() {
       {listUnavailable && (
         <p
           role="alert"
-          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
         >
           User list unavailable —{" "}
           <code className="font-mono">GET /api/users</code> is not yet
@@ -55,132 +69,144 @@ export default async function UsersPage() {
 
       {/* User list table */}
       {users.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Active</th>
-                <th className="px-4 py-3">Last login</th>
-                <th className="px-4 py-3">
+        <SectionCard bodyClassName="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead
+                  scope="col"
+                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Email
+                </TableHead>
+                <TableHead
+                  scope="col"
+                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Name
+                </TableHead>
+                <TableHead
+                  scope="col"
+                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Role
+                </TableHead>
+                <TableHead
+                  scope="col"
+                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Active
+                </TableHead>
+                <TableHead
+                  scope="col"
+                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  Last login
+                </TableHead>
+                <TableHead scope="col" className="h-10 px-4">
                   <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {users.map((u) => (
-                <tr key={u.id} className="transition-colors hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">
+                <TableRow
+                  key={u.id}
+                  className="border-b border-border last:border-0 transition-colors duration-150 hover:bg-muted/50"
+                >
+                  <TableCell className="px-4 py-3 font-medium text-foreground">
                     {u.email}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{u.name}</td>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">
+                    {u.name}
+                  </TableCell>
 
                   {/* Role selector — client component for pending/confirm UX */}
-                  <td className="px-4 py-3">
+                  <TableCell className="px-4 py-3">
                     <UpdateRoleForm userId={u.id} currentRole={u.role} />
-                  </td>
+                  </TableCell>
 
                   {/* Active status badge */}
-                  <td className="px-4 py-3">
-                    <span
-                      className={
-                        u.isActive
-                          ? "inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20"
-                          : "inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500"
-                      }
-                    >
-                      {u.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </td>
+                  <TableCell className="px-4 py-3">
+                    {u.isActive ? (
+                      <StatusBadge tone="success">
+                        <span className="size-1.5 rounded-full bg-current" aria-hidden />
+                        Active
+                      </StatusBadge>
+                    ) : (
+                      <StatusBadge tone="neutral">
+                        <span className="size-1.5 rounded-full bg-current" aria-hidden />
+                        Inactive
+                      </StatusBadge>
+                    )}
+                  </TableCell>
 
                   {/* Last login */}
-                  <td className="px-4 py-3 text-gray-500">
+                  <TableCell className="px-4 py-3">
                     {u.lastLoginAt ? (
-                      new Date(u.lastLoginAt).toLocaleString()
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {new Date(u.lastLoginAt).toLocaleString()}
+                      </span>
                     ) : (
-                      <span className="text-gray-400">Never</span>
+                      <span className="text-muted-foreground">—</span>
                     )}
-                  </td>
+                  </TableCell>
 
                   {/* Deactivate — client component for window.confirm */}
-                  <td className="px-4 py-3">
+                  <TableCell className="px-4 py-3">
                     {u.isActive && (
                       <DeactivateForm userId={u.id} email={u.email} />
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </SectionCard>
       ) : (
         !listUnavailable && (
-          <p className="rounded-lg border border-gray-100 bg-white px-6 py-8 text-center text-sm text-gray-400 shadow-sm">
-            No users found.
-          </p>
+          <SectionCard bodyClassName="p-0">
+            <EmptyState
+              icon={Users}
+              title="No users found."
+              description="Add a user below to get started."
+            />
+          </SectionCard>
         )
       )}
 
       {/* Create user form — server action, pure server component */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold text-gray-900">
-          Add new user
-        </h2>
+      <SectionCard title="Add new user">
         <form
           action={createUser}
-          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto_auto]"
+          className="grid gap-4 sm:grid-cols-[1fr_1fr_auto_auto_auto]"
         >
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="new-email"
-              className="text-xs font-medium text-gray-700"
-            >
-              Email
-            </label>
-            <input
+          <Field label="Email" htmlFor="new-email" required>
+            <Input
               id="new-email"
               name="email"
               type="email"
               placeholder="user@example.com"
               required
-              className="rounded border border-gray-300 px-2 py-1.5 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1"
             />
-          </div>
+          </Field>
 
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="new-name"
-              className="text-xs font-medium text-gray-700"
-            >
-              Name
-            </label>
-            <input
+          <Field label="Name" htmlFor="new-name" required>
+            <Input
               id="new-name"
               name="name"
               type="text"
               placeholder="Full name"
               required
-              className="rounded border border-gray-300 px-2 py-1.5 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1"
             />
-          </div>
+          </Field>
 
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="new-role"
-              className="text-xs font-medium text-gray-700"
-            >
-              Role
-            </label>
+          <Field label="Role" htmlFor="new-role">
             <select
               id="new-role"
               name="role"
               defaultValue="EDITOR"
-              className="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1"
+              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               {ROLES.map((r) => (
                 <option key={r} value={r}>
@@ -188,40 +214,29 @@ export default async function UsersPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </Field>
 
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="new-password"
-              className="text-xs font-medium text-gray-700"
-            >
-              Password{" "}
-              <span className="font-normal text-gray-400">(min 8 chars)</span>
-            </label>
-            <input
+          <Field
+            label="Password"
+            htmlFor="new-password"
+            hint="Min 8 characters"
+            required
+          >
+            <Input
               id="new-password"
               name="password"
               type="password"
               placeholder="Min 8 characters"
               required
               minLength={8}
-              className="rounded border border-gray-300 px-2 py-1.5 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1"
             />
-          </div>
+          </Field>
 
           <div className="flex items-end">
-            <button
-              type="submit"
-              className="rounded bg-gray-900 px-4 py-1.5 text-sm font-medium text-white
-                         transition-colors hover:bg-gray-700
-                         focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1"
-            >
-              Add user
-            </button>
+            <Button type="submit">Add user</Button>
           </div>
         </form>
-      </div>
+      </SectionCard>
     </section>
   );
 }

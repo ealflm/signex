@@ -7,6 +7,12 @@ import {
   deleteCategory,
   type CatalogActionState,
 } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { SectionCard } from "@/components/admin/section-card";
+import { Field } from "@/components/admin/field";
 
 interface Loc { en: string; vi: string }
 interface AssetRow { id: string; originalName: string }
@@ -24,21 +30,32 @@ interface CategoryRow {
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
+// Native <select> kept intentionally: name="imageId" posts to a server action.
+// Restyled with token classes only.
+const nativeSelectCls =
+  "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs " +
+  "outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 " +
+  "transition-[border-color,box-shadow] duration-150";
+
 function AssetSelect({
   assets,
   defaultValue,
+  id,
 }: {
   assets: AssetRow[];
   defaultValue: string | null;
+  id?: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <label className="text-xs font-medium text-gray-500">Image</label>
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id ?? "asset-select"} className="text-xs font-medium text-muted-foreground">
+        Image
+      </Label>
       <select
+        id={id ?? "asset-select"}
         name="imageId"
         defaultValue={defaultValue ?? ""}
-        className="rounded-md border border-gray-300 px-2 py-1 text-sm
-                   focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+        className={nativeSelectCls}
       >
         <option value="">— none —</option>
         {assets.map((a) => (
@@ -66,46 +83,42 @@ function LocalizedPair({
   placeholder?: string;
   multiline?: boolean;
 }) {
-  const cls =
-    "rounded-md border border-gray-300 px-2 py-1 text-sm placeholder-gray-400 shadow-sm " +
-    "focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900";
-
   return (
-    <fieldset className="flex flex-col gap-0.5">
-      <legend className="text-xs font-medium text-gray-500">{label}</legend>
+    <fieldset className="flex flex-col gap-1">
+      <legend className="text-xs font-medium text-muted-foreground">{label}</legend>
       <div className="flex gap-1">
         {multiline ? (
           <>
-            <textarea
+            <Textarea
               name={`${base}.en`}
               rows={2}
               defaultValue={defaultEn ?? ""}
               placeholder={`${placeholder ?? label} (en)`}
-              className={cls + " w-44 resize-y"}
+              className="w-44 resize-y text-sm"
             />
-            <textarea
+            <Textarea
               name={`${base}.vi`}
               rows={2}
               defaultValue={defaultVi ?? ""}
               placeholder={`${placeholder ?? label} (vi)`}
-              className={cls + " w-44 resize-y"}
+              className="w-44 resize-y text-sm"
             />
           </>
         ) : (
           <>
-            <input
+            <Input
               type="text"
               name={`${base}.en`}
               defaultValue={defaultEn ?? ""}
               placeholder={`${placeholder ?? label} (en)`}
-              className={cls + " w-40"}
+              className="w-40 text-sm"
             />
-            <input
+            <Input
               type="text"
               name={`${base}.vi`}
               defaultValue={defaultVi ?? ""}
               placeholder={`${placeholder ?? label} (vi)`}
-              className={cls + " w-40"}
+              className="w-40 text-sm"
             />
           </>
         )}
@@ -126,7 +139,7 @@ function ActionFeedback({ state }: { state: CatalogActionState }) {
       <p
         role="alert"
         aria-live="assertive"
-        className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
       >
         {is409
           ? "Stale lock: the catalog was changed elsewhere. Refresh and retry."
@@ -141,7 +154,7 @@ function ActionFeedback({ state }: { state: CatalogActionState }) {
       <p
         role="status"
         aria-live="polite"
-        className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700"
+        className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
       >
         Saved.
       </p>
@@ -161,103 +174,67 @@ export function CreateCategoryForm({ assets }: { assets: AssetRow[] }) {
   );
 
   return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-gray-900">
-        Add category
-      </h3>
+    <SectionCard title="Add category">
       <ActionFeedback state={state} />
       <form action={formAction} className="mt-2 flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-0.5">
-          <label
-            htmlFor="cat-create-slug"
-            className="text-xs font-medium text-gray-500"
-          >
-            Slug *
-          </label>
-          <input
+        <Field label="Slug" htmlFor="cat-create-slug" required>
+          <Input
             id="cat-create-slug"
             type="text"
             name="slug"
             required
             placeholder="e.g. stone"
-            className="w-36 rounded-md border border-gray-300 px-2 py-1 text-sm
-                       placeholder-gray-400 shadow-sm
-                       focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className="w-36 font-mono tabular-nums text-sm"
           />
-        </div>
+        </Field>
 
-        <div className="flex flex-col gap-0.5">
-          <label
-            htmlFor="cat-create-sort"
-            className="text-xs font-medium text-gray-500"
-          >
-            Sort order
-          </label>
-          <input
+        <Field label="Sort order" htmlFor="cat-create-sort">
+          <Input
             id="cat-create-sort"
             type="number"
             name="sortOrder"
             defaultValue={0}
-            className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm
-                       shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className="w-20 font-mono tabular-nums text-sm"
           />
-        </div>
+        </Field>
 
         <LocalizedPair base="title" label="Title" />
         <LocalizedPair base="tag" label="Tag" />
         <LocalizedPair base="intro" label="Intro" multiline />
 
-        <div className="flex flex-col gap-0.5">
-          <label
-            htmlFor="cat-create-prod-count"
-            className="text-xs font-medium text-gray-500"
-          >
-            Product count
-          </label>
-          <input
+        <Field label="Product count" htmlFor="cat-create-prod-count">
+          <Input
             id="cat-create-prod-count"
             type="number"
             name="productCount"
             defaultValue={0}
             min={0}
-            className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm
-                       shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className="w-24 font-mono tabular-nums text-sm"
           />
-        </div>
+        </Field>
 
-        <div className="flex flex-col gap-0.5">
-          <label
-            htmlFor="cat-create-mat-count"
-            className="text-xs font-medium text-gray-500"
-          >
-            Material count
-          </label>
-          <input
+        <Field label="Material count" htmlFor="cat-create-mat-count">
+          <Input
             id="cat-create-mat-count"
             type="number"
             name="materialCount"
             defaultValue={0}
             min={0}
-            className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm
-                       shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className="w-24 font-mono tabular-nums text-sm"
           />
-        </div>
+        </Field>
 
-        <AssetSelect assets={assets} defaultValue={null} />
+        <AssetSelect assets={assets} defaultValue={null} id="cat-create-image" />
 
-        <button
+        <Button
           type="submit"
           disabled={pending}
           aria-disabled={pending}
-          className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white shadow-sm
-                     transition-colors hover:bg-gray-700
-                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2
-                     disabled:cursor-not-allowed disabled:opacity-50"
         >
           {pending ? "Adding…" : "Add category"}
-        </button>
+        </Button>
       </form>
-    </div>
+    </SectionCard>
   );
 }
 
@@ -314,27 +291,25 @@ export function EditCategoryForm({
           value={String(category.materialCount)}
         />
 
-        <input
+        <Input
           type="number"
           name="sortOrder"
           defaultValue={category.sortOrder}
           aria-label="Sort order"
-          className="w-16 rounded-md border border-gray-300 px-1 py-0.5 text-sm
-                     focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+          className="w-16 font-mono tabular-nums text-sm"
         />
 
-        <AssetSelect assets={assets} defaultValue={category.imageId} />
+        <AssetSelect assets={assets} defaultValue={category.imageId} id={`cat-edit-image-${category.id}`} />
 
-        <button
+        <Button
           type="submit"
+          variant="outline"
+          size="sm"
           disabled={pending}
           aria-disabled={pending}
-          className="rounded-md border border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-700
-                     hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900
-                     disabled:opacity-50"
         >
           {pending ? "Saving…" : "Save"}
-        </button>
+        </Button>
       </form>
     </>
   );
@@ -351,7 +326,7 @@ export function DeleteCategoryForm({ categoryId, slug }: { categoryId: string; s
   return (
     <>
       {state.error && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-destructive">
           {state.error}
         </p>
       )}
@@ -368,16 +343,16 @@ export function DeleteCategoryForm({ categoryId, slug }: { categoryId: string; s
         }}
       >
         <input type="hidden" name="id" value={categoryId} />
-        <button
+        <Button
           type="submit"
+          variant="ghost"
+          size="sm"
           disabled={pending}
           aria-disabled={pending}
-          className="rounded px-2 py-0.5 text-xs font-medium text-red-600
-                     hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600
-                     disabled:opacity-50"
+          className="text-destructive hover:text-destructive"
         >
           {pending ? "Deleting…" : "Delete"}
-        </button>
+        </Button>
       </form>
     </>
   );

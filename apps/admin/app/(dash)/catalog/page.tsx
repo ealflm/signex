@@ -1,5 +1,17 @@
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
+import { PageHeader } from "@/components/admin/page-header";
+import { SectionCard } from "@/components/admin/section-card";
+import { EmptyState } from "@/components/admin/empty-state";
+import { Package, Layers } from "lucide-react";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import {
   CreateCategoryForm,
   EditCategoryForm,
@@ -81,19 +93,16 @@ export default async function CatalogPage() {
   return (
     <section className="flex flex-col gap-8">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-gray-900">Catalog</h1>
-        <p className="text-sm text-gray-500">
-          Manage categories and products. Changes are unpublished until you
-          publish a release.
-        </p>
-      </div>
+      <PageHeader
+        title="Catalog"
+        subtitle="Manage categories and products. Changes are unpublished until you publish a release."
+      />
 
       {/* API error banner */}
       {apiError && (
         <p
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           Could not load catalog data. The API may be unavailable.
         </p>
@@ -101,136 +110,206 @@ export default async function CatalogPage() {
 
       {/* ── Categories ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold text-gray-900">Categories</h2>
-
-        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <SectionCard title="Categories" bodyClassName="p-0">
           {categories.length === 0 ? (
-            <p className="px-6 py-8 text-center text-sm text-gray-400">
-              No categories yet.
-            </p>
+            <EmptyState
+              icon={Layers}
+              title="No categories yet."
+              description="Add the first category below."
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                    <th className="px-4 py-3">Sort</th>
-                    <th className="px-4 py-3">Slug</th>
-                    <th className="px-4 py-3">Title (en)</th>
-                    <th className="px-4 py-3">Tag (en)</th>
-                    <th className="px-4 py-3">Products</th>
-                    <th className="px-4 py-3">Image / actions</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {categories.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="align-top transition-colors hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3 font-mono text-gray-700">
-                        {c.sortOrder}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-gray-900">
-                        {c.slug}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">{c.title.en}</td>
-                      <td className="px-4 py-3 text-gray-500">{c.tag.en}</td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {c.productCount} / {c.materialCount}
-                      </td>
-                      <td className="px-4 py-3">
-                        <EditCategoryForm
-                          category={c}
-                          assets={assetOptions}
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <DeleteCategoryForm
-                          categoryId={c.id}
-                          slug={c.slug}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-border hover:bg-transparent">
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Sort
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Slug
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Title (en)
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Tag (en)
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Products
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Image / actions
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    <span className="sr-only">Delete</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {categories.map((c) => (
+                  <TableRow
+                    key={c.id}
+                    className="border-b border-border last:border-0 align-top transition-colors duration-150 hover:bg-muted/50"
+                  >
+                    <TableCell className="px-4 py-3 font-mono tabular-nums text-xs text-muted-foreground">
+                      {c.sortOrder}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 font-mono tabular-nums text-sm text-foreground">
+                      {c.slug}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-sm text-foreground">
+                      {c.title.en}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                      {c.tag.en}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 font-mono tabular-nums text-xs text-muted-foreground">
+                      {c.productCount} / {c.materialCount}
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <EditCategoryForm
+                        category={c}
+                        assets={assetOptions}
+                      />
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <DeleteCategoryForm
+                        categoryId={c.id}
+                        slug={c.slug}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </div>
+        </SectionCard>
 
         <CreateCategoryForm assets={assetOptions} />
       </div>
 
       {/* ── Products ────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold text-gray-900">Products</h2>
-
-        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <SectionCard title="Products" bodyClassName="p-0">
           {products.length === 0 ? (
-            <p className="px-6 py-8 text-center text-sm text-gray-400">
-              No products yet.
-            </p>
+            <EmptyState
+              icon={Package}
+              title="No products yet."
+              description="Add the first product below."
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                    <th className="px-4 py-3">Sort</th>
-                    <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3">Slug</th>
-                    <th className="px-4 py-3">Title (en)</th>
-                    <th className="px-4 py-3">Tag (en)</th>
-                    <th className="px-4 py-3">Image / actions</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {products.map((p) => {
-                    const catSlug =
-                      categories.find((c) => c.id === p.categoryId)?.slug ??
-                      p.categoryId;
-                    return (
-                      <tr
-                        key={p.id}
-                        className="align-top transition-colors hover:bg-gray-50"
-                      >
-                        <td className="px-4 py-3 font-mono text-gray-700">
-                          {p.sortOrder}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-gray-500">
-                          {catSlug}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-gray-900">
-                          {p.slug}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {p.title.en}
-                        </td>
-                        <td className="px-4 py-3 text-gray-500">
-                          {p.tag.en}
-                        </td>
-                        <td className="px-4 py-3">
-                          <EditProductForm
-                            product={p}
-                            categories={categoryOptions}
-                            assets={assetOptions}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <DeleteProductForm
-                            productId={p.id}
-                            slug={p.slug}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-border hover:bg-transparent">
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Sort
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Category
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Slug
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Title (en)
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Tag (en)
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    Image / actions
+                  </TableHead>
+                  <TableHead
+                    scope="col"
+                    className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >
+                    <span className="sr-only">Delete</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {products.map((p) => {
+                  const catSlug =
+                    categories.find((c) => c.id === p.categoryId)?.slug ??
+                    p.categoryId;
+                  return (
+                    <TableRow
+                      key={p.id}
+                      className="border-b border-border last:border-0 align-top transition-colors duration-150 hover:bg-muted/50"
+                    >
+                      <TableCell className="px-4 py-3 font-mono tabular-nums text-xs text-muted-foreground">
+                        {p.sortOrder}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 font-mono tabular-nums text-xs text-muted-foreground">
+                        {catSlug}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 font-mono tabular-nums text-sm text-foreground">
+                        {p.slug}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-foreground">
+                        {p.title.en}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                        {p.tag.en}
+                      </TableCell>
+                      <TableCell className="px-4 py-3">
+                        <EditProductForm
+                          product={p}
+                          categories={categoryOptions}
+                          assets={assetOptions}
+                        />
+                      </TableCell>
+                      <TableCell className="px-4 py-3">
+                        <DeleteProductForm
+                          productId={p.id}
+                          slug={p.slug}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
-        </div>
+        </SectionCard>
 
         <CreateProductForm categories={categoryOptions} assets={assetOptions} />
       </div>

@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { rollbackAction, type ActionState } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 interface RollbackFormProps {
   toVersion: number;
@@ -30,14 +32,14 @@ export function RollbackForm({ toVersion }: RollbackFormProps) {
         <p
           role="alert"
           aria-live="assertive"
-          className="text-xs text-red-600"
+          className="text-xs text-destructive"
           title={state.error}
         >
           Error: {state.error}
         </p>
       )}
       {state.success && (
-        <p role="status" aria-live="polite" className="text-xs text-green-700">
+        <p role="status" aria-live="polite" className="text-xs text-success">
           Rolled back.
         </p>
       )}
@@ -47,25 +49,27 @@ export function RollbackForm({ toVersion }: RollbackFormProps) {
         className="flex items-center gap-2"
       >
         <input type="hidden" name="toVersion" value={toVersion} />
-        <label className="flex cursor-pointer items-center gap-1 text-xs text-gray-500">
+        <Label
+          htmlFor={`restore-draft-${toVersion}`}
+          className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground font-normal"
+        >
           <input
+            id={`restore-draft-${toVersion}`}
             type="checkbox"
             name="restoreWorkingState"
-            className="h-3.5 w-3.5 rounded border-gray-300 focus:ring-gray-900"
+            className="h-3.5 w-3.5 rounded border-input accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           restore draft
-        </label>
-        <button
+        </Label>
+        <Button
           type="submit"
+          variant="outline"
+          size="sm"
           disabled={pending}
           aria-disabled={pending}
-          className="rounded border border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-700
-                     transition-colors hover:border-gray-500 hover:bg-gray-50
-                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-1
-                     disabled:cursor-not-allowed disabled:opacity-50"
         >
           {pending ? "Rolling back…" : "Roll back"}
-        </button>
+        </Button>
       </form>
     </div>
   );

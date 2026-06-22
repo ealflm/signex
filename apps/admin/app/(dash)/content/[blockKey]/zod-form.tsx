@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { parseBlock } from "@signex/shared";
 import type { FieldPlan } from "@/app/lib/zodform-fields";
+import { Field } from "@/components/admin/field";
+import { EmptyState } from "@/components/admin/empty-state";
+import { StatusBadge } from "@/components/admin/status-badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
 
 interface AssetRow {
   id: string;
@@ -32,18 +39,14 @@ function StringField({
   onChange: (v: unknown) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={`field-${field.name}`} className="text-xs font-medium text-gray-600 uppercase tracking-wide">
-        {field.label}
-      </label>
-      <input
+    <Field label={field.label} htmlFor={`field-${field.name}`}>
+      <Input
         id={`field-${field.name}`}
         type="text"
-        className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm transition-colors focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
         value={String(value ?? "")}
         onChange={(e) => onChange(e.target.value)}
       />
-    </div>
+    </Field>
   );
 }
 
@@ -58,36 +61,28 @@ function LocalizedField({
 }) {
   const v = (value as { en?: string; vi?: string }) ?? {};
   return (
-    <fieldset className="flex flex-col gap-2 rounded-md border border-gray-200 p-3">
-      <legend className="px-1 text-xs font-medium text-gray-600 uppercase tracking-wide">
+    <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <legend className="px-1 text-sm font-medium text-foreground">
         {field.label}
       </legend>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`field-${field.name}-en`} className="text-xs text-gray-500">
-          English (en)
-        </label>
-        <input
+      <Field label="English (en)" htmlFor={`field-${field.name}-en`}>
+        <Input
           id={`field-${field.name}-en`}
           type="text"
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
           placeholder="English"
           value={v.en ?? ""}
           onChange={(e) => onChange({ ...v, en: e.target.value })}
         />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`field-${field.name}-vi`} className="text-xs text-gray-500">
-          Vietnamese (vi)
-        </label>
-        <input
+      </Field>
+      <Field label="Vietnamese (vi)" htmlFor={`field-${field.name}-vi`}>
+        <Input
           id={`field-${field.name}-vi`}
           type="text"
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
           placeholder="Vietnamese"
           value={v.vi ?? ""}
           onChange={(e) => onChange({ ...v, vi: e.target.value })}
         />
-      </div>
+      </Field>
     </fieldset>
   );
 }
@@ -105,15 +100,15 @@ function AssetRefField({
 }) {
   const v = (value as { assetId?: string; alt?: { en?: string; vi?: string } }) ?? {};
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-gray-200 p-3">
-      <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">{field.label}</span>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`field-${field.name}-asset`} className="text-xs text-gray-500">
-          Asset
-        </label>
+    <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <legend className="px-1 text-sm font-medium text-foreground">
+        {field.label}
+      </legend>
+      <Field label="Asset" htmlFor={`field-${field.name}-asset`}>
+        {/* Native select: value posts via client state (onChange), not form name= */}
         <select
           id={`field-${field.name}-asset`}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+          className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           value={v.assetId ?? ""}
           onChange={(e) => onChange({ ...v, assetId: e.target.value || undefined })}
         >
@@ -124,8 +119,8 @@ function AssetRefField({
             </option>
           ))}
         </select>
-      </div>
-    </div>
+      </Field>
+    </fieldset>
   );
 }
 
@@ -142,17 +137,25 @@ function JsonField({
 }) {
   const [raw, setRaw] = useState(() => JSON.stringify(value ?? null, null, 2));
   const [parseError, setParseError] = useState<string | null>(null);
+
+  const label = (
+    <>
+      {field.label}{" "}
+      <StatusBadge tone="warning" className="ml-1 normal-case tracking-normal">
+        raw JSON
+      </StatusBadge>
+    </>
+  );
+
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={`field-${field.name}`} className="text-xs font-medium text-gray-600 uppercase tracking-wide">
-        {field.label}{" "}
-        <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-xs font-normal text-amber-700 normal-case tracking-normal">
-          raw JSON
-        </span>
-      </label>
-      <textarea
+    <Field
+      label={label}
+      htmlFor={`field-${field.name}`}
+      error={parseError ?? undefined}
+    >
+      <Textarea
         id={`field-${field.name}`}
-        className="rounded-md border border-gray-300 px-3 py-2 font-mono text-xs text-gray-900 shadow-sm transition-colors focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+        className="font-mono text-xs"
         rows={6}
         value={raw}
         onChange={(e) => {
@@ -167,13 +170,9 @@ function JsonField({
           }
         }}
         aria-describedby={parseError ? `field-${field.name}-err` : undefined}
+        aria-invalid={parseError ? true : undefined}
       />
-      {parseError && (
-        <p id={`field-${field.name}-err`} className="text-xs text-red-600" role="alert">
-          {parseError}
-        </p>
-      )}
-    </div>
+    </Field>
   );
 }
 
@@ -300,17 +299,21 @@ export function ZodForm({
     setBusy(false);
   }
 
-  const msgColor =
+  const msgBannerClass =
     msg?.type === "success"
-      ? "bg-green-50 border-green-200 text-green-800"
+      ? "border-success/30 bg-success/10 text-success"
       : msg?.type === "warn"
-        ? "bg-amber-50 border-amber-200 text-amber-800"
-        : "bg-red-50 border-red-200 text-red-700";
+        ? "border-warning/30 bg-warning/10 text-warning"
+        : "border-destructive/30 bg-destructive/10 text-destructive";
 
   return (
     <div className="flex max-w-xl flex-col gap-5">
       {fields.length === 0 && (
-        <p className="text-sm text-gray-500">No editable fields derived for this block.</p>
+        <EmptyState
+          icon={FileText}
+          title="No editable fields"
+          description="No editable fields were derived for this block."
+        />
       )}
 
       {fields.map((f) => (
@@ -328,24 +331,23 @@ export function ZodForm({
         <p
           role="alert"
           aria-live="polite"
-          className={`rounded-md border px-4 py-3 text-sm ${msgColor}`}
+          className={`rounded-md border px-4 py-3 text-sm ${msgBannerClass}`}
         >
           {msg.text}
         </p>
       )}
 
       <div className="flex items-center gap-3">
-        <button
+        <Button
           type="button"
           disabled={busy || jsonErrors.size > 0}
           aria-disabled={busy || jsonErrors.size > 0}
           onClick={onSave}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Saving…" : "Save draft"}
-        </button>
+        </Button>
         {busy && (
-          <span className="text-xs text-gray-500" aria-live="polite">
+          <span className="text-xs text-muted-foreground" aria-live="polite">
             Saving…
           </span>
         )}

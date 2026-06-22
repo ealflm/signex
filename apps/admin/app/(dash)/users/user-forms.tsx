@@ -3,6 +3,7 @@
 import { useFormStatus } from "react-dom";
 import { deactivateUser, updateUserRole } from "./actions";
 import type { RoleName } from "@signex/shared";
+import { Button } from "@/components/ui/button";
 
 const ROLES: RoleName[] = ["EDITOR", "PUBLISHER", "ADMIN"];
 
@@ -11,17 +12,15 @@ const ROLES: RoleName[] = ["EDITOR", "PUBLISHER", "ADMIN"];
 function SetRoleButton() {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
+      variant="outline"
+      size="sm"
       disabled={pending}
       aria-disabled={pending}
-      className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700
-                 transition-colors hover:bg-gray-50
-                 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1
-                 disabled:opacity-50"
     >
       {pending ? "Saving…" : "Set"}
-    </button>
+    </Button>
   );
 }
 
@@ -42,8 +41,7 @@ export function UpdateRoleForm({
         id={`role-${userId}`}
         name="role"
         defaultValue={currentRole}
-        className="rounded border border-gray-300 bg-white px-2 py-1 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1"
+        className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         {ROLES.map((r) => (
           <option key={r} value={r}>
@@ -61,17 +59,16 @@ export function UpdateRoleForm({
 function DeactivateButton() {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
+      variant="ghost"
+      size="sm"
       disabled={pending}
       aria-disabled={pending}
-      className="rounded px-2 py-1 text-xs font-medium text-red-600
-                 transition-colors hover:bg-red-50
-                 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-1
-                 disabled:opacity-50"
+      className="text-destructive hover:text-destructive hover:bg-destructive/10"
     >
       {pending ? "Deactivating…" : "Deactivate"}
-    </button>
+    </Button>
   );
 }
 

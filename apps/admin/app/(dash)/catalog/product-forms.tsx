@@ -7,6 +7,12 @@ import {
   deleteProduct,
   type CatalogActionState,
 } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { SectionCard } from "@/components/admin/section-card";
+import { Field } from "@/components/admin/field";
 
 interface Loc { en: string; vi: string }
 interface AssetRow { id: string; originalName: string }
@@ -24,21 +30,32 @@ interface ProductRow {
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
+// Native <select> kept intentionally: name="imageId" / name="categoryId" posts to a server action.
+// Restyled with token classes only.
+const nativeSelectCls =
+  "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs " +
+  "outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 " +
+  "transition-[border-color,box-shadow] duration-150";
+
 function AssetSelect({
   assets,
   defaultValue,
+  id,
 }: {
   assets: AssetRow[];
   defaultValue: string | null;
+  id?: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <label className="text-xs font-medium text-gray-500">Image</label>
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id ?? "asset-select"} className="text-xs font-medium text-muted-foreground">
+        Image
+      </Label>
       <select
+        id={id ?? "asset-select"}
         name="imageId"
         defaultValue={defaultValue ?? ""}
-        className="rounded-md border border-gray-300 px-2 py-1 text-sm
-                   focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+        className={nativeSelectCls}
       >
         <option value="">— none —</option>
         {assets.map((a) => (
@@ -66,46 +83,42 @@ function LocalizedPair({
   placeholder?: string;
   multiline?: boolean;
 }) {
-  const cls =
-    "rounded-md border border-gray-300 px-2 py-1 text-sm placeholder-gray-400 shadow-sm " +
-    "focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900";
-
   return (
-    <fieldset className="flex flex-col gap-0.5">
-      <legend className="text-xs font-medium text-gray-500">{label}</legend>
+    <fieldset className="flex flex-col gap-1">
+      <legend className="text-xs font-medium text-muted-foreground">{label}</legend>
       <div className="flex gap-1">
         {multiline ? (
           <>
-            <textarea
+            <Textarea
               name={`${base}.en`}
               rows={2}
               defaultValue={defaultEn ?? ""}
               placeholder={`${placeholder ?? label} (en)`}
-              className={cls + " w-44 resize-y"}
+              className="w-44 resize-y text-sm"
             />
-            <textarea
+            <Textarea
               name={`${base}.vi`}
               rows={2}
               defaultValue={defaultVi ?? ""}
               placeholder={`${placeholder ?? label} (vi)`}
-              className={cls + " w-44 resize-y"}
+              className="w-44 resize-y text-sm"
             />
           </>
         ) : (
           <>
-            <input
+            <Input
               type="text"
               name={`${base}.en`}
               defaultValue={defaultEn ?? ""}
               placeholder={`${placeholder ?? label} (en)`}
-              className={cls + " w-40"}
+              className="w-40 text-sm"
             />
-            <input
+            <Input
               type="text"
               name={`${base}.vi`}
               defaultValue={defaultVi ?? ""}
               placeholder={`${placeholder ?? label} (vi)`}
-              className={cls + " w-40"}
+              className="w-40 text-sm"
             />
           </>
         )}
@@ -126,7 +139,7 @@ function ActionFeedback({ state }: { state: CatalogActionState }) {
       <p
         role="alert"
         aria-live="assertive"
-        className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
       >
         {is409
           ? "Stale lock: the catalog was changed elsewhere. Refresh and retry."
@@ -141,7 +154,7 @@ function ActionFeedback({ state }: { state: CatalogActionState }) {
       <p
         role="status"
         aria-live="polite"
-        className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700"
+        className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
       >
         Saved.
       </p>
@@ -167,23 +180,16 @@ export function CreateProductForm({
   );
 
   return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-gray-900">Add product</h3>
+    <SectionCard title="Add product">
       <ActionFeedback state={state} />
       <form action={formAction} className="mt-2 flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-0.5">
-          <label
-            htmlFor="prod-create-cat"
-            className="text-xs font-medium text-gray-500"
-          >
-            Category *
-          </label>
+        <Field label="Category" htmlFor="prod-create-cat" required>
+          {/* Native select: name="categoryId" posts to createProduct server action */}
           <select
             id="prod-create-cat"
             name="categoryId"
             required
-            className="rounded-md border border-gray-300 px-2 py-1 text-sm
-                       focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className={nativeSelectCls + " w-40"}
           >
             <option value="">— select —</option>
             {categories.map((c) => (
@@ -192,63 +198,44 @@ export function CreateProductForm({
               </option>
             ))}
           </select>
-        </div>
+        </Field>
 
-        <div className="flex flex-col gap-0.5">
-          <label
-            htmlFor="prod-create-slug"
-            className="text-xs font-medium text-gray-500"
-          >
-            Slug *
-          </label>
-          <input
+        <Field label="Slug" htmlFor="prod-create-slug" required>
+          <Input
             id="prod-create-slug"
             type="text"
             name="slug"
             required
             placeholder="e.g. granite-dark"
-            className="w-40 rounded-md border border-gray-300 px-2 py-1 text-sm
-                       placeholder-gray-400 shadow-sm
-                       focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className="w-40 font-mono tabular-nums text-sm"
           />
-        </div>
+        </Field>
 
-        <div className="flex flex-col gap-0.5">
-          <label
-            htmlFor="prod-create-sort"
-            className="text-xs font-medium text-gray-500"
-          >
-            Sort order
-          </label>
-          <input
+        <Field label="Sort order" htmlFor="prod-create-sort">
+          <Input
             id="prod-create-sort"
             type="number"
             name="sortOrder"
             defaultValue={0}
-            className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm
-                       shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className="w-20 font-mono tabular-nums text-sm"
           />
-        </div>
+        </Field>
 
         <LocalizedPair base="title" label="Title" />
         <LocalizedPair base="tag" label="Tag" />
         <LocalizedPair base="desc" label="Description" multiline />
 
-        <AssetSelect assets={assets} defaultValue={null} />
+        <AssetSelect assets={assets} defaultValue={null} id="prod-create-image" />
 
-        <button
+        <Button
           type="submit"
           disabled={pending}
           aria-disabled={pending}
-          className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white shadow-sm
-                     transition-colors hover:bg-gray-700
-                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2
-                     disabled:cursor-not-allowed disabled:opacity-50"
         >
           {pending ? "Adding…" : "Add product"}
-        </button>
+        </Button>
       </form>
-    </div>
+    </SectionCard>
   );
 }
 
@@ -282,13 +269,16 @@ export function EditProductForm({
         <input type="hidden" name="desc.vi" value={product.desc.vi} />
 
         {/* categoryId — allow reassignment inline */}
-        <div className="flex flex-col gap-0.5">
-          <label className="text-xs font-medium text-gray-500">Category</label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`prod-edit-cat-${product.id}`} className="text-xs font-medium text-muted-foreground">
+            Category
+          </Label>
+          {/* Native select: name="categoryId" posts to updateProduct server action */}
           <select
+            id={`prod-edit-cat-${product.id}`}
             name="categoryId"
             defaultValue={product.categoryId}
-            className="rounded-md border border-gray-300 px-1 py-0.5 text-xs
-                       focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className={nativeSelectCls + " w-32 text-xs"}
           >
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -298,27 +288,25 @@ export function EditProductForm({
           </select>
         </div>
 
-        <input
+        <Input
           type="number"
           name="sortOrder"
           defaultValue={product.sortOrder}
           aria-label="Sort order"
-          className="w-16 rounded-md border border-gray-300 px-1 py-0.5 text-sm
-                     focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+          className="w-16 font-mono tabular-nums text-sm"
         />
 
-        <AssetSelect assets={assets} defaultValue={product.imageId} />
+        <AssetSelect assets={assets} defaultValue={product.imageId} id={`prod-edit-image-${product.id}`} />
 
-        <button
+        <Button
           type="submit"
+          variant="outline"
+          size="sm"
           disabled={pending}
           aria-disabled={pending}
-          className="rounded-md border border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-700
-                     hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900
-                     disabled:opacity-50"
         >
           {pending ? "Saving…" : "Save"}
-        </button>
+        </Button>
       </form>
     </>
   );
@@ -341,7 +329,7 @@ export function DeleteProductForm({
   return (
     <>
       {state.error && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-destructive">
           {state.error}
         </p>
       )}
@@ -356,16 +344,16 @@ export function DeleteProductForm({
         }}
       >
         <input type="hidden" name="id" value={productId} />
-        <button
+        <Button
           type="submit"
+          variant="ghost"
+          size="sm"
           disabled={pending}
           aria-disabled={pending}
-          className="rounded px-2 py-0.5 text-xs font-medium text-red-600
-                     hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600
-                     disabled:opacity-50"
+          className="text-destructive hover:text-destructive"
         >
           {pending ? "Deleting…" : "Delete"}
-        </button>
+        </Button>
       </form>
     </>
   );

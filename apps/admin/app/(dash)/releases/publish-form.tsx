@@ -2,6 +2,9 @@
 
 import { useActionState } from "react";
 import { publishAction, type ActionState } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Field } from "@/components/admin/field";
 
 interface PublishFormProps {
   expectedRevision: number;
@@ -25,7 +28,7 @@ export function PublishForm({ expectedRevision, dirty }: PublishFormProps) {
         <p
           role="alert"
           aria-live="assertive"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
         >
           {state.error === "Conflict" ||
           state.error?.toLowerCase().includes("conflict") ||
@@ -39,42 +42,39 @@ export function PublishForm({ expectedRevision, dirty }: PublishFormProps) {
         <p
           role="status"
           aria-live="polite"
-          className="rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700"
+          className="rounded-md border border-success/30 bg-success/10 px-4 py-2 text-sm text-success"
         >
           Published successfully.
         </p>
       )}
 
       <div className="flex items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-          Release note (optional)
-          <textarea
+        <Field
+          label="Release note (optional)"
+          htmlFor="publish-note"
+          className="flex-none"
+        >
+          <Textarea
+            id="publish-note"
             name="note"
             rows={2}
             placeholder="Describe what changed…"
-            className="w-72 rounded-md border border-gray-300 px-3 py-2 text-sm
-                       placeholder-gray-400 shadow-sm
-                       focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900
-                       disabled:opacity-50"
+            className="w-72"
             disabled={pending || !dirty}
           />
-        </label>
+        </Field>
 
-        <button
+        <Button
           type="submit"
           disabled={pending || !dirty}
           aria-disabled={pending || !dirty}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm
-                     transition-colors hover:bg-gray-700
-                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2
-                     disabled:cursor-not-allowed disabled:opacity-50"
         >
           {pending ? "Publishing…" : "Publish"}
-        </button>
+        </Button>
       </div>
 
       {!dirty && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           No unpublished changes — publish is only available when the working
           state differs from the last published version.
         </p>
