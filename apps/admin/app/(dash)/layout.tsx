@@ -27,7 +27,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
             [
               { href: "/releases", label: "Releases" },
               { href: "/catalog", label: "Catalog" },
-              { href: "/content/home.hero", label: "Content" },
+              { href: "/content/hero", label: "Content" },
               { href: "/media", label: "Media" },
             ] as { href: string; label: string }[]
           ).map(({ href, label }) => (
