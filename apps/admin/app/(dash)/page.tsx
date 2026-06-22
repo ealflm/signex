@@ -1,71 +1,52 @@
-import { apiServer } from "@/app/lib/api";
+import { Suspense } from "react";
+import { getOverviewData } from "@/app/lib/overview";
+import { KpiCards } from "@/components/overview/kpi-cards";
+import { LeadsChart } from "@/components/overview/leads-chart";
+import { RecentLeadsTable } from "@/components/overview/recent-leads-table";
+import {
+  ChartSkeleton,
+  KpiCardsSkeleton,
+  TableSkeleton,
+} from "@/components/overview/skeletons";
 
-interface DiffStatus {
-  dirty: boolean;
-  revision: number;
-  lastPublishedRevision: number;
+export default function OverviewPage() {
+  return (
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Overview</h1>
+        <p className="text-sm text-muted-foreground">
+          Leads, catalog, and release status at a glance.
+        </p>
+      </header>
+
+      {/* Single Suspense boundary over the one server fetch — each surface streams in
+          with a skeleton that matches its own layout. The static header paints first. */}
+      <Suspense fallback={<OverviewSkeleton />}>
+        <OverviewBody />
+      </Suspense>
+    </div>
+  );
 }
 
-interface LiveStatus {
-  version: number;
-  checksum: string;
-  publishedAt: string;
-}
-
-export default async function DashboardPage() {
-  const [diffRes, liveRes] = await Promise.all([
-    apiServer<DiffStatus>("/api/releases/diff"),
-    apiServer<LiveStatus>("/api/releases/live"),
-  ]);
-
-  const diff = diffRes.ok ? diffRes.data : null;
-  const live = liveRes.ok ? liveRes.data : null;
-  const dirty = diff?.dirty ?? false;
+async function OverviewBody() {
+  // 90 days fetched once; the chart slices to 7/30/90 client-side (no refetch).
+  const data = await getOverviewData(90);
 
   return (
-    <section className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500">Working-state status and live release summary.</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <KpiCards data={data} />
+      <LeadsChart series={data.leads.series} />
+      <RecentLeadsTable items={data.recentLeads.items} />
+    </div>
+  );
+}
 
-      {!diff || !live && (
-        <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          Could not load release status. The API may be unavailable.
-        </p>
-      )}
-
-      {diff && (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <dl className="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-3 text-sm">
-            <dt className="text-gray-500">Working revision</dt>
-            <dd className="font-mono font-medium text-gray-900 text-right">{diff.revision}</dd>
-
-            <dt className="text-gray-500">Last published revision</dt>
-            <dd className="font-mono font-medium text-gray-900 text-right">{diff.lastPublishedRevision}</dd>
-
-            <dt className="text-gray-500">Live version</dt>
-            <dd className="font-mono font-medium text-gray-900 text-right">
-              {live?.version != null ? live.version : "—"}
-            </dd>
-
-            <dt className="text-gray-500">Status</dt>
-            <dd className="text-right">
-              {dirty ? (
-                <span className="inline-flex items-center gap-1.5 font-semibold text-amber-600">
-                  <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-amber-400" />
-                  Unpublished changes
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 font-semibold text-green-700">
-                  <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-green-500" />
-                  Up to date
-                </span>
-              )}
-            </dd>
-          </dl>
-        </div>
-      )}
-    </section>
+function OverviewSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <KpiCardsSkeleton />
+      <ChartSkeleton />
+      <TableSkeleton />
+    </div>
   );
 }
