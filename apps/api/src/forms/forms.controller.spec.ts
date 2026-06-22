@@ -8,10 +8,25 @@ import { FormsService } from './forms.service';
 
 describe('FormsController', () => {
   let controller: FormsController;
-  let service: { submit: jest.Mock };
+  let service: {
+    submit: jest.Mock;
+    list: jest.Mock;
+    summary: jest.Mock;
+    setStatus: jest.Mock;
+  };
 
   beforeEach(async () => {
-    service = { submit: jest.fn().mockResolvedValue({ ok: true }) };
+    service = {
+      submit: jest.fn().mockResolvedValue({ ok: true }),
+      list: jest.fn().mockResolvedValue({ items: [], total: 0 }),
+      summary: jest.fn().mockResolvedValue({
+        total: 0,
+        new: 0,
+        byKey: { quote: 0, contact: 0 },
+        series: [],
+      }),
+      setStatus: jest.fn().mockResolvedValue({ id: 'sub_1', status: 'READ' }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FormsController],
@@ -85,5 +100,33 @@ describe('FormsController', () => {
       '127.0.0.1',
       'jest',
     );
+  });
+
+  it('list() delegates to FormsService.list with parsed query params', async () => {
+    const result = await controller.list('NEW', 'quote', '10', '0');
+    expect(service.list).toHaveBeenCalledWith({
+      status: 'NEW',
+      formKey: 'quote',
+      take: 10,
+      skip: 0,
+    });
+    expect(result).toEqual({ items: [], total: 0 });
+  });
+
+  it('list() passes undefined take/skip when query params absent', async () => {
+    await controller.list(undefined, undefined, undefined, undefined);
+    expect(service.list).toHaveBeenCalledWith({
+      status: undefined,
+      formKey: undefined,
+      take: undefined, // controller guards: take !== undefined before parseInt
+      skip: undefined,
+    });
+  });
+
+  it('summary() returns service.summary result', async () => {
+    const result = await controller.summary();
+    expect(service.summary).toHaveBeenCalled();
+    expect(result).toHaveProperty('total');
+    expect(result).toHaveProperty('series');
   });
 });
