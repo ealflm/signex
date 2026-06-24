@@ -56,9 +56,13 @@ export default async function AboutPage({ params }: { params: Promise<{ lang: st
   // about hero video is now a configurable VideoRef (aboutPage.hero.videoMedia); fall back to the
   // original literal poster+mp4+webm when no asset is attached (published v1 snapshot stays valid).
   const heroVideo = dict.aboutPage.hero.videoMedia;
+  // All-or-nothing fallback: a configured VideoRef requires poster+mp4 (webm optional), so when an
+  // mp4 is attached use ONLY the configured sources (emit webm just if the editor provided one).
+  // The stock webm belongs solely to the full literal fallback — never splice it next to a custom mp4.
+  const hasCustomVideo = !!heroVideo.mp4Url;
   const heroPoster = heroVideo.posterUrl || "/assets/images/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_poster.0000000.jpg";
   const heroMp4 = heroVideo.mp4Url || "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_mp4.mp4";
-  const heroWebm = heroVideo.webmUrl || "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_webm.webm";
+  const heroWebm = hasCustomVideo ? heroVideo.webmUrl : "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_webm.webm";
   return (
     <>
       <section className="section_hero-home-c">
@@ -82,7 +86,7 @@ export default async function AboutPage({ params }: { params: Promise<{ lang: st
             style={{ backgroundImage: `url("${heroPoster}")` }}
           >
             <source data-wf-ignore="true" src={heroMp4} />
-            <source data-wf-ignore="true" src={heroWebm} />
+            {heroWebm && <source data-wf-ignore="true" src={heroWebm} />}
           </video>
           <div className="content_hero-home-c">
             <div className="headline_home-c" data-w-id="532ef140-c6a2-edd2-7d75-66929c4acf3b" style={{ opacity: 0, filter: 'blur(5px)' }}>

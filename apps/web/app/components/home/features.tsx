@@ -18,6 +18,20 @@ import type { Dictionary } from "@/app/[lang]/dictionaries";
 export function Features({ dict }: { dict: Dictionary["features"] }) {
   const t = dict;
 
+  // Workshop video: configurable VideoRef (features.video.media). All-or-nothing fallback —
+  // when a custom mp4 is attached, emit webm only if the editor provided one; the stock webm
+  // belongs solely to the full literal fallback (never spliced next to a custom mp4).
+  const hasFeatureVideo = !!t.videoMedia.mp4Url;
+  const featPoster =
+    t.videoMedia.posterUrl ||
+    "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg";
+  const featMp4 =
+    t.videoMedia.mp4Url ||
+    "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_mp4.mp4";
+  const featWebm = hasFeatureVideo
+    ? t.videoMedia.webmUrl
+    : "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm";
+
   return (
     <section className="section_features">
       <div className="padding-global">
@@ -157,16 +171,13 @@ export function Features({ dict }: { dict: Dictionary["features"] }) {
                     className="video_cover w-background-video w-background-video-atom"
                     data-autoplay="true"
                     data-loop="true"
-                    data-poster-url={t.videoMedia.posterUrl || "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg"}
-                    data-video-urls={[
-                      t.videoMedia.mp4Url || "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_mp4.mp4",
-                      t.videoMedia.webmUrl || "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm",
-                    ].filter(Boolean).join(",")}
+                    data-poster-url={featPoster}
+                    data-video-urls={[featMp4, featWebm].filter(Boolean).join(",")}
                     data-wf-ignore="true"
                   >
-                    <video autoPlay data-object-fit="cover" data-wf-ignore="true" id="40581aae-5301-9d32-a680-8d7bb2717107-video" loop muted playsInline style={{ backgroundImage: `url("${t.videoMedia.posterUrl || "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg"}")` }}>
-                      <source data-wf-ignore="true" src={t.videoMedia.mp4Url || "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_mp4.mp4"} />
-                      <source data-wf-ignore="true" src={t.videoMedia.webmUrl || "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm"} />
+                    <video autoPlay data-object-fit="cover" data-wf-ignore="true" id="40581aae-5301-9d32-a680-8d7bb2717107-video" loop muted playsInline style={{ backgroundImage: `url("${featPoster}")` }}>
+                      <source data-wf-ignore="true" src={featMp4} />
+                      {featWebm && <source data-wf-ignore="true" src={featWebm} />}
                     </video>
                     <noscript dangerouslySetInnerHTML={{ __html: `<style>
                [data-wf-bgvideo-fallback-img] {
@@ -183,7 +194,7 @@ export function Features({ dict }: { dict: Dictionary["features"] }) {
     }
   }
               </style>
-              <img alt="" data-wf-bgvideo-fallback-img="true" src="${t.videoMedia.posterUrl || "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg"}"/>` }} />
+              <img alt="" data-wf-bgvideo-fallback-img="true" src="${featPoster}"/>` }} />
                     <div aria-live="polite">
                       <button aria-controls="40581aae-5301-9d32-a680-8d7bb2717107-video" className="w-backgroundvideo-backgroundvideoplaypausebutton button_play-pause w-background-video--control" data-w-bg-video-control="true" type="button">
                         <span className="play-state">
