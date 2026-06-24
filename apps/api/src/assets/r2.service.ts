@@ -16,18 +16,27 @@ function hexToBase64(hex: string): string {
 
 @Injectable()
 export class R2Service {
+  /** Server-side client (putObject/headObject/getObjectBytes) — hits cfg.endpoint. */
   private readonly s3: S3Client;
+  /** Presign-only client — bakes cfg.presignEndpoint into the URL the browser uses. */
+  private readonly s3Presign: S3Client;
 
   constructor(@Inject(R2_CONFIG) private readonly cfg: R2Config) {
-    this.s3 = new S3Client({
+    const shared = {
       region: cfg.region,
-      endpoint: cfg.endpoint,
       credentials: {
         accessKeyId: cfg.accessKeyId,
         secretAccessKey: cfg.secretAccessKey,
       },
       forcePathStyle: true,
-    });
+    };
+    this.s3 = new S3Client({ ...shared, endpoint: cfg.endpoint });
+    // For real R2 (and any single-host setup) presignEndpoint === endpoint, so reuse the
+    // same client — only split-horizon dev (MinIO) needs a second, presign-only client.
+    this.s3Presign =
+      cfg.presignEndpoint === cfg.endpoint
+        ? this.s3
+        : new S3Client({ ...shared, endpoint: cfg.presignEndpoint });
   }
 
   publicUrl(r2Key: string): string {
@@ -52,7 +61,7 @@ export class R2Service {
       CacheControl: IMMUTABLE_CACHE_CONTROL,
       ChecksumSHA256: checksum,
     });
-    const url = await getSignedUrl(this.s3, cmd, {
+    const url = await getSignedUrl(this.s3Presign, cmd, {
       expiresIn: this.cfg.presignTtlSeconds,
       // The browser MUST echo these headers on PUT or R2 rejects the signature.
       signableHeaders: new Set([

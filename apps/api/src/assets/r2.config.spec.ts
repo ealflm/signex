@@ -16,6 +16,18 @@ describe('loadR2Config', () => {
     expect(cfg.publicBase).toBe('https://media.signex.test');
     expect(cfg.region).toBe('auto');
     expect(cfg.presignTtlSeconds).toBe(300);
+    // No R2_PUBLIC_ENDPOINT → presignEndpoint defaults to endpoint (prod R2 unaffected).
+    expect(cfg.presignEndpoint).toBe('https://acc.r2.cloudflarestorage.com');
+  });
+
+  it('honors R2_PUBLIC_ENDPOINT for the presign-only endpoint (split-horizon dev)', () => {
+    const cfg = loadR2Config({
+      ...base,
+      R2_ENDPOINT: 'http://minio:9000',
+      R2_PUBLIC_ENDPOINT: 'http://localhost:9000',
+    });
+    expect(cfg.endpoint).toBe('http://minio:9000');
+    expect(cfg.presignEndpoint).toBe('http://localhost:9000');
   });
 
   it('honors R2_REGION + R2_PRESIGN_TTL overrides', () => {

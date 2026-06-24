@@ -16,6 +16,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const cfg: R2Config = {
   endpoint: 'https://acc.r2.cloudflarestorage.com',
+  presignEndpoint: 'https://acc.r2.cloudflarestorage.com',
   region: 'auto',
   accessKeyId: 'ak',
   secretAccessKey: 'sk',
@@ -100,5 +101,42 @@ describe('R2Service', () => {
       .resolves({ Body: Readable.from([Buffer.from('hello')]) as never });
     const buf = await svc.getObjectBytes('k');
     expect(buf.toString()).toBe('hello');
+  });
+});
+
+describe('R2Service dual endpoint (split-horizon)', () => {
+  async function endpointOf(client: S3Client): Promise<string> {
+    const ep = await client.config.endpoint!();
+    return `${ep.protocol}//${ep.hostname}:${ep.port}`;
+  }
+
+  it('presign URL uses presignEndpoint; server calls use endpoint', async () => {
+    const splitCfg: R2Config = {
+      ...cfg,
+      endpoint: 'http://minio:9000',
+      presignEndpoint: 'http://localhost:9000',
+    };
+    (getSignedUrl as jest.Mock).mockClear();
+    const svc = new R2Service(splitCfg);
+    await svc.presignPut({
+      r2Key: 'k',
+      mime: 'image/png',
+      sha256: 'a'.repeat(64),
+      maxBytes: 1000,
+    });
+    // The client handed to getSignedUrl must point at the browser-reachable host.
+    const presignClient = (getSignedUrl as jest.Mock).mock
+      .calls[0][0] as S3Client;
+    expect(await endpointOf(presignClient)).toBe('http://localhost:9000');
+    // Server-side client (used for putObject/headObject/getObjectBytes) hits the internal host.
+    const serverClient = (svc as unknown as { s3: S3Client }).s3;
+    expect(await endpointOf(serverClient)).toBe('http://minio:9000');
+    expect(serverClient).not.toBe(presignClient);
+  });
+
+  it('reuses a single client when presignEndpoint === endpoint (no-op for R2)', () => {
+    const svc = new R2Service(cfg);
+    const inner = svc as unknown as { s3: S3Client; s3Presign: S3Client };
+    expect(inner.s3Presign).toBe(inner.s3);
   });
 });

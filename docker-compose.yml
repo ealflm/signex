@@ -24,6 +24,42 @@ services:
     networks:
       - signex-net
 
+  # MinIO — S3-compatible media store for dev. Production points the SAME api env at real
+  # Cloudflare R2 (set R2_ENDPOINT/R2_PUBLIC_ENDPOINT/creds), no code change.
+  minio:
+    image: minio/minio:latest
+    container_name: signex-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${R2_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${R2_SECRET_ACCESS_KEY:-minioadmin}
+      # CORS for browser presigned PUT (and GET) from the web/admin origins.
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_CORS_ALLOW_ORIGIN:-*}
+    ports:
+      # 9000 = S3 API (also the browser presign host: localhost:9000); 9001 = web console.
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - signex-net
+
+  # One-shot init: wait for MinIO, then create the bucket + public-read policy. Exits 0.
+  minio-init:
+    image: minio/mc:latest
+    container_name: signex-minio-init
+    depends_on:
+      - minio
+    environment:
+      MINIO_USER: ${R2_ACCESS_KEY_ID:-minioadmin}
+      MINIO_PASS: ${R2_SECRET_ACCESS_KEY:-minioadmin}
+      BUCKET: ${R2_BUCKET:-signex-media}
+    entrypoint: >-
+      sh -c "until mc alias set local http://minio:9000 $$MINIO_USER $$MINIO_PASS; do echo wait-minio; sleep 1; done; mc mb --ignore-existing local/$$BUCKET; mc anonymous set download local/$$BUCKET; echo minio-init-done"
+    networks:
+      - signex-net
+
   api:
     build:
       context: .
@@ -34,6 +70,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # Bucket must exist before the api boots (presign/confirm assume it).
+      minio-init:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       API_PORT: ${API_PORT:-3060}
@@ -43,14 +82,18 @@ services:
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@signex.local}
       SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Signex Admin}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-change-me-please-32chars-long}
-      # Cloudflare R2 (media). REQUIRED for the api to boot (AssetsModule R2_CONFIG factory
-      # validates these at startup). Dev-placeholder defaults so the stack boots out-of-the-box;
-      # override with real R2 credentials via host env / secrets in production.
-      R2_ENDPOINT: ${R2_ENDPOINT:-https://example.r2.cloudflarestorage.com}
-      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-dev-access-key}
-      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-dev-secret-key}
+      # Media storage (S3-compatible). REQUIRED for the api to boot (AssetsModule R2_CONFIG
+      # factory validates these at startup). Defaults target the bundled MinIO so the stack
+      # boots out-of-the-box; override with real Cloudflare R2 creds via host env / secrets
+      # in production (R2_PUBLIC_ENDPOINT then defaults to R2_ENDPOINT — a no-op for R2).
+      # Server-side S3 calls hit R2_ENDPOINT (internal docker host minio:9000); the presigned
+      # PUT URL handed to the browser uses R2_PUBLIC_ENDPOINT (browser-reachable localhost:9000).
+      R2_ENDPOINT: ${R2_ENDPOINT:-http://minio:9000}
+      R2_PUBLIC_ENDPOINT: ${R2_PUBLIC_ENDPOINT:-http://localhost:9000}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-minioadmin}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-minioadmin}
       R2_BUCKET: ${R2_BUCKET:-signex-media}
-      R2_REGION: ${R2_REGION:-auto}
+      R2_REGION: ${R2_REGION:-us-east-1}
       R2_PRESIGN_TTL: ${R2_PRESIGN_TTL:-300}
       # MEDIA_PUBLIC_BASE must NOT be unset or an r2.dev host (the publish gate rejects those).
       MEDIA_PUBLIC_BASE: ${MEDIA_PUBLIC_BASE:-http://localhost:9000/signex-media}
@@ -146,6 +189,7 @@ services:
 
 volumes:
   pgdata:
+  minio-data:
 
 networks:
   signex-net:

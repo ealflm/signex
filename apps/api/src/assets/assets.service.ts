@@ -18,7 +18,7 @@ import {
   type PresignInput,
   type ReplaceInput,
 } from './dto/assets.dto';
-import type { Asset } from '@signex/db';
+import type { Asset, AssetKind } from '@signex/db';
 
 export type LocalizedText = { en: string; vi: string };
 
@@ -203,16 +203,23 @@ export class AssetsService {
     return this.toAssetDto(updated);
   }
 
-  /** Server-side upload path reused by the importer + replace (no presign round-trip). */
-  async register(
-    actor: Actor,
-    input: {
-      bytes: Buffer;
-      mime: string;
-      originalName: string;
-      altDefault?: LocalizedText;
-    },
-  ): Promise<AssetDto> {
+  /**
+   * Shared body-processing pipeline for the server-side upload path: mime allowlist +
+   * size cap, SVG sanitize, content-addressed sha256 → kind/ext/slug/r2Key + dims.
+   * Pure (no DB, no R2) so register() and reuploadBytes() derive the SAME key/hash for the
+   * same bytes — that identity is what lets the backfill repopulate existing rows by key.
+   */
+  private processBytes(input: {
+    bytes: Buffer;
+    mime: string;
+    originalName: string;
+  }): {
+    body: Buffer;
+    sha256: string;
+    kind: AssetKind;
+    r2Key: string;
+    dims: { width: number; height: number } | null;
+  } {
     if (!(input.mime in MIME_ALLOWLIST)) {
       throw new BadRequestException(`mime ${input.mime} not in allowlist`);
     }
@@ -234,6 +241,47 @@ export class AssetsService {
       }
     }
     const sha256 = createHash('sha256').update(body).digest('hex');
+    const kind = kindForMime(input.mime);
+    const ext = extForMime(input.mime);
+    const slug = slugify(input.originalName.replace(/\.[^.]+$/, ''));
+    const r2Key = keyFor(sha256, slug, ext);
+    const dims = readImageDimensions(body, input.mime);
+    return { body, sha256, kind, r2Key, dims };
+  }
+
+  /**
+   * Re-upload processed bytes to storage WITHOUT touching the DB. Used by the host-run
+   * backfill to repopulate an empty bucket from the existing Asset rows: SVG sanitize keeps
+   * the hash/key identical to the stored row, so the object lands at the row's r2Key.
+   * Returns the r2Key the bytes were written to.
+   */
+  async reuploadBytes(input: {
+    bytes: Buffer;
+    mime: string;
+    originalName: string;
+  }): Promise<string> {
+    const { body, sha256, r2Key } = this.processBytes(input);
+    await this.r2.putObject({
+      r2Key,
+      body,
+      mime: input.mime,
+      cacheControl: IMMUTABLE_CACHE_CONTROL,
+      checksumSha256: Buffer.from(sha256, 'hex').toString('base64'),
+    });
+    return r2Key;
+  }
+
+  /** Server-side upload path reused by the importer + replace (no presign round-trip). */
+  async register(
+    actor: Actor,
+    input: {
+      bytes: Buffer;
+      mime: string;
+      originalName: string;
+      altDefault?: LocalizedText;
+    },
+  ): Promise<AssetDto> {
+    const { body, sha256, kind, r2Key, dims } = this.processBytes(input);
 
     const existing = await this.prisma.client.asset.findUnique({
       where: { sha256 },
@@ -241,12 +289,6 @@ export class AssetsService {
     if (existing && existing.status === 'READY') {
       return this.toAssetDto(existing); // dedup
     }
-
-    const kind = kindForMime(input.mime);
-    const ext = extForMime(input.mime);
-    const slug = slugify(input.originalName.replace(/\.[^.]+$/, ''));
-    const r2Key = keyFor(sha256, slug, ext);
-    const dims = readImageDimensions(body, input.mime);
 
     await this.r2.putObject({
       r2Key,
