@@ -10,6 +10,7 @@ import { PreviewBar } from "@/app/components/preview-bar";
 import { buildMetadata, THEME_COLOR } from "@/app/lib/seo";
 import { siteAttrs } from "@/app/lib/webflow-bundles";
 import { OrgJsonLd } from "@/app/components/org-json-ld";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 // Verbatim from legacy/caladan/index.html <head>: the FOUC guard hides animated
 // elements until the IX2 runtime adds w-mod-ix3; the shim sets w-mod-js/w-mod-touch early.
@@ -54,6 +55,13 @@ export default async function RootLayout({
   // string to Locale for getSiteContent (unknown locales fall back to DEFAULT_LOCALE in-render).
   const dict = await getSiteContent(hasLocale(lang) ? lang : DEFAULT_LOCALE);
   const { domain, site } = siteAttrs(); // single source for the Webflow site attrs
+  // Configurable GA4: the measurement id comes from the SAME cached snapshot loader (no extra
+  // read, stays SSG/'use cache'). ONLY inject Google Analytics when an id is actually set —
+  // empty string ⇒ render nothing (no gtag.js, no network). Id is edited in admin (meta block).
+  // NOTE (follow-up for production/GDPR): gate tracking behind cookie-consent. GA4 uses
+  // Consent Mode v2 — `gtag('consent','default',{analytics_storage:'denied'})` before the
+  // config call, then update on opt-in — NOT the legacy UA `anonymize_ip`. Out of scope here.
+  const ga4Id = dict.meta.ga4Id;
   return (
     // suppressHydrationWarning: the WF_MOD_SHIM script adds w-mod-js/w-mod-touch to <html> before
     // hydration, and WebflowPageAttrs sets data-wf-page on it — both intentionally diverge from SSR.
@@ -86,6 +94,8 @@ export default async function RootLayout({
           </main>
         </div>
         <OrgJsonLd dict={dict} />
+        {/* Google Analytics is injected ONLY when a GA4 id is configured (admin → meta block). */}
+        {ga4Id ? <GoogleAnalytics gaId={ga4Id} /> : null}
         <PreviewBar />
         <WebflowPageAttrs />
         <WebflowRuntime />

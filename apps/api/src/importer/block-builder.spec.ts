@@ -67,6 +67,9 @@ describe('buildBlocks', () => {
     expect(meta.themeColor).toBe('#071522');
     expect(meta.ogImage.assetId).toBe(FAKE_CUID);
     expect(meta.favicons.length).toBeGreaterThanOrEqual(3);
+    // GA4 analytics is NOT hardcoded by the importer — the site owner sets it via admin.
+    // parseBlock above already proved meta conforms WITHOUT an analytics field.
+    expect(meta.analytics).toBeUndefined();
   });
 
   it('promotes notFound image assetRef + cta label', () => {

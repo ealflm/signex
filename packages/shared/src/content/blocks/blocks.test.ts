@@ -290,6 +290,30 @@ describe("metaBlock", () => {
     const d = { ...valid, ogImage: { assetId: "bad", alt: lt("x", "x") } };
     expect(metaBlock.safeParse(d).success).toBe(false);
   });
+
+  // analytics is OPTIONAL — published v1/v2 snapshots have no `analytics` and must stay valid.
+  it("parses WITHOUT analytics (optional)", () => {
+    const r = metaBlock.safeParse(valid);
+    expect(r.success).toBe(true);
+    expect(r.success && (r.data as { analytics?: unknown }).analytics).toBeUndefined();
+  });
+
+  it("parses WITH a valid GA4 id", () => {
+    const d = { ...valid, analytics: { ga4Id: "G-ABC1234XYZ" } };
+    expect(metaBlock.safeParse(d).success).toBe(true);
+  });
+
+  it("parses with an EMPTY ga4Id (treated as unset)", () => {
+    expect(metaBlock.safeParse({ ...valid, analytics: { ga4Id: "" } }).success).toBe(true);
+  });
+
+  it("parses with an absent ga4Id inside analytics", () => {
+    expect(metaBlock.safeParse({ ...valid, analytics: {} }).success).toBe(true);
+  });
+
+  it("rejects a malformed GA4 id", () => {
+    expect(metaBlock.safeParse({ ...valid, analytics: { ga4Id: "UA-12345" } }).success).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

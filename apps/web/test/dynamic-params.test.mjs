@@ -73,3 +73,24 @@ test("[lang] layout: does NOT export dynamicParams (forbidden under cacheCompone
     /export\s+const\s+dynamicParams/
   );
 });
+
+// Configurable GA4 — Google Analytics must be injected ONLY when an id is configured.
+test("[lang] layout: imports GoogleAnalytics from @next/third-parties/google", () => {
+  assert.match(
+    src("[lang]", "layout.tsx"),
+    /import\s*\{\s*GoogleAnalytics\s*\}\s*from\s*["']@next\/third-parties\/google["']/
+  );
+});
+
+test("[lang] layout: renders <GoogleAnalytics> guarded by a non-empty ga4Id from the cached dict", () => {
+  const layout = src("[lang]", "layout.tsx");
+  // id comes from the SAME cached snapshot loader (dict.meta.ga4Id) — no extra read.
+  assert.match(layout, /dict\.meta\.ga4Id/);
+  // conditional render: `ga4Id ? <GoogleAnalytics gaId={ga4Id} /> : null` — no id ⇒ nothing.
+  assert.match(layout, /ga4Id\s*\?\s*<GoogleAnalytics\s+gaId=\{ga4Id\}\s*\/>\s*:\s*null/);
+});
+
+test("content.ts resolves meta.ga4Id from meta.analytics?.ga4Id (empty when unset)", () => {
+  const content = readFileSync(join(APP, "lib", "content.ts"), "utf8");
+  assert.match(content, /ga4Id:\s*b\.meta\.analytics\?\.ga4Id\?\.trim\(\)\s*\?\?\s*""/);
+});

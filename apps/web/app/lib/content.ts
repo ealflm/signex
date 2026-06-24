@@ -377,6 +377,9 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       ogImageAlt: t(b.meta.ogImage.alt, lang),
       // meta.ogImage is AssetRef — resolve URL so seo.ts can serve the CDN path in og:image
       ogImageUrl: assetUrl(b.meta.ogImage.assetId),
+      // Optional GA4 measurement id. "" when the site owner hasn't set one → the layout injects
+      // NO Google Analytics (see app/[lang]/layout.tsx). Locale-invariant (same id on EN/VI).
+      ga4Id: b.meta.analytics?.ga4Id?.trim() ?? "",
       about: {
         title: t(b.meta.about.title, lang),
         description: t(b.meta.about.description, lang),
