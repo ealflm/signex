@@ -23,7 +23,16 @@ export const FORMS_IMAGE_MIMES = new Set(
   Object.keys(MIME_ALLOWLIST).filter((m) => m.startsWith('image/')),
 );
 
-/** Public shape returned by the list endpoint — no raw upload bytes. */
+/** Resolved attachment metadata — public URL + display name, never raw bytes. */
+export interface PublicUpload {
+  assetId: string;
+  url: string;
+  originalName: string;
+  mime: string;
+}
+
+/** Public shape returned by the list/detail endpoints — no raw upload bytes,
+ *  no internal asset fields beyond the safe public projection. */
 export interface PublicSubmission {
   id: string;
   formKey: string;
@@ -32,7 +41,7 @@ export interface PublicSubmission {
   ip: string | null;
   userAgent: string | null;
   createdAt: Date;
-  hasUpload: boolean;
+  upload: PublicUpload | null;
 }
 
 export interface ListOptions {
@@ -40,6 +49,8 @@ export interface ListOptions {
   formKey?: 'quote' | 'contact';
   take?: number;
   skip?: number;
+  /** createdAt sort direction. Defaults to 'desc' (newest first). */
+  order?: 'asc' | 'desc';
 }
 
 export interface ListResult {
@@ -116,9 +127,67 @@ export class FormsService {
     return { ok: true };
   }
 
+  /**
+   * Resolve a batch of uploadAssetIds to their public attachment metadata in ONE
+   * query (no N+1). Returns a Map keyed by assetId; missing/soft-deleted assets are
+   * simply absent (the caller maps those to `upload: null`). Only the safe public
+   * projection is selected — never raw bytes or other internal columns.
+   */
+  private async resolveUploads(
+    assetIds: string[],
+  ): Promise<Map<string, PublicUpload>> {
+    const unique = [...new Set(assetIds)];
+    if (unique.length === 0) return new Map();
+    const assets = await this.prisma.client.asset.findMany({
+      where: { id: { in: unique } },
+      select: { id: true, r2Key: true, originalName: true, mime: true },
+    });
+    return new Map(
+      assets.map((a) => [
+        a.id,
+        {
+          assetId: a.id,
+          url: this.assets.publicUrl(a.r2Key),
+          originalName: a.originalName,
+          mime: a.mime,
+        },
+      ]),
+    );
+  }
+
+  /** Map a raw row + resolved-upload map → the public submission shape. */
+  private toPublic(
+    row: {
+      id: string;
+      formKey: string;
+      status: string;
+      payload: unknown;
+      ip: string | null;
+      userAgent: string | null;
+      createdAt: Date;
+      uploadAssetId: string | null;
+    },
+    uploads: Map<string, PublicUpload>,
+  ): PublicSubmission {
+    return {
+      id: row.id,
+      formKey: row.formKey,
+      status: row.status,
+      payload: row.payload,
+      ip: row.ip,
+      userAgent: row.userAgent,
+      createdAt: row.createdAt,
+      upload: row.uploadAssetId
+        ? (uploads.get(row.uploadAssetId) ?? null)
+        : null,
+    };
+  }
+
   async list(opts: ListOptions = {}): Promise<ListResult> {
     const take = Math.min(opts.take ?? 20, 200);
     const skip = opts.skip ?? 0;
+
+    const order = opts.order === 'asc' ? 'asc' : 'desc';
 
     const where: Record<string, unknown> = {};
     if (opts.status) where.status = opts.status;
@@ -127,25 +196,31 @@ export class FormsService {
     const [rows, total] = await Promise.all([
       this.prisma.client.formSubmission.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: order },
         take,
         skip,
       }),
       this.prisma.client.formSubmission.count({ where }),
     ]);
 
-    const items: PublicSubmission[] = rows.map((r) => ({
-      id: r.id,
-      formKey: r.formKey,
-      status: r.status,
-      payload: r.payload,
-      ip: r.ip,
-      userAgent: r.userAgent,
-      createdAt: r.createdAt,
-      hasUpload: r.uploadAssetId != null,
-    }));
+    const uploads = await this.resolveUploads(
+      rows.map((r) => r.uploadAssetId).filter((x): x is string => x != null),
+    );
+    const items = rows.map((r) => this.toPublic(r, uploads));
 
     return { items, total };
+  }
+
+  /** GET one submission by id (EDITOR+) — used by the inbox detail view. */
+  async get(id: string): Promise<PublicSubmission> {
+    const row = await this.prisma.client.formSubmission.findUnique({
+      where: { id },
+    });
+    if (!row) throw new NotFoundException(`Submission not found: ${id}`);
+    const uploads = await this.resolveUploads(
+      row.uploadAssetId ? [row.uploadAssetId] : [],
+    );
+    return this.toPublic(row, uploads);
   }
 
   async summary(): Promise<SummaryResult> {
@@ -204,15 +279,9 @@ export class FormsService {
       where: { id },
       data: { status },
     });
-    return {
-      id: row.id,
-      formKey: row.formKey,
-      status: row.status,
-      payload: row.payload,
-      ip: row.ip,
-      userAgent: row.userAgent,
-      createdAt: row.createdAt,
-      hasUpload: row.uploadAssetId != null,
-    };
+    const uploads = await this.resolveUploads(
+      row.uploadAssetId ? [row.uploadAssetId] : [],
+    );
+    return this.toPublic(row, uploads);
   }
 }

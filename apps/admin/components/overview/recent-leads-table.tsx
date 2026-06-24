@@ -142,7 +142,7 @@ export function RecentLeadsTable({ items }: { items: RecentLead[] }) {
             <div className="flex min-w-0 flex-col">
               <span className="flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
                 {name || "Unknown"}
-                {row.original.hasUpload && (
+                {row.original.upload && (
                   <Paperclip
                     className="size-3 shrink-0 text-muted-foreground"
                     aria-label="Has attachment"

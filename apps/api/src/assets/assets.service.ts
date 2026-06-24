@@ -64,6 +64,11 @@ export class AssetsService {
     private readonly r2: R2Service,
   ) {}
 
+  /** Derive the public URL for an r2Key (URL is derived, never stored). */
+  publicUrl(r2Key: string): string {
+    return this.r2.publicUrl(r2Key);
+  }
+
   toAssetDto(a: Asset): AssetDto {
     return {
       id: a.id,

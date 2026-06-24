@@ -8,6 +8,7 @@
  *   const data = await getOverviewData(30);
  */
 import { apiServer } from "./api";
+import type { SubmissionDto, SubmissionUpload } from "./forms";
 
 // ── API response shapes ──────────────────────────────────────────────────────
 
@@ -19,16 +20,7 @@ interface FormsSummaryResponse {
 }
 
 interface FormsListResponse {
-  items: Array<{
-    id: string;
-    formKey: string;
-    status: string;
-    payload: unknown;
-    ip: string | null;
-    userAgent: string | null;
-    createdAt: string;
-    hasUpload: boolean;
-  }>;
+  items: SubmissionDto[];
   total: number;
 }
 
@@ -91,7 +83,7 @@ export interface RecentLead {
   ip: string | null;
   userAgent: string | null;
   createdAt: string;
-  hasUpload: boolean;
+  upload: SubmissionUpload | null;
 }
 
 export interface RecentLeadsData {

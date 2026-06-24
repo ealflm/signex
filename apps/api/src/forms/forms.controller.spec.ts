@@ -12,6 +12,7 @@ describe('FormsController', () => {
     submit: jest.Mock;
     list: jest.Mock;
     summary: jest.Mock;
+    get: jest.Mock;
     setStatus: jest.Mock;
   };
 
@@ -25,6 +26,9 @@ describe('FormsController', () => {
         byKey: { quote: 0, contact: 0 },
         series: [],
       }),
+      get: jest
+        .fn()
+        .mockResolvedValue({ id: 'sub_1', status: 'NEW', upload: null }),
       setStatus: jest.fn().mockResolvedValue({ id: 'sub_1', status: 'READ' }),
     };
 
@@ -103,23 +107,31 @@ describe('FormsController', () => {
   });
 
   it('list() delegates to FormsService.list with parsed query params', async () => {
-    const result = await controller.list('NEW', 'quote', '10', '0');
+    const result = await controller.list('NEW', 'quote', '10', '0', 'asc');
     expect(service.list).toHaveBeenCalledWith({
       status: 'NEW',
       formKey: 'quote',
       take: 10,
       skip: 0,
+      order: 'asc',
     });
     expect(result).toEqual({ items: [], total: 0 });
   });
 
-  it('list() passes undefined take/skip when query params absent', async () => {
-    await controller.list(undefined, undefined, undefined, undefined);
+  it('list() passes undefined take/skip/order when query params absent', async () => {
+    await controller.list(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(service.list).toHaveBeenCalledWith({
       status: undefined,
       formKey: undefined,
       take: undefined, // controller guards: take !== undefined before parseInt
       skip: undefined,
+      order: undefined,
     });
   });
 
@@ -128,5 +140,11 @@ describe('FormsController', () => {
     expect(service.summary).toHaveBeenCalled();
     expect(result).toHaveProperty('total');
     expect(result).toHaveProperty('series');
+  });
+
+  it('get() delegates to FormsService.get with the id', async () => {
+    const result = await controller.get('sub_1');
+    expect(service.get).toHaveBeenCalledWith('sub_1');
+    expect(result).toHaveProperty('upload');
   });
 });

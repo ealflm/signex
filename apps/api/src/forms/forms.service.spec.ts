@@ -8,8 +8,14 @@ function buildPrisma(created: Record<string, unknown> = { id: 'sub_1' }) {
       formSubmission: {
         create: jest.fn().mockResolvedValue(created),
         findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn().mockResolvedValue(created),
         count: jest.fn().mockResolvedValue(0),
         update: jest.fn().mockResolvedValue(created),
+      },
+      // asset.findMany resolves the upload metadata batch (no N+1). Default: no
+      // matching assets — callers override per-test to simulate a present upload.
+      asset: {
+        findMany: jest.fn().mockResolvedValue([]),
       },
     },
   } as any;
@@ -17,7 +23,11 @@ function buildPrisma(created: Record<string, unknown> = { id: 'sub_1' }) {
 
 // ── AssetsService mock ───────────────────────────────────────────────────────
 function buildAssets(dto: Record<string, unknown> = { id: 'asset_1' }) {
-  return { register: jest.fn().mockResolvedValue(dto) } as any;
+  return {
+    register: jest.fn().mockResolvedValue(dto),
+    // publicUrl derives the CDN URL for an r2Key — used to resolve attachments.
+    publicUrl: jest.fn((key: string) => `https://cdn.example.com/${key}`),
+  } as any;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -195,7 +205,7 @@ describe('FormsService', () => {
   // ─── list ──────────────────────────────────────────────────────────────────
 
   describe('list', () => {
-    it('returns { items, total } without raw upload bytes', async () => {
+    it('resolves the upload attachment and never leaks internal fields', async () => {
       const row = {
         id: 'sub_1',
         formKey: 'quote',
@@ -209,6 +219,15 @@ describe('FormsService', () => {
       const prisma = buildPrisma();
       prisma.client.formSubmission.findMany.mockResolvedValue([row]);
       prisma.client.formSubmission.count.mockResolvedValue(1);
+      // The asset exists → upload should resolve to public metadata only.
+      prisma.client.asset.findMany.mockResolvedValue([
+        {
+          id: 'asset_xyz',
+          r2Key: 'originals/ab/cd/file.png',
+          originalName: 'spec-sheet.png',
+          mime: 'image/png',
+        },
+      ]);
       const svc = new FormsService(prisma, buildAssets());
 
       const result = await svc.list();
@@ -216,11 +235,68 @@ describe('FormsService', () => {
       expect(result.total).toBe(1);
       expect(result.items).toHaveLength(1);
       const item = result.items[0];
-      // hasUpload should be derived, not raw id
-      expect(item.hasUpload).toBe(true);
+      // upload resolved with public fields only — no raw bytes, no sha256/passwordHash/etc.
+      expect(item.upload).toEqual({
+        assetId: 'asset_xyz',
+        url: 'https://cdn.example.com/originals/ab/cd/file.png',
+        originalName: 'spec-sheet.png',
+        mime: 'image/png',
+      });
+      // internal columns never leak
       expect(item).not.toHaveProperty('uploadAssetId');
-      // no internal raw fields
+      expect(item).not.toHaveProperty('passwordHash');
+      expect(JSON.stringify(item)).not.toContain('sha256');
+      // batch-resolved by id (no N+1)
+      expect(prisma.client.asset.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: { in: ['asset_xyz'] } } }),
+      );
+      // payload preserved
       expect(item.payload).toEqual(row.payload);
+    });
+
+    it('returns upload: null when the submission has no attachment', async () => {
+      const row = {
+        id: 'sub_2',
+        formKey: 'contact',
+        status: 'NEW',
+        payload: { name: 'Bob', email: 'b@b.com' },
+        ip: null,
+        userAgent: null,
+        createdAt: new Date('2024-02-01'),
+        uploadAssetId: null,
+      };
+      const prisma = buildPrisma();
+      prisma.client.formSubmission.findMany.mockResolvedValue([row]);
+      prisma.client.formSubmission.count.mockResolvedValue(1);
+      const svc = new FormsService(prisma, buildAssets());
+
+      const result = await svc.list();
+
+      expect(result.items[0].upload).toBeNull();
+      // no asset lookup when there are no upload ids
+      expect(prisma.client.asset.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns upload: null when the referenced asset is missing (soft-deleted)', async () => {
+      const row = {
+        id: 'sub_3',
+        formKey: 'quote',
+        status: 'NEW',
+        payload: {},
+        ip: null,
+        userAgent: null,
+        createdAt: new Date('2024-03-01'),
+        uploadAssetId: 'asset_gone',
+      };
+      const prisma = buildPrisma();
+      prisma.client.formSubmission.findMany.mockResolvedValue([row]);
+      prisma.client.formSubmission.count.mockResolvedValue(1);
+      prisma.client.asset.findMany.mockResolvedValue([]); // not found
+      const svc = new FormsService(prisma, buildAssets());
+
+      const result = await svc.list();
+
+      expect(result.items[0].upload).toBeNull();
     });
 
     it('applies status filter in the where clause', async () => {
@@ -312,6 +388,50 @@ describe('FormsService', () => {
       const todayStr = today.toISOString().slice(0, 10);
       const todayEntry = result.series.find((s) => s.date === todayStr);
       expect(todayEntry?.count).toBe(2);
+    });
+  });
+
+  // ─── get (detail) ────────────────────────────────────────────────────────────
+
+  describe('get', () => {
+    it('returns one submission with its resolved attachment', async () => {
+      const row = {
+        id: 'sub_9',
+        formKey: 'quote',
+        status: 'READ',
+        payload: { name: 'Carol', email: 'c@c.com' },
+        ip: '8.8.8.8',
+        userAgent: 'UA/1.0',
+        createdAt: new Date('2024-04-01'),
+        uploadAssetId: 'asset_9',
+      };
+      const prisma = buildPrisma();
+      prisma.client.formSubmission.findUnique.mockResolvedValue(row);
+      prisma.client.asset.findMany.mockResolvedValue([
+        {
+          id: 'asset_9',
+          r2Key: 'originals/ee/ff/doc.jpg',
+          originalName: 'doc.jpg',
+          mime: 'image/jpeg',
+        },
+      ]);
+      const svc = new FormsService(prisma, buildAssets());
+
+      const item = await svc.get('sub_9');
+
+      expect(item.id).toBe('sub_9');
+      expect(item.upload?.url).toBe(
+        'https://cdn.example.com/originals/ee/ff/doc.jpg',
+      );
+      expect(item).not.toHaveProperty('uploadAssetId');
+    });
+
+    it('throws NotFoundException for an unknown id', async () => {
+      const prisma = buildPrisma();
+      prisma.client.formSubmission.findUnique.mockResolvedValue(null);
+      const svc = new FormsService(prisma, buildAssets());
+
+      await expect(svc.get('nope')).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });

@@ -42,12 +42,14 @@ export class FormsController {
     @Query('formKey') formKey?: string,
     @Query('take') take?: string,
     @Query('skip') skip?: string,
+    @Query('order') order?: string,
   ): Promise<ListResult> {
     return this.forms.list({
       status: status as 'NEW' | 'READ' | 'ARCHIVED' | undefined,
       formKey: formKey as 'quote' | 'contact' | undefined,
       take: take !== undefined ? parseInt(take, 10) : undefined,
       skip: skip !== undefined ? parseInt(skip, 10) : undefined,
+      order: order === 'asc' ? 'asc' : order === 'desc' ? 'desc' : undefined,
     });
   }
 
@@ -56,6 +58,14 @@ export class FormsController {
   @Roles('EDITOR')
   summary(): Promise<SummaryResult> {
     return this.forms.summary();
+  }
+
+  /** GET /api/forms/:id — single submission with resolved attachment (EDITOR+).
+   *  Declared AFTER /summary so the literal route wins the match. */
+  @Get(':id')
+  @Roles('EDITOR')
+  get(@Param('id') id: string): Promise<PublicSubmission> {
+    return this.forms.get(id);
   }
 
   /** PATCH /api/forms/:id — update status (EDITOR+). */
