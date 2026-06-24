@@ -56,7 +56,7 @@ services:
       MINIO_PASS: ${R2_SECRET_ACCESS_KEY:-minioadmin}
       BUCKET: ${R2_BUCKET:-signex-media}
     entrypoint: >-
-      sh -c "until mc alias set local http://minio:9000 $$MINIO_USER $$MINIO_PASS; do echo wait-minio; sleep 1; done; mc mb --ignore-existing local/$$BUCKET; mc anonymous set download local/$$BUCKET; echo minio-init-done"
+      sh -c "until mc alias set local http://minio:9000 $$MINIO_USER $$MINIO_PASS; do echo wait-minio; sleep 1; done && mc mb --ignore-existing local/$$BUCKET && mc anonymous set download local/$$BUCKET && echo minio-init-done"
     networks:
       - signex-net
 
