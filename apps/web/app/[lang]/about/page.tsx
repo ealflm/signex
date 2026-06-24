@@ -53,16 +53,22 @@ export default async function AboutPage({ params }: { params: Promise<{ lang: st
   const { lang } = await params;
   if (!hasLocale(lang)) notFound(); // narrows lang to Locale; rejects unknown locales with a 404
   const dict = await getSiteContent(lang); // localised copy for the sections being customised (EN + VI)
+  // about hero video is now a configurable VideoRef (aboutPage.hero.videoMedia); fall back to the
+  // original literal poster+mp4+webm when no asset is attached (published v1 snapshot stays valid).
+  const heroVideo = dict.aboutPage.hero.videoMedia;
+  const heroPoster = heroVideo.posterUrl || "/assets/images/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_poster.0000000.jpg";
+  const heroMp4 = heroVideo.mp4Url || "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_mp4.mp4";
+  const heroWebm = heroVideo.webmUrl || "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_webm.webm";
   return (
     <>
       <section className="section_hero-home-c">
-        {/* about hero video: no video field in aboutPageBlock schema — stays hardcoded (Task 61b) */}
+        {/* about hero video: configurable VideoRef (aboutPage.hero.video); literal fallback below */}
         <div
           className="master_hero-home-c w-background-video w-background-video-atom"
           data-autoplay="true"
           data-loop="true"
-          data-poster-url="/assets/images/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_poster.0000000.jpg"
-          data-video-urls="/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_mp4.mp4,/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_webm.webm"
+          data-poster-url={heroPoster}
+          data-video-urls={[heroMp4, heroWebm].filter(Boolean).join(",")}
           data-wf-ignore="true"
         >
           <video
@@ -73,10 +79,10 @@ export default async function AboutPage({ params }: { params: Promise<{ lang: st
             loop
             muted
             playsInline
-            style={{ backgroundImage: 'url("/assets/images/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_poster.0000000.jpg")' }}
+            style={{ backgroundImage: `url("${heroPoster}")` }}
           >
-            <source data-wf-ignore="true" src="/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_mp4.mp4" />
-            <source data-wf-ignore="true" src="/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_webm.webm" />
+            <source data-wf-ignore="true" src={heroMp4} />
+            <source data-wf-ignore="true" src={heroWebm} />
           </video>
           <div className="content_hero-home-c">
             <div className="headline_home-c" data-w-id="532ef140-c6a2-edd2-7d75-66929c4acf3b" style={{ opacity: 0, filter: 'blur(5px)' }}>
@@ -112,7 +118,7 @@ export default async function AboutPage({ params }: { params: Promise<{ lang: st
                   object-fit: cover;
                 }
               }
-            </style><img alt="" data-wf-bgvideo-fallback-img="true" src="/assets/images/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_poster.0000000.jpg"/>` }} />
+            </style><img alt="" data-wf-bgvideo-fallback-img="true" src="${heroPoster}"/>` }} />
           <div aria-live="polite">
             <button
               aria-controls="532ef140-c6a2-edd2-7d75-66929c4acf39-video"
@@ -187,8 +193,8 @@ export default async function AboutPage({ params }: { params: Promise<{ lang: st
                       </div>
                     </div>
                     <div className="right_testimonial-v2" id="w-node-af30d5d7-8441-26c7-d69a-89a24d922243-4d92222b">
-                      {/* testimonial image: no image field in aboutPageBlock schema — stays hardcoded (Task 61b) */}
-                      <img alt="Pexels stephanlouis 19119918" className="image_cover" loading="lazy" src="/assets/images/69ac691927961ac98c560fe2_pexels-stephanlouis-19119918.avif" />
+                      {/* testimonial image: configurable AssetRef (aboutPage.testimonial.image); literal fallback */}
+                      <img alt={dict.aboutPage.testimonial.imageAlt || "Pexels stephanlouis 19119918"} className="image_cover" loading="lazy" src={dict.aboutPage.testimonial.imageUrl || "/assets/images/69ac691927961ac98c560fe2_pexels-stephanlouis-19119918.avif"} />
                       {/* Gradient scrim kept (height:100%/inset:0 in Caladan CSS renders the full
                           gradient even when empty); the Daniel Novak / Adventure Seeker name was removed. */}
                       <div className="overlay_image-testimonial-v2" />

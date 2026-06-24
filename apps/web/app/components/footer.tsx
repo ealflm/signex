@@ -52,7 +52,7 @@ export function Footer({ dict }: { dict: Dictionary["footer"] }) {
                 {/* Signex logo (replaces the "SIGNEX" text label). Same user SVG as the
                     navbar, but rendered white (brightness(0) invert(1)) so it reads on the
                     dark footer like the wordmark/lotus do. */}
-                <img alt="Signex" className="footer-signex_logo" loading="lazy" src="/assets/images/signex-logo.svg" />
+                <img alt="Signex" className="footer-signex_logo" loading="lazy" src={t.logoUrl || "/assets/images/signex-logo.svg"} />
                 <div className="footer-signex_brand">
                   <div className="text-size-regular text_body-bold">
                     {t.brand}

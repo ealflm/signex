@@ -99,6 +99,12 @@ export const ASSET_MANIFEST: ReadonlyArray<AssetManifestEntry> = [
     'featuresStill',
     '69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif',
   ),
+  // about-page testimonial still (separate logicalId from 'notFound' even though both happen to
+  // reference the same source file today — keeps the about testimonial editable independently).
+  AVIF(
+    'testimonial',
+    '69ac691927961ac98c560fe2_pexels-stephanlouis-19119918.avif',
+  ),
   // --- home features video (poster + mp4 + webm) ---
   JPG(
     'homeVideoPoster',

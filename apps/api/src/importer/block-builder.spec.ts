@@ -75,6 +75,20 @@ describe('buildBlocks', () => {
     expect(nf.cta.label.en).toBe('Back to homepage');
   });
 
+  it('populates the newly-configurable optional asset refs (footer.logo, features.featured.image, aboutPage.hero.video + testimonial.image)', () => {
+    const footer: any = blocks.find((b) => b.key === 'footer')!.data;
+    expect(footer.logo.assetId).toBe(FAKE_CUID);
+
+    const features: any = blocks.find((b) => b.key === 'features')!.data;
+    expect(features.featured.image.assetId).toBe(FAKE_CUID);
+
+    const aboutPage: any = blocks.find((b) => b.key === 'aboutPage')!.data;
+    expect(aboutPage.hero.video.posterAssetId).toBe(FAKE_CUID);
+    expect(aboutPage.hero.video.mp4AssetId).toBe(FAKE_CUID);
+    expect(aboutPage.hero.video.webmAssetId).toBe(FAKE_CUID);
+    expect(aboutPage.testimonial.image.assetId).toBe(FAKE_CUID);
+  });
+
   it('hero has titleTop and titleBottom as separate localized texts', () => {
     const h: any = blocks.find((b) => b.key === 'hero')!.data;
     expect(h.titleTop.en).toBe('Manufacturing');

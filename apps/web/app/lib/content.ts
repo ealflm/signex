@@ -120,6 +120,10 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       featured: {
         title: t(b.features.featured.title, lang),
         desc: t(b.features.featured.desc, lang),
+        // featured.image is AssetRef? — resolve URL/alt; "" when absent so the
+        // component falls back to the literal still (published v1 snapshot stays valid).
+        imageUrl: assetUrl(b.features.featured.image?.assetId ?? ""),
+        imageAlt: t(b.features.featured.image?.alt, lang),
       },
       cards: b.features.cards.map((card) => ({
         title: t(card.title, lang),
@@ -224,6 +228,9 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       office: office ? t(office.address, lang) : "",
       factory: factory ? t(factory.address, lang) : "",
       quickHeading: t(b.footer.quickHeading, lang),
+      // footer.logo is AssetRef? — resolve URL; "" when absent so the component falls
+      // back to the literal signex-logo.svg (published v1 snapshot stays valid).
+      logoUrl: assetUrl(b.footer.logo?.assetId ?? ""),
       links: b.footer.links.map((l) => ({
         label: t(l.label, lang),
         href: l.href,
@@ -247,12 +254,26 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
         title: t(b.aboutPage.hero.title.lead, lang),
         titleAccent: t(b.aboutPage.hero.title.accent, lang),
         subtitle: t(b.aboutPage.hero.subtitle, lang),
+        // hero.video is VideoRef? — resolve asset refs to URLs (mirrors features.video.media);
+        // all "" when absent so the component falls back to the literal 8440992-uhd poster+mp4+webm.
+        videoMedia: b.aboutPage.hero.video
+          ? {
+              posterUrl: assetUrl(b.aboutPage.hero.video.posterAssetId),
+              mp4Url: assetUrl(b.aboutPage.hero.video.mp4AssetId),
+              webmUrl: b.aboutPage.hero.video.webmAssetId
+                ? assetUrl(b.aboutPage.hero.video.webmAssetId)
+                : "",
+            }
+          : { posterUrl: "", mp4Url: "", webmUrl: "" },
       },
       testimonial: {
         eyebrow: t(b.aboutPage.testimonial.eyebrow, lang),
         title: t(b.aboutPage.testimonial.title.lead, lang),
         titleAccent: t(b.aboutPage.testimonial.title.accent, lang),
         body: ta(b.aboutPage.testimonial.body, lang),
+        // testimonial.image is AssetRef? — "" when absent so the component falls back to the literal.
+        imageUrl: assetUrl(b.aboutPage.testimonial.image?.assetId ?? ""),
+        imageAlt: t(b.aboutPage.testimonial.image?.alt, lang),
       },
       approach: b.aboutPage.approach.map((a) => ({
         title: t(a.title, lang),

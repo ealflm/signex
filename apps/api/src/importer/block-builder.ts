@@ -105,6 +105,11 @@ function buildFeatures(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
     featured: {
       title: lt(E.features.featured.title, V.features.featured.title),
       desc: lt(E.features.featured.desc, V.features.featured.desc),
+      image: assetRef(
+        assets,
+        'featuresStill',
+        lt('Consistent production quality', 'Chất lượng sản xuất ổn định'),
+      ),
     },
     cards: (E.features.cards as any[]).map((c, i) => ({
       title: lt(c.title, V.features.cards[i].title),
@@ -171,12 +176,14 @@ function buildProductsHeader(E: any, V: any) {
   };
 }
 
-function buildFooter(E: any, V: any) {
-  // footerBlock: { tagline, contactHeading, quickHeading, links, shipLabel, payLabel, payments }
-  // NOTE: brand/logo/lotus are NOT in the footerBlock schema — those are in businessContact/nav.
+function buildFooter(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
+  // footerBlock: { logo?: AssetRef, tagline, contactHeading, quickHeading, links, shipLabel, payLabel, payments }
+  // The footer brand logo is now a configurable AssetRef (logoFooter == the same signex-logo.svg
+  // as nav, deduped to one Asset row). lotus is decorative and stays hardcoded in the web component.
   const f = E.footer;
   const vf = V.footer;
   return {
+    logo: assetRef(assets, 'logoFooter'),
     tagline: ltArray(f.tagline, vf.tagline),
     contactHeading: lt(f.contactHeading, vf.contactHeading),
     quickHeading: lt(f.quickHeading, vf.quickHeading),
@@ -344,9 +351,10 @@ function buildFormConfig(E: any, V: any) {
   };
 }
 
-function buildAboutPage(E: any, V: any) {
-  // aboutPageBlock: { hero, testimonial, approach, intro, capability, process, timeline }
-  // NOTE: no 'video' field in schema — those assets are not referenced from this block.
+function buildAboutPage(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
+  // aboutPageBlock: { hero: { ..., video?: VideoRef }, testimonial: { ..., image?: AssetRef }, approach, intro, capability, process, timeline }
+  // The about hero background video + the testimonial still are now configurable refs (manifest
+  // logicalIds 'aboutVideo*' / 'testimonial', previously registered but unreferenced).
   const a = E.aboutPage;
   const v = V.aboutPage;
 
@@ -357,11 +365,22 @@ function buildAboutPage(E: any, V: any) {
     hero: {
       title: tt(a.hero, v.hero),
       subtitle: lt(a.hero.subtitle, v.hero.subtitle),
+      video: videoRef(
+        assets,
+        'aboutVideoPoster',
+        'aboutVideoMp4',
+        'aboutVideoWebm',
+      ),
     },
     testimonial: {
       eyebrow: lt(a.testimonial.eyebrow, v.testimonial.eyebrow),
       title: tt(a.testimonial, v.testimonial),
       body: ltArray(a.testimonial.body, v.testimonial.body),
+      image: assetRef(
+        assets,
+        'testimonial',
+        lt('Client testimonial', 'Cảm nhận khách hàng'),
+      ),
     },
     approach: (a.approach as any[]).map((g: any, i: number) => ({
       title: lt(g.title, v.approach[i].title),
@@ -476,12 +495,12 @@ export function buildBlocks(
     features: buildFeatures(E, V, assets),
     about: buildAbout(E, V),
     productsHeader: buildProductsHeader(E, V),
-    footer: buildFooter(E, V),
+    footer: buildFooter(E, V, assets),
     nav: buildNav(E, V, assets),
     meta: buildMeta(E, V, assets),
     businessContact: buildBusinessContact(E, V),
     formConfig: buildFormConfig(E, V),
-    aboutPage: buildAboutPage(E, V),
+    aboutPage: buildAboutPage(E, V, assets),
     contactPage: buildContactPage(E, V),
     notFound: buildNotFound(E, V, assets),
   };

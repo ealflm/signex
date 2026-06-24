@@ -54,8 +54,9 @@ export function Features({ dict }: { dict: Dictionary["features"] }) {
               {/* ① Featured value — Consistent Production Quality */}
               <div className="image_features">
                 <div className="image-inner_features" data-w-id="d354a09c-1c94-8247-3fc0-60e3f5ed678a">
-                  {/* featured tile image: no AssetRef field in featuresBlock schema — stays hardcoded (Task 61b) */}
-                  <img alt="Pexels saeb mahajna 14125913 6297105" className="image_cover is-parallax" loading="lazy" src="/assets/images/69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif" />
+                  {/* featured tile image: now a configurable AssetRef (features.featured.image);
+                      falls back to the original literal still when no asset is attached. */}
+                  <img alt={t.featured.imageAlt || "Pexels saeb mahajna 14125913 6297105"} className="image_cover is-parallax" loading="lazy" src={t.featured.imageUrl || "/assets/images/69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif"} />
                   <div className="overlay_dark-16">
                   </div>
                 </div>

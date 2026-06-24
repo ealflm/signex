@@ -124,6 +124,93 @@ function AssetRefField({
   );
 }
 
+function VideoRefField({
+  field,
+  value,
+  onChange,
+  assets,
+}: {
+  field: FieldPlan;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  assets: AssetRow[];
+}) {
+  const v =
+    (value as {
+      posterAssetId?: string;
+      mp4AssetId?: string;
+      webmAssetId?: string;
+    }) ?? {};
+  // Three asset pickers — one per VideoRef id (poster / mp4 / webm).
+  const slots: Array<{ key: "posterAssetId" | "mp4AssetId" | "webmAssetId"; label: string }> = [
+    { key: "posterAssetId", label: "Poster image" },
+    { key: "mp4AssetId", label: "MP4 video" },
+    { key: "webmAssetId", label: "WebM video (optional)" },
+  ];
+  return (
+    <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <legend className="px-1 text-sm font-medium text-foreground">
+        {field.label}
+      </legend>
+      {slots.map((slot) => (
+        <Field key={slot.key} label={slot.label} htmlFor={`field-${field.name}-${slot.key}`}>
+          <select
+            id={`field-${field.name}-${slot.key}`}
+            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            value={v[slot.key] ?? ""}
+            onChange={(e) =>
+              onChange({ ...v, [slot.key]: e.target.value || undefined })
+            }
+          >
+            <option value="">— none —</option>
+            {assets.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.originalName}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ))}
+    </fieldset>
+  );
+}
+
+// Renders a (one-level) nested object as a grouped fieldset, with each child rendered by the
+// same FieldEditor. The object value is read/written as a whole; nested JSON validity bubbles
+// up through onValidityChange under a namespaced key (`${parent}.${child}`).
+function ObjectField({
+  field,
+  value,
+  onChange,
+  onValidityChange,
+  assets,
+}: {
+  field: FieldPlan;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  onValidityChange: (name: string, valid: boolean) => void;
+  assets: AssetRow[];
+}) {
+  const obj = (value as Record<string, unknown>) ?? {};
+  return (
+    <fieldset className="flex flex-col gap-4 rounded-lg border border-border p-4">
+      <legend className="px-1 text-sm font-medium text-foreground">
+        {field.label}
+      </legend>
+      {(field.children ?? []).map((child) => (
+        <FieldEditor
+          key={child.name}
+          field={{ ...child, name: `${field.name}.${child.name}` }}
+          value={obj[child.name]}
+          assets={assets}
+          onChange={(v) => onChange({ ...obj, [child.name]: v })}
+          onValidityChange={onValidityChange}
+        />
+      ))}
+    </fieldset>
+  );
+}
+
 function JsonField({
   field,
   value,
@@ -198,6 +285,20 @@ function FieldEditor({
   if (field.kind === "assetRef") {
     // TODO: alt editing
     return <AssetRefField field={field} value={value} onChange={onChange} assets={assets} />;
+  }
+  if (field.kind === "videoRef") {
+    return <VideoRefField field={field} value={value} onChange={onChange} assets={assets} />;
+  }
+  if (field.kind === "object") {
+    return (
+      <ObjectField
+        field={field}
+        value={value}
+        onChange={onChange}
+        onValidityChange={onValidityChange}
+        assets={assets}
+      />
+    );
   }
   // localizedArray, array, json → raw JSON textarea (client-side parseBlock validates on submit)
   return <JsonField field={field} value={value} onChange={onChange} onValidityChange={onValidityChange} />;

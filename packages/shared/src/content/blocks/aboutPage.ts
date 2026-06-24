@@ -3,6 +3,8 @@ import {
   LocalizedText,
   LocalizedTextArray,
   TwoToneTitle,
+  AssetRef,
+  VideoRef,
 } from "../primitives";
 
 const section = z.object({
@@ -13,8 +15,18 @@ const section = z.object({
 
 /** The /about page (dict.aboutPage). title+titleAccent collapse into TwoToneTitle. */
 export const aboutPageBlock = z.object({
-  hero: z.object({ title: TwoToneTitle, subtitle: LocalizedText }),
-  testimonial: section.extend({ body: LocalizedTextArray }),
+  // hero.video OPTIONAL: web falls back to the literal 8440992-uhd poster+mp4+webm when
+  // absent (published v1 snapshot stays valid — no re-publish required).
+  hero: z.object({
+    title: TwoToneTitle,
+    subtitle: LocalizedText,
+    video: VideoRef.optional(),
+  }),
+  // testimonial.image OPTIONAL: web falls back to the literal pexels-stephanlouis still.
+  testimonial: section.extend({
+    body: LocalizedTextArray,
+    image: AssetRef.optional(),
+  }),
   approach: z
     .array(z.object({ title: LocalizedText, body: LocalizedTextArray }))
     .min(1),

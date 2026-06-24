@@ -75,6 +75,25 @@ describe("featuresBlock", () => {
     expect(featuresBlock.safeParse(valid).success).toBe(true);
   });
 
+  it("parses features with featured.image present (optional AssetRef)", () => {
+    const d = {
+      ...valid,
+      featured: { ...validCard, image: { assetId: cuid(), alt: lt("Still", "Ảnh") } },
+    };
+    expect(featuresBlock.safeParse(d).success).toBe(true);
+  });
+
+  it("parses features without featured.image (image is optional)", () => {
+    // validCard has no image — confirms the field is optional (back-compat w/ v1 snapshot).
+    expect("image" in valid.featured).toBe(false);
+    expect(featuresBlock.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects features with non-cuid featured.image.assetId", () => {
+    const d = { ...valid, featured: { ...validCard, image: { assetId: "bad" } } };
+    expect(featuresBlock.safeParse(d).success).toBe(false);
+  });
+
   it("parses features with video.media present", () => {
     const d = {
       ...valid,
@@ -179,6 +198,21 @@ describe("footerBlock", () => {
 
   it("parses a valid footer block", () => {
     expect(footerBlock.safeParse(valid).success).toBe(true);
+  });
+
+  it("parses a footer with logo present (optional AssetRef)", () => {
+    const d = { ...valid, logo: { assetId: cuid(), alt: lt("Logo", "Logo") } };
+    expect(footerBlock.safeParse(d).success).toBe(true);
+  });
+
+  it("parses a footer without logo (logo is optional → v1 snapshot stays valid)", () => {
+    expect("logo" in valid).toBe(false);
+    expect(footerBlock.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects footer with non-cuid logo.assetId", () => {
+    const d = { ...valid, logo: { assetId: "bad" } };
+    expect(footerBlock.safeParse(d).success).toBe(false);
   });
 
   it("rejects empty links", () => {
@@ -447,6 +481,31 @@ describe("aboutPageBlock", () => {
 
   it("parses a valid aboutPage block", () => {
     expect(aboutPageBlock.safeParse(valid).success).toBe(true);
+  });
+
+  it("parses aboutPage without hero.video / testimonial.image (both optional → v1 stays valid)", () => {
+    expect("video" in valid.hero).toBe(false);
+    expect("image" in valid.testimonial).toBe(false);
+    expect(aboutPageBlock.safeParse(valid).success).toBe(true);
+  });
+
+  it("parses aboutPage with hero.video (VideoRef) + testimonial.image (AssetRef) present", () => {
+    const d = {
+      ...valid,
+      hero: { ...valid.hero, video: { posterAssetId: cuid(), mp4AssetId: cuid() } },
+      testimonial: { ...valid.testimonial, image: { assetId: cuid(), alt: lt("Client", "Khách") } },
+    };
+    expect(aboutPageBlock.safeParse(d).success).toBe(true);
+  });
+
+  it("rejects aboutPage with non-cuid testimonial.image.assetId", () => {
+    const d = { ...valid, testimonial: { ...valid.testimonial, image: { assetId: "bad" } } };
+    expect(aboutPageBlock.safeParse(d).success).toBe(false);
+  });
+
+  it("rejects aboutPage with hero.video missing mp4AssetId (VideoRef requires it)", () => {
+    const d = { ...valid, hero: { ...valid.hero, video: { posterAssetId: cuid() } } };
+    expect(aboutPageBlock.safeParse(d).success).toBe(false);
   });
 
   it("parses milestone with optional items and note", () => {

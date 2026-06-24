@@ -1,11 +1,15 @@
 import { z } from "zod";
-import { LocalizedText, LocalizedTextArray, Href } from "../primitives";
+import { LocalizedText, LocalizedTextArray, Href, AssetRef } from "../primitives";
 
 /**
  * Footer chrome only. The NAP (company/email/tel/zalo/tax/office/factory)
  * is unified into businessContact; the footer reads it via the render-helper map.
  */
 export const footerBlock = z.object({
+  // Brand logo shown in the footer's first column. OPTIONAL: the web falls back to the
+  // literal /assets/images/signex-logo.svg when absent, so the published v1 snapshot
+  // (which predates this field) stays valid — no re-publish required.
+  logo: AssetRef.optional(),
   tagline: LocalizedTextArray, // 2 lines
   contactHeading: LocalizedText,
   quickHeading: LocalizedText,
