@@ -55,6 +55,35 @@ export type BlockKey = keyof typeof BLOCK_REGISTRY;
 
 export const BLOCK_KEYS = Object.keys(BLOCK_REGISTRY) as BlockKey[];
 
+/**
+ * The four content-block kinds. Mirrors the Prisma `BlockKind` enum
+ * (`packages/db` schema, §5.2). Declared here as a string-literal union so
+ * `@signex/shared` stays a leaf package (no dependency on `@signex/db`); the
+ * api asserts assignability to the generated Prisma enum at its import site.
+ */
+export type BlockKind = 'PAGE' | 'SETTINGS' | 'NAV' | 'SEO';
+
+/**
+ * Canonical (key → kind) classification for every block in BLOCK_REGISTRY.
+ * The single source of truth consumed by the api importer (write path) and the
+ * admin content editor (route resolution). The exhaustive `Record<BlockKey,…>`
+ * type guarantees every BlockKey has a kind — a missing entry is a build error.
+ */
+export const BLOCK_KIND_BY_KEY: Record<BlockKey, BlockKind> = {
+  hero: 'PAGE',
+  features: 'PAGE',
+  about: 'PAGE',
+  productsHeader: 'PAGE',
+  aboutPage: 'PAGE',
+  contactPage: 'PAGE',
+  notFound: 'PAGE',
+  footer: 'SETTINGS',
+  businessContact: 'SETTINGS',
+  formConfig: 'SETTINGS',
+  nav: 'NAV',
+  meta: 'SEO',
+};
+
 /** The fully-validated set of every block, both locales (used by the snapshot). */
 export type ReleaseBlocks = {
   [K in BlockKey]: z.infer<(typeof BLOCK_REGISTRY)[K]>;

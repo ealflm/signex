@@ -1,33 +1,38 @@
 import type { BlockKind } from '@signex/db';
-import { parseBlock, type BlockKey } from '@signex/shared';
+import {
+  parseBlock,
+  BLOCK_KIND_BY_KEY,
+  type BlockKey,
+  type BlockKind as SharedBlockKind,
+} from '@signex/shared';
 import type { RawDict } from './dict-source';
 import { lt, ltArray, twoTone, type LT } from './zip';
 import type { FrozenAssetEntry } from './asset-importer';
+
+// Compile-time guarantee that the canonical kind union in @signex/shared and
+// the Prisma-generated BlockKind enum stay in lock-step. If the Prisma enum
+// ever drifts, one of these assignments fails to type-check at build time.
+type _AssertSharedKindIsPrismaKind = SharedBlockKind extends BlockKind
+  ? true
+  : never;
+type _AssertPrismaKindIsSharedKind = BlockKind extends SharedBlockKind
+  ? true
+  : never;
+const _kindParity: [
+  _AssertSharedKindIsPrismaKind,
+  _AssertPrismaKindIsSharedKind,
+] = [true, true];
+void _kindParity;
+
+// `BLOCK_KIND_BY_KEY` is the canonical (key → kind) map, now owned by
+// @signex/shared (re-exported here for existing importer call sites).
+export { BLOCK_KIND_BY_KEY };
 
 export interface BuiltBlock {
   kind: BlockKind;
   key: string;
   data: unknown;
 }
-
-/**
- * Registry (kind, key) classification — mirrors §5.2 + BlockKind enum.
- * The key here IS the registry key (last dot-segment of any composite DB key).
- */
-export const BLOCK_KIND_BY_KEY: Record<BlockKey, BlockKind> = {
-  hero: 'PAGE',
-  features: 'PAGE',
-  about: 'PAGE',
-  productsHeader: 'PAGE',
-  aboutPage: 'PAGE',
-  contactPage: 'PAGE',
-  notFound: 'PAGE',
-  footer: 'SETTINGS',
-  businessContact: 'SETTINGS',
-  formConfig: 'SETTINGS',
-  nav: 'NAV',
-  meta: 'SEO',
-};
 
 // ---------------------------------------------------------------------------
 // Helpers

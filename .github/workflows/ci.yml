@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-lint-test:
+    name: build · lint · unit-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      # Single root lockfile (npm workspaces) — `npm ci` installs every workspace.
+      - name: Install dependencies
+        run: npm ci
+
+      # Turbo's `build` task already runs `@signex/db#generate` (Prisma client)
+      # first via dependsOn, and compiles @signex/db + @signex/shared to their
+      # CommonJS dist/ before apps/api + the Next apps consume them.
+      - name: Build (turbo, all workspaces)
+        run: npm run build
+
+      - name: Lint (turbo, all workspaces)
+        run: npm run lint
+
+      # DB-free unit suites only: api Jest *unit* specs (Prisma mocked) + the
+      # @signex/shared vitest suite. We EXCLUDE @signex/db — its vitest runs
+      # `prisma migrate reset` against a real Postgres (so it can't run DB-free).
+      #
+      # NOTE (follow-up): a DB-integration job — `postgres:16` service +
+      # DATABASE_URL — would re-include @signex/db's schema test AND the api e2e
+      # specs (apps/api/test/*.e2e-spec.ts, which also need R2_*/auth-seed env).
+      # Kept out here so this job stays fast and dependency-free.
+      - name: Test (turbo unit suites — DB-free; excludes @signex/db)
+        run: npx turbo run test --filter='!@signex/db'

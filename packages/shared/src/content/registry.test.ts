@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { ZodError } from "zod";
-import { BLOCK_REGISTRY, BLOCK_KEYS, parseBlock, UnknownBlockKeyError } from "./registry";
+import {
+  BLOCK_REGISTRY,
+  BLOCK_KEYS,
+  BLOCK_KIND_BY_KEY,
+  parseBlock,
+  UnknownBlockKeyError,
+} from "./registry";
 import enDict from "../../../../apps/web/app/[lang]/dictionaries/en.json";
 import viDict from "../../../../apps/web/app/[lang]/dictionaries/vi.json";
 
@@ -79,6 +85,27 @@ describe("BLOCK_REGISTRY", () => {
   it("has exactly the 12 expected keys", () => {
     expect(Object.keys(BLOCK_REGISTRY).sort()).toEqual([...EXPECTED_KEYS].sort());
     expect(BLOCK_KEYS.length).toBe(12);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BLOCK_KIND_BY_KEY — canonical (key → kind) map (shared with api importer + admin)
+// ---------------------------------------------------------------------------
+describe("BLOCK_KIND_BY_KEY", () => {
+  const VALID_KINDS = ["PAGE", "SETTINGS", "NAV", "SEO"];
+
+  it("assigns every BlockKey a valid kind (no missing/extra entries)", () => {
+    expect(Object.keys(BLOCK_KIND_BY_KEY).sort()).toEqual([...BLOCK_KEYS].sort());
+    for (const key of BLOCK_KEYS) {
+      expect(VALID_KINDS).toContain(BLOCK_KIND_BY_KEY[key]);
+    }
+  });
+
+  it("matches the known classification", () => {
+    expect(BLOCK_KIND_BY_KEY.hero).toBe("PAGE");
+    expect(BLOCK_KIND_BY_KEY.footer).toBe("SETTINGS");
+    expect(BLOCK_KIND_BY_KEY.nav).toBe("NAV");
+    expect(BLOCK_KIND_BY_KEY.meta).toBe("SEO");
   });
 });
 

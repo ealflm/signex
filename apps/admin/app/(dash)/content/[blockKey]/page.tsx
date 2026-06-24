@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
-import { BLOCK_REGISTRY, type BlockKey } from "@signex/shared";
+import { BLOCK_REGISTRY, BLOCK_KIND_BY_KEY, type BlockKey } from "@signex/shared";
 import { deriveFields } from "@/app/lib/zodform-fields";
 import { ZodForm } from "./zod-form";
 import { PageHeader } from "@/components/admin/page-header";
@@ -20,22 +20,8 @@ import { SectionCard } from "@/components/admin/section-card";
 // The registry key (used to look up BLOCK_REGISTRY) is the LAST dot-segment
 // of the DB key (e.g. "home.hero" → "hero", "businessContact" → "businessContact").
 //
-// This map mirrors `BLOCK_KIND_BY_KEY` in apps/api/src/importer/block-builder.ts.
-// We cannot import from apps/api (cross-app import is forbidden), so we replicate it.
-const BLOCK_KIND_MAP: Record<BlockKey, string> = {
-  hero: "PAGE",
-  features: "PAGE",
-  about: "PAGE",
-  productsHeader: "PAGE",
-  aboutPage: "PAGE",
-  contactPage: "PAGE",
-  notFound: "PAGE",
-  footer: "SETTINGS",
-  businessContact: "SETTINGS",
-  formConfig: "SETTINGS",
-  nav: "NAV",
-  meta: "SEO",
-};
+// The (key → kind) map is the canonical `BLOCK_KIND_BY_KEY` exported by
+// @signex/shared (also consumed by the api importer) — single source of truth.
 
 /** Derive the registry key from a DB composite key (last dot-segment). */
 function registryKeyFrom(dbKey: string): string {
@@ -80,7 +66,7 @@ export default async function ContentBlockPage({
 
   const typedRegistryKey = registryKey as BlockKey;
   const schema = BLOCK_REGISTRY[typedRegistryKey];
-  const kind = BLOCK_KIND_MAP[typedRegistryKey];
+  const kind = BLOCK_KIND_BY_KEY[typedRegistryKey];
 
   // Fetch block data + diff (for revision) + assets in parallel.
   const [blockRes, diffRes, assetsRes] = await Promise.all([
