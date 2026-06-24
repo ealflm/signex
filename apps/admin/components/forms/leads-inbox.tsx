@@ -161,6 +161,7 @@ export function LeadsInbox({
     data: items,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.id,
   });
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
