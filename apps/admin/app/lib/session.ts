@@ -21,7 +21,10 @@ export async function getSession(): Promise<SessionUser | null> {
 
 export async function requireSession(): Promise<SessionUser> {
   const user = await getSession();
-  if (!user) redirect("/login");
+  // `?expired=1` tells proxy.ts the cookie was PRESENT but INVALID (revoked / DB reseeded), so it
+  // clears the stale cookie and renders /login instead of bouncing back here — otherwise a
+  // present-but-invalid cookie ping-pongs / ↔ /login (ERR_TOO_MANY_REDIRECTS).
+  if (!user) redirect("/login?expired=1");
   return user;
 }
 

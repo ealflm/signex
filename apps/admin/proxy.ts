@@ -11,9 +11,18 @@ export function proxy(request: NextRequest) {
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
 
   if (pathname === "/login") {
+    // The dash redirects here with ?expired=1 when getSession() saw a present-but-INVALID cookie
+    // (session revoked / DB reseeded). CLEAR the stale cookie and render /login — never bounce
+    // back to a dash route, or a present-but-invalid cookie would loop / ↔ /login forever.
+    if (request.nextUrl.searchParams.has("expired")) {
+      const res = NextResponse.next();
+      res.cookies.delete(SESSION_COOKIE);
+      return res;
+    }
     if (hasSession) {
       const url = request.nextUrl.clone();
       url.pathname = "/";
+      url.search = "";
       return NextResponse.redirect(url);
     }
     return NextResponse.next();
