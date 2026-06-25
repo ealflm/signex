@@ -1,4 +1,5 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
+import { editAttrs } from "@/app/lib/edit-attrs";
 
 /**
  * Features — the section directly below the hero, adapted to signex's manufacturing
@@ -15,7 +16,7 @@ import type { Dictionary } from "@/app/[lang]/dictionaries";
  *   ④ icon card            → Respect for Brand Integrity          (shield-check)
  *   video tile             → complementary workshop/process clip  (added content)
  */
-export function Features({ dict }: { dict: Dictionary["features"] }) {
+export function Features({ dict, editable = false }: { dict: Dictionary["features"]; editable?: boolean }) {
   const t = dict;
 
   // Workshop video: configurable VideoRef (features.video.media). All-or-nothing fallback —
@@ -70,7 +71,7 @@ export function Features({ dict }: { dict: Dictionary["features"] }) {
                 <div className="image-inner_features" data-w-id="d354a09c-1c94-8247-3fc0-60e3f5ed678a">
                   {/* featured tile image: now a configurable AssetRef (features.featured.image);
                       falls back to the original literal still when no asset is attached. */}
-                  <img alt={t.featured.imageAlt || "Pexels saeb mahajna 14125913 6297105"} className="image_cover is-parallax" loading="lazy" src={t.featured.imageUrl || "/assets/images/69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif"} />
+                  <img alt={t.featured.imageAlt || "Pexels saeb mahajna 14125913 6297105"} className="image_cover is-parallax" loading="lazy" src={t.featured.imageUrl || "/assets/images/69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif"} {...editAttrs(editable, "features.featured.image", "image")} />
                   <div className="overlay_dark-16">
                   </div>
                 </div>
@@ -165,7 +166,7 @@ export function Features({ dict }: { dict: Dictionary["features"] }) {
                 </div>
               </div>
               {/* Complementary workshop/process video (added content) */}
-              <div className="video_features" id="w-node-_7592271b-69fa-3faa-e7e1-e8f1255559a7-5e872ff7">
+              <div className="video_features" id="w-node-_7592271b-69fa-3faa-e7e1-e8f1255559a7-5e872ff7" {...editAttrs(editable, "features.video.media", "video")}>
                 <div className="image-inner_features" data-w-id="7592271b-69fa-3faa-e7e1-e8f1255559a8">
                   <div
                     className="video_cover w-background-video w-background-video-atom"

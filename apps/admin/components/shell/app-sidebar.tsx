@@ -9,6 +9,7 @@ import {
   Package,
   FileText,
   Image as ImageIcon,
+  MousePointerClick,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -41,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/releases", label: "Releases", icon: Rocket, match: "/releases" },
   { href: "/catalog", label: "Catalog", icon: Package, match: "/catalog" },
   { href: "/content/hero", label: "Content", icon: FileText, match: "/content" },
+  { href: "/visual", label: "Visual editor", icon: MousePointerClick, match: "/visual" },
   { href: "/media", label: "Media", icon: ImageIcon, match: "/media" },
 ];
 

@@ -140,6 +140,9 @@ services:
       # Secret-gated on-demand revalidation + draft-mode entry (called by the api post-publish).
       REVALIDATE_SECRET: ${REVALIDATE_SECRET:-dev-revalidate-secret-change-me}
       PREVIEW_SECRET: ${PREVIEW_SECRET:-dev-preview-secret-change-me}
+      # Admin origin allowed to iframe the /preview editor route (CSP frame-ancestors, set in
+      # apps/web/next.config.ts scoped to /preview/:path* only — public routes are unaffected).
+      PREVIEW_FRAME_ANCESTORS: ${PREVIEW_FRAME_ANCESTORS:-http://localhost:3061}
       # Server-side calls to the api (preview snapshot, form submit forwarding if proxied).
       API_URL: ${API_URL:-http://api:3060}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3060}

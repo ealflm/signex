@@ -12,6 +12,25 @@ const nextConfig: NextConfig = {
   // native query engine (linux-musl-openssl-3.0.x binaryTarget) is required() at runtime
   // and traced into standalone rather than mangled by the build.
   serverExternalPackages: ["@prisma/client", "@signex/db"],
+  // CSP frame-ancestors — scoped to the editor preview tree ONLY (/preview/:path*) so the
+  // admin (:3061 in dev; PREVIEW_FRAME_ANCESTORS in prod) can iframe the live working-state
+  // preview. Public routes (/[lang]/**) are NOT matched here and keep their default framing
+  // policy (no header → same as before). The preview pages are already token-gated; this header
+  // is the second layer (a leaked URL still can't be framed by an arbitrary origin).
+  async headers() {
+    const adminOrigin = process.env.PREVIEW_FRAME_ANCESTORS ?? "http://localhost:3061";
+    return [
+      {
+        source: "/preview/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: `frame-ancestors 'self' ${adminOrigin};`,
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -1,5 +1,6 @@
 // app/components/footer.tsx
 import type { Dictionary } from "@/app/[lang]/dictionaries";
+import { editAttrs } from "@/app/lib/edit-attrs";
 
 /**
  * Footer — signex content poured into Caladan's master_footer shell. The shell
@@ -36,7 +37,7 @@ const YOUTUBE_ICON = (
 // Payment-badge text tone (white badge, coloured label): VISA/Napas blue, JCB/COD red.
 const PAY_TONE: Record<string, string> = { JCB: "is-red", COD: "is-red" };
 
-export function Footer({ dict }: { dict: Dictionary["footer"] }) {
+export function Footer({ dict, editable = false }: { dict: Dictionary["footer"]; editable?: boolean }) {
   const t = dict;
 
   return (
@@ -52,7 +53,7 @@ export function Footer({ dict }: { dict: Dictionary["footer"] }) {
                 {/* Signex logo (replaces the "SIGNEX" text label). Same user SVG as the
                     navbar, but rendered white (brightness(0) invert(1)) so it reads on the
                     dark footer like the wordmark/lotus do. */}
-                <img alt="Signex" className="footer-signex_logo" loading="lazy" src={t.logoUrl || "/assets/images/signex-logo.svg"} />
+                <img alt="Signex" className="footer-signex_logo" loading="lazy" src={t.logoUrl || "/assets/images/signex-logo.svg"} {...editAttrs(editable, "footer.logo", "image")} />
                 <div className="footer-signex_brand">
                   <div className="text-size-regular text_body-bold">
                     {t.brand}

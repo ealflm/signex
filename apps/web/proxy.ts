@@ -42,7 +42,9 @@ export function proxy(request: NextRequest) {
 export const config = {
   // App routes only — exclude Next internals, the web's OWN api route handlers
   // (/api/revalidate, /api/draft — these must NOT be locale-redirected, or the api's
-  // on-demand revalidation POST gets a 307 → /vi/api/revalidate → 404), the vendored
-  // Webflow /assets, favicon, and any path containing a file extension.
-  matcher: ["/((?!_next/static|_next/image|api/|assets/|favicon.ico|.*\\..*).*)"],
+  // on-demand revalidation POST gets a 307 → /vi/api/revalidate → 404), the editor
+  // preview tree (/preview/<lang> already carries its own locale segment — locale-redirecting
+  // it to /<lang>/preview/<lang> would 404 the editor iframe), the vendored Webflow /assets,
+  // favicon, and any path containing a file extension.
+  matcher: ["/((?!_next/static|_next/image|api/|preview/|assets/|favicon.ico|.*\\..*).*)"],
 };

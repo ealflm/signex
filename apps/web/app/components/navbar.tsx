@@ -2,8 +2,9 @@
 import { Fragment } from "react";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { LangToggle } from "@/app/components/lang-toggle";
+import { editAttrs } from "@/app/lib/edit-attrs";
 
-export function Navbar({ dict }: { dict: Dictionary["nav"] }) {
+export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; editable?: boolean }) {
   return (
     <div className="master_navigation">
       <div className="banner-navbar" />
@@ -97,6 +98,7 @@ export function Navbar({ dict }: { dict: Dictionary["nav"] }) {
                     ? { WebkitMaskImage: `url("${dict.logoUrl}")`, maskImage: `url("${dict.logoUrl}")` }
                     : undefined
                 }
+                {...editAttrs(editable, "nav.logo", "image")}
               />
             </a>
             <div className="nav_corners-wrap">
