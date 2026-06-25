@@ -109,7 +109,7 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
               ))}
             </div>
             <div className="image_contact-c" data-w-id="a7c263a0-bae9-4cd0-4784-0bc0e59ff63b" style={{ opacity: 0, filter: 'blur(5px)' }}>
-              <img alt="Sara dubler koei 7y yt io unsplash" className="image_cover is-parallax" loading="lazy" src="/assets/images/69aeefb3f6044f0563d94f4b_sara-dubler-Koei_7yYtIo-unsplash.avif" />
+              <img alt={dict.contactPage.hero.imageAlt || "Sara dubler koei 7y yt io unsplash"} className="image_cover is-parallax" loading="lazy" src={dict.contactPage.hero.imageUrl || "/assets/images/69aeefb3f6044f0563d94f4b_sara-dubler-Koei_7yYtIo-unsplash.avif"} />
             </div>
           </div>
         </div>

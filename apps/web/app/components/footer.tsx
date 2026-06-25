@@ -179,8 +179,9 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
             {/* Decorative lotus watermark (replaces Caladan's palm). Keeps the palm's
                 position/size/opacity via .palm-footer; .footer-signex_lotus recolours the
                 black source art to a faint white silhouette (brightness(0) invert(1)) so it
-                reads on the dark footer like the cream palm did. alt="" — decorative. */}
-            <img alt="" className="palm-footer footer-signex_lotus" loading="lazy" src="/assets/images/lotus.svg" />
+                reads on the dark footer like the cream palm did. alt="" — decorative.
+                Configurable AssetRef (footer.watermark); falls back to the literal lotus.svg. */}
+            <img alt={t.watermarkAlt || ""} className="palm-footer footer-signex_lotus" loading="lazy" src={t.watermarkUrl || "/assets/images/lotus.svg"} {...editAttrs(editable, "footer.watermark", "image")} />
           </div>
         </div>
         <div className="progressive_blur">

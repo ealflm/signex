@@ -231,6 +231,10 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       // footer.logo is AssetRef? — resolve URL; "" when absent so the component falls
       // back to the literal signex-logo.svg (published v1 snapshot stays valid).
       logoUrl: assetUrl(b.footer.logo?.assetId ?? ""),
+      // footer.watermark is AssetRef? — decorative lotus; "" when absent so the component falls
+      // back to the literal /assets/images/lotus.svg. Editable as footer.watermark.
+      watermarkUrl: assetUrl(b.footer.watermark?.assetId ?? ""),
+      watermarkAlt: t(b.footer.watermark?.alt, lang),
       links: b.footer.links.map((l) => ({
         label: t(l.label, lang),
         href: l.href,
@@ -326,6 +330,10 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
         title: t(b.contactPage.hero.title.lead, lang),
         titleAccent: t(b.contactPage.hero.title.accent, lang),
         subtitle: t(b.contactPage.hero.subtitle, lang),
+        // hero.image is AssetRef? — "" when absent so the contact page falls back to the literal
+        // sara-dubler still (published v1 snapshot stays valid). Editable as contactPage.hero.image.
+        imageUrl: assetUrl(b.contactPage.hero.image?.assetId ?? ""),
+        imageAlt: t(b.contactPage.hero.image?.alt, lang),
       },
       cards: [
         {

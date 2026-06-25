@@ -14,6 +14,7 @@ import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { Contact } from "@/app/components/home/contact";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { editAttrs } from "@/app/lib/edit-attrs";
 
 // Contact info-card icons (lucide), index-aligned with contactPage.cards: mail / phone / map-pin —
 // kept identical to the public page (icons aren't translated / editable).
@@ -118,7 +119,7 @@ async function PreviewContact({
                 ))}
               </div>
               <div className="image_contact-c" data-w-id="a7c263a0-bae9-4cd0-4784-0bc0e59ff63b" style={{ opacity: 0, filter: 'blur(5px)' }}>
-                <img alt="Sara dubler koei 7y yt io unsplash" className="image_cover is-parallax" loading="lazy" src="/assets/images/69aeefb3f6044f0563d94f4b_sara-dubler-Koei_7yYtIo-unsplash.avif" />
+                <img alt={dict.contactPage.hero.imageAlt || "Sara dubler koei 7y yt io unsplash"} className="image_cover is-parallax" loading="lazy" src={dict.contactPage.hero.imageUrl || "/assets/images/69aeefb3f6044f0563d94f4b_sara-dubler-Koei_7yYtIo-unsplash.avif"} {...editAttrs(true, "contactPage.hero.image", "image")} />
               </div>
             </div>
           </div>

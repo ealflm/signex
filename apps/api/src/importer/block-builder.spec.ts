@@ -78,9 +78,10 @@ describe('buildBlocks', () => {
     expect(nf.cta.label.en).toBe('Back to homepage');
   });
 
-  it('populates the newly-configurable optional asset refs (footer.logo, features.featured.image, aboutPage.hero.video + testimonial.image)', () => {
+  it('populates the newly-configurable optional asset refs (footer.logo + watermark, features.featured.image, aboutPage.hero.video + testimonial.image, contactPage.hero.image)', () => {
     const footer: any = blocks.find((b) => b.key === 'footer')!.data;
     expect(footer.logo.assetId).toBe(FAKE_CUID);
+    expect(footer.watermark.assetId).toBe(FAKE_CUID);
 
     const features: any = blocks.find((b) => b.key === 'features')!.data;
     expect(features.featured.image.assetId).toBe(FAKE_CUID);
@@ -90,6 +91,9 @@ describe('buildBlocks', () => {
     expect(aboutPage.hero.video.mp4AssetId).toBe(FAKE_CUID);
     expect(aboutPage.hero.video.webmAssetId).toBe(FAKE_CUID);
     expect(aboutPage.testimonial.image.assetId).toBe(FAKE_CUID);
+
+    const contactPage: any = blocks.find((b) => b.key === 'contactPage')!.data;
+    expect(contactPage.hero.image.assetId).toBe(FAKE_CUID);
   });
 
   it('hero has titleTop and titleBottom as separate localized texts', () => {

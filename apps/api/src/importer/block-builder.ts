@@ -182,13 +182,15 @@ function buildProductsHeader(E: any, V: any) {
 }
 
 function buildFooter(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
-  // footerBlock: { logo?: AssetRef, tagline, contactHeading, quickHeading, links, shipLabel, payLabel, payments }
-  // The footer brand logo is now a configurable AssetRef (logoFooter == the same signex-logo.svg
-  // as nav, deduped to one Asset row). lotus is decorative and stays hardcoded in the web component.
+  // footerBlock: { logo?: AssetRef, watermark?: AssetRef, tagline, contactHeading, quickHeading, links, shipLabel, payLabel, payments }
+  // The footer brand logo is a configurable AssetRef (logoFooter == the same signex-logo.svg as nav,
+  // deduped to one Asset row). The decorative lotus watermark is now configurable too (footer.watermark
+  // → the 'lotus' manifest asset), editable via the visual editor; the web falls back to lotus.svg.
   const f = E.footer;
   const vf = V.footer;
   return {
     logo: assetRef(assets, 'logoFooter'),
+    watermark: assetRef(assets, 'lotus'),
     tagline: ltArray(f.tagline, vf.tagline),
     contactHeading: lt(f.contactHeading, vf.contactHeading),
     quickHeading: lt(f.quickHeading, vf.quickHeading),
@@ -435,9 +437,15 @@ function buildAboutPage(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
   };
 }
 
-function buildContactPage(E: any, V: any) {
-  // contactPageBlock: { hero: {title: TwoToneTitle, subtitle}, map: {eyebrow, title: TwoToneTitle} }
-  // NAP cards come from businessContact (not duplicated here).
+function buildContactPage(
+  E: any,
+  V: any,
+  assets: Map<string, FrozenAssetEntry>,
+) {
+  // contactPageBlock: { hero: {title: TwoToneTitle, subtitle, image?: AssetRef}, map: {eyebrow, title: TwoToneTitle} }
+  // NAP cards come from businessContact (not duplicated here). The hero parallax still is now a
+  // configurable AssetRef ('contactParallax' == the sara-dubler unsplash, previously registered but
+  // unreferenced), editable via the visual editor; the web falls back to the literal when absent.
   const c = E.contactPage;
   const v = V.contactPage;
   return {
@@ -449,6 +457,11 @@ function buildContactPage(E: any, V: any) {
         v.hero.titleAccent,
       ),
       subtitle: lt(c.hero.subtitle, v.hero.subtitle),
+      image: assetRef(
+        assets,
+        'contactParallax',
+        lt('Signex contact', 'Liên hệ Signex'),
+      ),
     },
     map: {
       eyebrow: lt(c.map.eyebrow, v.map.eyebrow),
@@ -506,7 +519,7 @@ export function buildBlocks(
     businessContact: buildBusinessContact(E, V),
     formConfig: buildFormConfig(E, V),
     aboutPage: buildAboutPage(E, V, assets),
-    contactPage: buildContactPage(E, V),
+    contactPage: buildContactPage(E, V, assets),
     notFound: buildNotFound(E, V, assets),
   };
 

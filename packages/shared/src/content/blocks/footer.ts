@@ -10,6 +10,10 @@ export const footerBlock = z.object({
   // literal /assets/images/signex-logo.svg when absent, so the published v1 snapshot
   // (which predates this field) stays valid — no re-publish required.
   logo: AssetRef.optional(),
+  // Decorative lotus watermark in the footer background. OPTIONAL: the web falls back to the literal
+  // /assets/images/lotus.svg when absent (published v1 snapshot stays valid). The visual editor edits
+  // it as `footer.watermark`.
+  watermark: AssetRef.optional(),
   tagline: LocalizedTextArray, // 2 lines
   contactHeading: LocalizedText,
   quickHeading: LocalizedText,
