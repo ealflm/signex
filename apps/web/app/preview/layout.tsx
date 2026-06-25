@@ -5,40 +5,80 @@
 // edit. It is NEVER cached (each page reads request-time data — token + a no-store snapshot fetch —
 // which makes it dynamic under cacheComponents; see the per-page connection() call).
 //
-// Differences vs the public layout, all intentional for an editing surface:
-//   • No <PreviewBar>/draftMode, no GA4, no OrgJsonLd, no SSG metadata — this is an internal tool.
-//   • The Webflow IX2 JS runtime is NOT loaded here. The public pages start reveal elements at
-//     opacity:0/blur(5px) and rely on IX2 (gated by data-wf-page) to reveal them; matching that
-//     gating under the /preview path is fragile, so instead we force all reveal elements visible
-//     with a scoped <style> below. The editor needs media VISIBLE + CLICKABLE, not scroll choreo.
+// This <head>/<body> MIRRORS the public app/[lang]/layout.tsx so the editor renders IDENTICALLY to
+// the live site — same FOUC guard, same w-mod shim, same CSS, and crucially the SAME Webflow IX2
+// runtime + page attrs. The runtime is what sizes the hero (.master_hero height), positions the
+// `is-parallax` cover images, and fires the reveal interactions; without it the hero collapses to
+// 0×0 and parallax media never positions (the "lệch/chưa chuẩn" bug). The runtime keys all of this
+// off data-wf-page, which WebflowPageAttrs derives from the pathname via profileForRoute — and
+// routeFromPathname() now strips the /preview prefix so /preview/<lang>/… resolves to the SAME
+// profile as the matching public route.
+//
+// Intentional differences vs the public layout (this is an internal editing surface, not the site):
+//   • No <PreviewBar>/draftMode, no GoogleAnalytics, no OrgJsonLd, no SSG metadata.
+//   • The page (app/preview/[lang]/page.tsx) supplies its OWN page-wrapper / Navbar / Footer with
+//     editable=1 + the <EditOverlay>, so this layout's <body> is just {children}.
 //   • The CSP frame-ancestors header (so the admin can iframe this) is set in next.config.ts,
 //     scoped to /preview/:path* only — public routes keep their default framing policy.
+// This layout sits ABOVE the [lang] segment, so it has no lang param; <html lang> is the default
+// (vi). IX2/profile resolution is pathname-driven client-side, so the bare lang attr is cosmetic.
 import "../globals.css";
+import { Suspense } from "react";
+import { WebflowRuntime } from "@/app/components/webflow-runtime";
+import { WebflowPageAttrs } from "@/app/components/webflow-page-attrs";
+import { siteAttrs } from "@/app/lib/webflow-bundles";
 
-// Force every IX2 reveal element visible (the public pages animate these in via the Webflow
-// runtime, which we deliberately don't load here). Also neutralize the FOUC guard from the public
-// <head> (not present here, but harmless) and let media zones receive hover/click cleanly.
+// Verbatim from the public layout / legacy <head>: the FOUC guard hides animated elements until the
+// IX2 runtime adds w-mod-ix3 (the runtime below adds it on init, just like the live site); the shim
+// sets w-mod-js/w-mod-touch early so the w-mod-js-gated CSS (incl. the hero layout) applies pre-JS.
+const WF_GUARD_STYLE =
+  "html.w-mod-js:not(.w-mod-ix3) :is([marquee-up],[marquee-down],[stagger-text],.master_sales-cta){visibility:hidden !important;}";
+const WF_MOD_SHIM =
+  '!function(o,c){var n=c.documentElement,t=" w-mod-";n.className+=t+"js",("ontouchstart"in o||o.DocumentTouch&&c instanceof DocumentTouch)&&(n.className+=t+"touch")}(window,document);';
+
+// Force reveal elements to their FINAL (visible) state. The IX2 runtime below still drives the hero
+// height, the `is-parallax` cover positioning, and Lenis — all of which are layout (size / position /
+// transform). But IX2's scroll/page-load REVEAL choreography (opacity:0 + blur(5px) → 1 / 0) does not
+// fire reliably inside this route: the preview page is dynamic (connection() + Suspense streaming), so
+// the page-load reveal trigger runs before the streamed hero is settled and never re-fires, leaving
+// above-the-fold text stuck hidden. An editor must show content to edit it anyway, so we neutralize
+// ONLY the hidden reveal state — opacity + filter — and deliberately touch NOTHING that the runtime
+// owns (no width/height, no position, no transform), so parallax + the absolute cover image are
+// unaffected. (This mirrors the live site's settled state; the entrance animation is simply skipped.)
 const PREVIEW_REVEAL_STYLE = `
-  [style*="blur(5px)"], [data-w-id] { opacity: 1 !important; filter: none !important; }
+  [data-w-id], [style*="blur(5px)"] { opacity: 1 !important; filter: none !important; }
   .home-a_rest-content > * { opacity: 1 !important; filter: none !important; }
   html { visibility: visible !important; }
 `;
 
 export default function PreviewLayout({ children }: { children: React.ReactNode }) {
+  const { domain, site } = siteAttrs(); // single source for the Webflow site attrs (matches public)
   return (
-    // `w-mod-js` mirrors the class WF_MOD_SHIM stamps onto the public <html> — a large slice of the
-    // Webflow CSS (incl. the hero .w-background-video + two-tone title layout) is gated behind it.
-    // Without it the hero falls back to its no-JS state (image-only right half). It does NOT load the
-    // IX2 runtime, so reveal choreography is still off — the PREVIEW_REVEAL_STYLE force-visible above
-    // remains what makes reveal elements appear.
-    <html lang="vi" className="w-mod-js" suppressHydrationWarning>
+    // suppressHydrationWarning: WF_MOD_SHIM adds w-mod-js/w-mod-touch and WebflowPageAttrs sets
+    // data-wf-page on <html> before hydration — both intentionally diverge from SSR (same as public).
+    <html lang="vi" suppressHydrationWarning data-wf-domain={domain} data-wf-site={site}>
       <head>
+        <style dangerouslySetInnerHTML={{ __html: WF_GUARD_STYLE }} />
         <style dangerouslySetInnerHTML={{ __html: PREVIEW_REVEAL_STYLE }} />
+        <script dangerouslySetInnerHTML={{ __html: WF_MOD_SHIM }} />
         <link rel="stylesheet" href="/assets/css/caladan-template.shared.28e174924.css" />
         <link rel="stylesheet" href="/assets/css/lenis.css" />
         <link rel="stylesheet" href="/assets/fonts/ibm-plex-mono.css" />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* WebflowPageAttrs/WebflowRuntime call usePathname() — request-time (uncached) data under
+            cacheComponents. They live in the layout's STATIC shell (outside the page's own Suspense),
+            and because the preview pages are dynamic (connection()), accessing usePathname() in the
+            shell without a Suspense boundary fails the static-shell prerender with a blocking-route
+            error. Wrapping them lets the shell prerender with a streamed hole. (The public [lang]
+            layout needs no wrapper: those pages are fully cached/SSG, so the path is known at build.)
+            Both components render null, so the fallback is invisible. */}
+        <Suspense fallback={null}>
+          <WebflowPageAttrs />
+          <WebflowRuntime />
+        </Suspense>
+      </body>
     </html>
   );
 }

@@ -34,6 +34,13 @@ const WF_PAGE_IDS: Record<string, string> = {
 // so the Webflow page/bundle map keeps keying off the bare route (/, /resorts/...).
 const LOCALE_PREFIXES = new Set(["en", "vi"]);
 function routeFromPathname(pathname: string): string {
+  // The visual editor serves the site under /preview/<lang>/… — strip that prefix so the Webflow
+  // bundle + wf-page profile matches the corresponding PUBLIC route. The wf-page id is load-bearing
+  // (IX2 keys reveals/parallax off it), so the editor MUST resolve to the real page's profile or the
+  // hero parallax + reveals never fire (the page renders collapsed/hidden).
+  if (pathname === "/preview" || pathname.startsWith("/preview/")) {
+    pathname = pathname.slice("/preview".length) || "/";
+  }
   const seg = pathname.split("/"); // ["", "vi", "resorts", ...]
   if (LOCALE_PREFIXES.has(seg[1])) {
     const rest = "/" + seg.slice(2).join("/");

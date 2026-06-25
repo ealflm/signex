@@ -70,7 +70,15 @@ export function EditOverlay() {
         el.tagName === "IMG" || el.tagName === "VIDEO"
           ? (el.parentElement ?? el)
           : el;
-      if (host !== el) host.style.position ||= "relative";
+      // Anchor the absolutely-positioned badge on `host`. Only promote a STATICALLY-positioned host
+      // to relative — NEVER clobber an existing non-static position. The Webflow `position:absolute`
+      // on elements like .image_hero-home-a comes from a CSS class (so el.style.position is ""/falsy);
+      // the old `||= "relative"` therefore overwrote it, dropping the full-bleed cover image back into
+      // flow and collapsing the hero to half width. absolute/relative/fixed/sticky already establish a
+      // containing block for the badge, so leaving them be both fixes the layout AND anchors correctly.
+      if (host !== el && getComputedStyle(host).position === "static") {
+        host.style.position = "relative";
+      }
       host.appendChild(badge);
 
       const onEnter = () => el.classList.add("sx-edit-hover");
