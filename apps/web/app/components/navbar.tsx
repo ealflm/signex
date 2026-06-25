@@ -76,7 +76,7 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
                         open — the desktop toggle lives in .nav_right. */}
                     <div className="divider_mobile-menu" />
                     <div className="nav-menu_mobile-button">
-                      <LangToggle />
+                      <LangToggle editable={editable} />
                     </div>
                   </div>
                 </div>
@@ -124,7 +124,7 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
                   at ≤991px — so it hides on small screens exactly like the ref's "View Resorts"
                   link (the navbar collapses to the hamburger at the same `medium` breakpoint). */}
               <div className="nav_button-desktop">
-                <LangToggle />
+                <LangToggle editable={editable} />
               </div>
               {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- faithful port of Webflow markup; navigation is driven by the Webflow runtime, not next/link */}
               <a

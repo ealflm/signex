@@ -26,7 +26,12 @@ const PREVIEW_REVEAL_STYLE = `
 
 export default function PreviewLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    // `w-mod-js` mirrors the class WF_MOD_SHIM stamps onto the public <html> — a large slice of the
+    // Webflow CSS (incl. the hero .w-background-video + two-tone title layout) is gated behind it.
+    // Without it the hero falls back to its no-JS state (image-only right half). It does NOT load the
+    // IX2 runtime, so reveal choreography is still off — the PREVIEW_REVEAL_STYLE force-visible above
+    // remains what makes reveal elements appear.
+    <html lang="vi" className="w-mod-js" suppressHydrationWarning>
       <head>
         <style dangerouslySetInnerHTML={{ __html: PREVIEW_REVEAL_STYLE }} />
         <link rel="stylesheet" href="/assets/css/caladan-template.shared.28e174924.css" />

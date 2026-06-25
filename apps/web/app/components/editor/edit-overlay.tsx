@@ -22,6 +22,10 @@ import { useEffect } from "react";
 
 const SOURCE = "signex-editor";
 
+// The two known locales (kept literal — i18n-config is a server module; the overlay is a tiny
+// dependency-free client). Used to strip a leading /<locale> off intercepted hrefs.
+const LOCALES = ["en", "vi"] as const;
+
 export function EditOverlay() {
   useEffect(() => {
     // ---- styles (injected once) ----------------------------------------------------------
@@ -94,6 +98,55 @@ export function EditOverlay() {
       });
     }
 
+    // ---- internal navigation interception: keep edit mode across in-iframe page changes -------
+    // The shared section components render PUBLIC hrefs (`/`, `/about`, `/contact`,
+    // `/products/<slug>`, …). Following them would navigate the iframe OUT of /preview — the public
+    // pages carry no token/editable flag and no [data-edit-field] annotations, so nothing would be
+    // selectable. We intercept same-origin link clicks here and redirect the iframe to the /preview
+    // equivalent, preserving the locale + secret + editable flag. The overlay re-mounts on the new
+    // page → media zones re-annotate → selection works on the new page.
+    const onDocClick = (e: MouseEvent) => {
+      // Honour the media-zone editor clicks (handled above) and modified clicks (new-tab etc.).
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
+      const anchor = (e.target as Element | null)?.closest?.("a[href]") as
+        | HTMLAnchorElement
+        | null;
+      if (!anchor) return;
+
+      const raw = anchor.getAttribute("href");
+      if (!raw) return;
+      // In-page anchors (#…, #quote-form) and external/protocol links → let the browser handle.
+      if (raw.startsWith("#") || raw.startsWith("mailto:") || raw.startsWith("tel:")) return;
+      // Only same-origin absolute paths are rewritten. Anything with a scheme/host (http(s)://,
+      // //cdn…) is external — leave it.
+      if (!raw.startsWith("/") || raw.startsWith("//")) return;
+      // Already a /preview link → let it through unchanged (still token-bearing).
+      if (raw === "/preview" || raw.startsWith("/preview/")) return;
+
+      // Derive the current preview locale + secret from the iframe's own URL.
+      const here = window.location;
+      const hereSegments = here.pathname.split("/"); // ["", "preview", "<lang>", …]
+      const lang = (LOCALES as readonly string[]).includes(hereSegments[2])
+        ? hereSegments[2]
+        : LOCALES[1]; // default vi (matches DEFAULT_LOCALE)
+      const secret = new URLSearchParams(here.search).get("secret") ?? "";
+
+      // Normalize the target: drop the query/hash, then strip a leading /<locale> →
+      // logicalPath ("" for home, "/about", "/contact", "/products/x", …).
+      const path = raw.split(/[?#]/)[0];
+      const segs = path.split("/"); // ["", "vi", "about"] or ["", "about"] or [""]
+      if ((LOCALES as readonly string[]).includes(segs[1])) segs.splice(1, 1);
+      const logicalPath = segs.join("/").replace(/^\/+/, "/").replace(/^\/$/, "");
+
+      e.preventDefault();
+      const qs = `?secret=${encodeURIComponent(secret)}&editable=1`;
+      window.location.assign(`/preview/${lang}${logicalPath}${qs}`);
+    };
+    // Capture phase so we intercept before the Webflow runtime / anchor default navigation.
+    document.addEventListener("click", onDocClick, true);
+
     // ---- inbound: parent → preview "refresh" → reload to render the saved working state ----
     const onMessage = (e: MessageEvent) => {
       const data = e.data;
@@ -105,6 +158,7 @@ export function EditOverlay() {
 
     return () => {
       cleanups.forEach((fn) => fn());
+      document.removeEventListener("click", onDocClick, true);
       window.removeEventListener("message", onMessage);
       style.remove();
     };

@@ -24,7 +24,7 @@ const LANG_LABEL: Record<string, string> = {
  * animated via CSS transitions. Plain <a> (full reload) keeps the Webflow IX2 runtime on
  * its "every load is a fresh first boot" path (see webflow-runtime.tsx).
  */
-export function LangToggle() {
+export function LangToggle({ editable = false }: { editable?: boolean } = {}) {
   const pathname = usePathname();
   const segments = pathname.split("/"); // e.g. ["", "vi", "about"]
   const activeLocale = (LOCALES as readonly string[]).includes(segments[1]) ? segments[1] : LOCALES[0];
@@ -55,6 +55,32 @@ export function LangToggle() {
     const id = requestAnimationFrame(() => setAnimate(true));
     return () => cancelAnimationFrame(id);
   }, []);
+
+  // In the visual editor (editable), the in-page EN/VI links resolve to PUBLIC hrefs (and under
+  // /preview would produce malformed `/<locale>/<locale>` paths) — locale switching there is the
+  // admin toolbar's job. Render the options as inert plain text so nothing navigates the iframe
+  // out of /preview. (Public behaviour is unchanged — editable defaults false.)
+  if (editable) {
+    return (
+      <div className="lang-toggle" role="group" aria-label="Language">
+        {LOCALES.map((locale, i) => (
+          <Fragment key={locale}>
+            {i > 0 && (
+              <span className="lang-toggle_divider" aria-hidden="true">
+                /
+              </span>
+            )}
+            <span
+              className={`lang-toggle_option${locale === activeLocale ? " is-active" : ""}`}
+              aria-current={locale === activeLocale ? "true" : undefined}
+            >
+              {locale.toUpperCase()}
+            </span>
+          </Fragment>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="lang-toggle" role="group" aria-label="Language">
