@@ -120,6 +120,10 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # SSG prerender bakes asset URLs at build time — pass the media base so a fresh image serves
+        # working absolute image URLs (not relative /originals/… that 404 until a revalidation).
+        MEDIA_PUBLIC_BASE: ${MEDIA_PUBLIC_BASE:-http://localhost:9000/signex-media}
     image: signex-web:latest
     container_name: signex-web
     restart: unless-stopped

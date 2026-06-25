@@ -27,6 +27,15 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# MEDIA_PUBLIC_BASE must be present at BUILD time. The public pages are SSG ('use cache'), so the
+# build-time prerender resolves asset URLs via resolveAssetUrl (reads process.env.MEDIA_PUBLIC_BASE).
+# If it is empty at build, RELATIVE "/originals/<r2Key>" paths get baked into the static HTML and
+# 404 against the web server until a runtime revalidation re-renders. Passed from docker-compose
+# (build.args) so a freshly built image serves working absolute image URLs immediately; the runtime
+# `environment:` value still applies after on-demand revalidation. (r2Keys are content-addressed, so
+# the build-time INITIAL_SNAPSHOT keys match the MinIO/R2 objects — only the base was missing.)
+ARG MEDIA_PUBLIC_BASE=http://localhost:9000/signex-media
+ENV MEDIA_PUBLIC_BASE=$MEDIA_PUBLIC_BASE
 # @signex/db + @signex/shared are require()d by the web read-path at runtime; they must be
 # generated/compiled to dist/ + generated/ BEFORE next build so the standalone trace can
 # include the Prisma client (linux-musl engine) and the CJS shared registry.
