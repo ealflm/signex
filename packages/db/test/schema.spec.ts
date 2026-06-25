@@ -2,14 +2,35 @@ import { execSync } from "node:child_process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient, Role, ReleaseStatus } from "../generated/client";
 
-const prisma = new PrismaClient();
+// SAFETY: this suite runs `prisma migrate reset` (DESTRUCTIVE — drops ALL data). To ensure it can
+// NEVER wipe a dev/prod database (it once did, via `npm run test` against the dev DATABASE_URL), it
+// targets a dedicated TEST_DATABASE_URL and is SKIPPED entirely when that is unset. CI / deliberate
+// integration runs set TEST_DATABASE_URL to an isolated throwaway database.
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL?.trim();
+const runIntegration = Boolean(TEST_DATABASE_URL);
+if (!runIntegration) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[@signex/db] schema.spec SKIPPED — set TEST_DATABASE_URL (a dedicated throwaway DB) to run the destructive migration/integration tests.",
+  );
+}
+const describeIntegration = runIntegration ? describe : describe.skip;
+
+const prisma = new PrismaClient(
+  TEST_DATABASE_URL ? { datasources: { db: { url: TEST_DATABASE_URL } } } : undefined,
+);
 
 beforeAll(() => {
-  // Clean DB from the committed migration ONLY (no seed) — proves a fresh apply.
+  if (!runIntegration) return; // never reset a DB unless TEST_DATABASE_URL explicitly opts in
+  // Clean DB from the committed migration ONLY (no seed) — proves a fresh apply, against the TEST DB.
   execSync("npx prisma migrate reset --force --skip-seed --skip-generate", {
     cwd: process.cwd(),
     stdio: "inherit",
-    env: { ...process.env, PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION: "yes" },
+    env: {
+      ...process.env,
+      DATABASE_URL: TEST_DATABASE_URL,
+      PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION: "yes",
+    },
   });
 });
 
@@ -37,7 +58,7 @@ async function makeRelease(version: number, createdById: string, status: Release
   });
 }
 
-describe("cms_foundation migration", () => {
+describeIntegration("cms_foundation migration", () => {
   it("exposes the Role enum members EDITOR/PUBLISHER/ADMIN", () => {
     expect(Role).toMatchObject({ EDITOR: "EDITOR", PUBLISHER: "PUBLISHER", ADMIN: "ADMIN" });
   });
