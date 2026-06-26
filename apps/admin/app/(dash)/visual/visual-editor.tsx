@@ -15,7 +15,7 @@ import { BLOCK_KIND_BY_KEY, type BlockKey } from "@signex/shared";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { EditDrawer, type AssetRow, type EditTarget, type MediaRef } from "./edit-drawer";
+import { MediaPickerDialog, type AssetRow, type EditTarget, type MediaRef } from "./media-picker-dialog";
 
 const SOURCE = "signex-editor";
 const LOCALES = ["vi", "en"] as const;
@@ -59,12 +59,17 @@ function getPath(obj: Record<string, unknown>, path: string): unknown {
 export function VisualEditor({ webOrigin, previewSecret, initialRevision, initialDirty }: Props) {
   const [lang, setLang] = useState<Locale>("vi");
   const [assets, setAssets] = useState<AssetRow[]>([]);
+  const [assetsLoading, setAssetsLoading] = useState(false);
   const [target, setTarget] = useState<EditTarget | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [dirty, setDirty] = useState(initialDirty);
   const revisionRef = useRef(initialRevision);
+  // Reentrancy latch: `saving` (state) lags by a render under React batching, so a second apply that
+  // fires before the re-render would slip past a state-based guard and double-save. The ref flips
+  // synchronously. Belt-and-suspenders with the dialog disabling its actions while saving/uploading.
+  const savingRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const previewUrl = useMemo(
@@ -74,6 +79,7 @@ export function VisualEditor({ webOrigin, previewSecret, initialRevision, initia
   const publicUrl = `${webOrigin}/${lang}`;
 
   const loadAssets = useCallback(async () => {
+    setAssetsLoading(true);
     try {
       const res = await fetch("/admin-api/assets", { cache: "no-store" });
       if (!res.ok) return;
@@ -81,6 +87,8 @@ export function VisualEditor({ webOrigin, previewSecret, initialRevision, initia
       if (Array.isArray(data)) setAssets(data);
     } catch {
       /* non-fatal — pickers just show no existing options */
+    } finally {
+      setAssetsLoading(false);
     }
   }, []);
 
@@ -121,7 +129,8 @@ export function VisualEditor({ webOrigin, previewSecret, initialRevision, initia
 
   // ---- save: GET block → merge ref into nested field → PUT --------------------------------------
   async function applyRef(ref: MediaRef) {
-    if (!target) return;
+    if (!target || savingRef.current) return; // ignore a re-entrant apply (e.g. a stale in-flight upload)
+    savingRef.current = true;
     setSaving(true);
     try {
       const [blockKey, ...rest] = target.field.split(".");
@@ -186,6 +195,7 @@ export function VisualEditor({ webOrigin, previewSecret, initialRevision, initia
       toast.error(e instanceof Error ? e.message : "Save failed.");
     } finally {
       setSaving(false);
+      savingRef.current = false;
     }
   }
 
@@ -278,10 +288,11 @@ export function VisualEditor({ webOrigin, previewSecret, initialRevision, initia
         />
       </div>
 
-      <EditDrawer
+      <MediaPickerDialog
         open={drawerOpen}
         target={target}
         assets={assets}
+        assetsLoading={assetsLoading}
         saving={saving}
         onAssetsRefresh={loadAssets}
         onApply={applyRef}
