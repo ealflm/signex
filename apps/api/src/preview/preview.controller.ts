@@ -34,20 +34,39 @@ export class PreviewController {
    * Returns: the theme's draftSnapshot (working state, not the published release).
    * When themeId is omitted, falls back to the currently live theme's draft.
    */
+  // NOTE: NestJS does NOT register two HTTP-method decorators stacked on one
+  // handler (the last-applied wins) — that silently 404s the other verb. The web
+  // preview island calls this with POST, so both verbs MUST be real routes. We
+  // register two thin handlers that delegate to one private resolver.
   @Get('snapshot')
+  @Public()
+  snapshotGet(
+    @Headers('x-preview-secret') secret: string | undefined,
+    @Query('themeId') themeId?: string,
+  ): Promise<ReleaseSnapshot> {
+    return this.resolve(secret, themeId);
+  }
+
   @Post('snapshot')
   @Public()
-  async snapshot(
+  snapshotPost(
     @Headers('x-preview-secret') secret: string | undefined,
     @Query('themeId') queryThemeId?: string,
     @Body() body?: { themeId?: string },
+  ): Promise<ReleaseSnapshot> {
+    return this.resolve(secret, queryThemeId ?? body?.themeId);
+  }
+
+  private async resolve(
+    secret: string | undefined,
+    themeIdArg?: string,
   ): Promise<ReleaseSnapshot> {
     const expected = process.env.PREVIEW_SECRET;
     if (!expected || secret !== expected) {
       throw new ForbiddenException('Invalid preview secret');
     }
 
-    let themeId = queryThemeId ?? body?.themeId;
+    let themeId = themeIdArg;
     if (!themeId) {
       // Default to the live theme (the one the PublishedPointer resolves to).
       const pointer = await this.prisma.client.publishedPointer.findUnique({
