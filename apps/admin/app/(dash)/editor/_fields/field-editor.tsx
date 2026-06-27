@@ -2,12 +2,36 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
+import { Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import type { FieldPlan } from "@/app/lib/zodform-fields";
 import { Field } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+
+// A sensible empty value for a newly-added array item / list line, by field kind.
+function defaultForField(plan: FieldPlan): unknown {
+  switch (plan.kind) {
+    case "string":
+      return "";
+    case "localized":
+      return { en: "", vi: "" };
+    case "localizedArray":
+      return { en: [], vi: [] };
+    case "array":
+      return [];
+    case "assetRef":
+    case "videoRef":
+      return {};
+    case "object":
+      return Object.fromEntries(
+        (plan.children ?? []).map((c) => [c.name, defaultForField(c)]),
+      );
+    default:
+      return null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -265,6 +289,201 @@ function ObjectField({
   );
 }
 
+// Bilingual list ({ en: string[], vi: string[] }) — parallel rows so en[i]/vi[i] stay aligned.
+function LocalizedArrayField({
+  field,
+  value,
+  onChange,
+}: {
+  field: FieldPlan;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const v = (value as { en?: string[]; vi?: string[] }) ?? {};
+  const en = v.en ?? [];
+  const vi = v.vi ?? [];
+  const rows = Math.max(en.length, vi.length);
+
+  const commit = (nextEn: string[], nextVi: string[]) =>
+    onChange({ en: nextEn, vi: nextVi });
+  const setCell = (i: number, locale: "en" | "vi", text: string) => {
+    const ne = [...en];
+    const nv = [...vi];
+    while (ne.length <= i) ne.push("");
+    while (nv.length <= i) nv.push("");
+    if (locale === "en") ne[i] = text;
+    else nv[i] = text;
+    commit(ne, nv);
+  };
+  const addRow = () => commit([...en, ""], [...vi, ""]);
+  const removeRow = (i: number) =>
+    commit(en.filter((_, j) => j !== i), vi.filter((_, j) => j !== i));
+
+  return (
+    <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <legend className="px-1 text-sm font-medium text-foreground">
+        {field.label}{" "}
+        <span className="text-xs font-normal text-muted-foreground">
+          ({rows} line{rows === 1 ? "" : "s"})
+        </span>
+      </legend>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <span className="mt-2 w-5 shrink-0 text-right text-xs text-muted-foreground">
+            {i + 1}
+          </span>
+          <div className="flex flex-1 flex-col gap-1">
+            <Input
+              placeholder="English"
+              value={en[i] ?? ""}
+              onChange={(e) => setCell(i, "en", e.target.value)}
+            />
+            <Input
+              placeholder="Vietnamese"
+              value={vi[i] ?? ""}
+              onChange={(e) => setCell(i, "vi", e.target.value)}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="mt-0.5 h-8 w-8 text-muted-foreground hover:text-destructive"
+            aria-label={`Remove line ${i + 1}`}
+            onClick={() => removeRow(i)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      <div>
+        <Button type="button" variant="outline" size="sm" onClick={addRow}>
+          <Plus className="h-4 w-4" />
+          Add line
+        </Button>
+      </div>
+    </fieldset>
+  );
+}
+
+// Repeater of object items (kind:"array" with children = the item shape). Each item is a card with
+// its child fields rendered by the same FieldEditor; supports add / remove / reorder.
+function ArrayField({
+  field,
+  value,
+  onChange,
+  onValidityChange,
+  assets,
+  onPickMedia,
+  onFieldFocus,
+  flashField,
+}: {
+  field: FieldPlan;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  onValidityChange: (name: string, valid: boolean) => void;
+  assets: FieldAssetRow[];
+  onPickMedia?: (fieldName: string, kind: "image" | "video") => void;
+  onFieldFocus?: (fieldName: string) => void;
+  flashField?: { name: string; nonce: number } | null;
+}) {
+  const items = (Array.isArray(value) ? value : []) as Record<string, unknown>[];
+  const children = field.children ?? [];
+
+  const commit = (next: Record<string, unknown>[]) => onChange(next);
+  const setItem = (i: number, item: Record<string, unknown>) =>
+    commit(items.map((it, j) => (j === i ? item : it)));
+  const addItem = () =>
+    commit([
+      ...items,
+      Object.fromEntries(children.map((c) => [c.name, defaultForField(c)])),
+    ]);
+  const removeItem = (i: number) => commit(items.filter((_, j) => j !== i));
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= items.length) return;
+    const next = [...items];
+    [next[i], next[j]] = [next[j], next[i]];
+    commit(next);
+  };
+
+  return (
+    <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <legend className="px-1 text-sm font-medium text-foreground">
+        {field.label}{" "}
+        <span className="text-xs font-normal text-muted-foreground">
+          ({items.length} item{items.length === 1 ? "" : "s"})
+        </span>
+      </legend>
+      {items.map((item, i) => (
+        <div
+          key={i}
+          className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 p-3"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Item {i + 1}
+            </span>
+            <div className="flex items-center gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                aria-label="Move up"
+                disabled={i === 0}
+                onClick={() => move(i, -1)}
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                aria-label="Move down"
+                disabled={i === items.length - 1}
+                onClick={() => move(i, 1)}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                aria-label={`Remove item ${i + 1}`}
+                onClick={() => removeItem(i)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          {children.map((child) => (
+            <FieldEditor
+              key={child.name}
+              field={{ ...child, name: `${field.name}.${i}.${child.name}` }}
+              value={item[child.name]}
+              assets={assets}
+              onChange={(cv) => setItem(i, { ...item, [child.name]: cv })}
+              onValidityChange={onValidityChange}
+              onPickMedia={onPickMedia}
+              onFieldFocus={onFieldFocus}
+              flashField={flashField}
+            />
+          ))}
+        </div>
+      ))}
+      <div>
+        <Button type="button" variant="outline" size="sm" onClick={addItem}>
+          <Plus className="h-4 w-4" />
+          Add item
+        </Button>
+      </div>
+    </fieldset>
+  );
+}
+
 function JsonField({
   field,
   value,
@@ -383,8 +602,23 @@ export function FieldEditor({
         flashField={flashField}
       />
     );
+  } else if (field.kind === "localizedArray") {
+    inner = <LocalizedArrayField field={field} value={value} onChange={onChange} />;
+  } else if (field.kind === "array") {
+    inner = (
+      <ArrayField
+        field={field}
+        value={value}
+        onChange={onChange}
+        onValidityChange={onValidityChange}
+        assets={assets}
+        onPickMedia={onPickMedia}
+        onFieldFocus={onFieldFocus}
+        flashField={flashField}
+      />
+    );
   } else {
-    // localizedArray, array, json → raw JSON textarea (client-side parseBlock validates on submit)
+    // json (scalar arrays / unmodellable shapes) → raw JSON textarea (parseBlock validates on save)
     inner = (
       <JsonField
         field={field}
