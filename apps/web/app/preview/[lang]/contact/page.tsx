@@ -14,7 +14,7 @@ import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { Contact } from "@/app/components/home/contact";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
-import { editAttrs } from "@/app/lib/edit-attrs";
+import { editAttrs, editText } from "@/app/lib/edit-attrs";
 
 // Contact info-card icons (lucide), index-aligned with contactPage.cards: mail / phone / map-pin —
 // kept identical to the public page (icons aren't translated / editable).
@@ -73,15 +73,15 @@ async function PreviewContact({
                     </div>
                   </div>
                   <h1>
-                    {dict.contactPage.hero.title}
-                    <span className="tone-medium">
+                    <span {...editText(true, "contactPage.hero.title.lead", { maxLength: 80 })}>{dict.contactPage.hero.title}</span>
+                    <span className="tone-medium" {...editText(true, "contactPage.hero.title.accent", { maxLength: 80 })}>
                       {dict.contactPage.hero.titleAccent}
                     </span>
                   </h1>
                 </div>
                 <div className="contact-c_hero-p">
                   <p className="tone-medium margin-0">
-                    {dict.contactPage.hero.subtitle}
+                    <span {...editText(true, "contactPage.hero.subtitle", { maxLength: 200 })}>{dict.contactPage.hero.subtitle}</span>
                   </p>
                 </div>
               </div>

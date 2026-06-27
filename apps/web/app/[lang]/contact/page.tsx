@@ -11,6 +11,7 @@ import { hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { getSiteContent } from "@/app/lib/content";
 import { Contact } from "@/app/components/home/contact";
 import { buildMetadata } from "@/app/lib/seo";
+import { editText } from "@/app/lib/edit-attrs";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
@@ -63,15 +64,15 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
                   </div>
                 </div>
                 <h1>
-                  {dict.contactPage.hero.title}
-                  <span className="tone-medium">
+                  <span {...editText(false, "contactPage.hero.title.lead", { maxLength: 80 })}>{dict.contactPage.hero.title}</span>
+                  <span className="tone-medium" {...editText(false, "contactPage.hero.title.accent", { maxLength: 80 })}>
                     {dict.contactPage.hero.titleAccent}
                   </span>
                 </h1>
               </div>
               <div className="contact-c_hero-p">
                 <p className="tone-medium margin-0">
-                  {dict.contactPage.hero.subtitle}
+                  <span {...editText(false, "contactPage.hero.subtitle", { maxLength: 200 })}>{dict.contactPage.hero.subtitle}</span>
                 </p>
               </div>
             </div>
