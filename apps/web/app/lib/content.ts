@@ -432,10 +432,14 @@ export async function getSiteContent(lang: Locale): Promise<SiteContent> {
 // PREVIEW path — live working state via the api. NEVER cached, NEVER on the published path.
 // Called only from the <Suspense>-wrapped preview island (app/components/preview-bar.tsx) so the
 // public shell stays static. Reads PREVIEW_SECRET server-side.
-export async function getPreviewSnapshot(lang: Locale): Promise<SiteContent> {
+export async function getPreviewSnapshot(lang: Locale, themeId?: string): Promise<SiteContent> {
   try {
     const base = process.env.API_URL ?? "http://api:3060";
-    const res = await fetch(`${base}/api/preview/snapshot`, {
+    // Thread the optional themeId through to the preview controller (Task 8): when present it
+    // serves THAT theme's draftSnapshot; when omitted the controller defaults to the live theme.
+    const url = new URL(`${base}/api/preview/snapshot`);
+    if (themeId) url.searchParams.set("themeId", themeId);
+    const res = await fetch(url, {
       method: "POST",
       headers: { "x-preview-secret": process.env.PREVIEW_SECRET ?? "" },
       cache: "no-store",
