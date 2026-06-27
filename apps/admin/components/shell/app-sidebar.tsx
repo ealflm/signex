@@ -9,7 +9,6 @@ import {
   Package,
   FileText,
   Image as ImageIcon,
-  MousePointerClick,
   Users,
   Palette,
   type LucideIcon,
@@ -44,7 +43,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/themes", label: "Themes", icon: Palette, match: "/themes" },
   { href: "/catalog", label: "Catalog", icon: Package, match: "/catalog" },
   { href: "/content/hero", label: "Content", icon: FileText, match: "/content" },
-  { href: "/visual", label: "Visual editor", icon: MousePointerClick, match: "/visual" },
   { href: "/media", label: "Media", icon: ImageIcon, match: "/media" },
 ];
 
