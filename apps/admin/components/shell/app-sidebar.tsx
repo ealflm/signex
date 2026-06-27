@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   MousePointerClick,
   Users,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard, match: "/" },
   { href: "/forms", label: "Leads", icon: Inbox, match: "/forms" },
   { href: "/releases", label: "Releases", icon: Rocket, match: "/releases" },
+  { href: "/themes", label: "Themes", icon: Palette, match: "/themes" },
   { href: "/catalog", label: "Catalog", icon: Package, match: "/catalog" },
   { href: "/content/hero", label: "Content", icon: FileText, match: "/content" },
   { href: "/visual", label: "Visual editor", icon: MousePointerClick, match: "/visual" },
