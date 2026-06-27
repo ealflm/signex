@@ -303,7 +303,7 @@ describe('ReleaseService.publish', () => {
   });
 });
 
-describe('ReleaseService rollback / diff / live / list', () => {
+describe('ReleaseService rollback / live / list', () => {
   let service: ReleaseService;
   let prisma: any;
   let revalidation: { revalidate: jest.Mock };
@@ -398,21 +398,6 @@ describe('ReleaseService rollback / diff / live / list', () => {
       expect.objectContaining({ action: 'release.rollback' }),
     );
     expect(revalidation.revalidate).toHaveBeenCalledTimes(1);
-  });
-
-  it('rollback with restoreWorkingState=true updates working-state bookkeeping', async () => {
-    await service.rollback(ACTOR, { toVersion: 3, restoreWorkingState: true });
-    expect(tx.workingState.update).toHaveBeenCalled();
-  });
-
-  it('diff reports dirty when revision != lastPublishedRevision', async () => {
-    const d = await service.diff();
-    expect(d).toEqual({
-      dirty: true,
-      revision: 7,
-      lastPublishedRevision: 3,
-    });
-    expect(await service.isDirty()).toBe(true);
   });
 
   it('getLive returns the live release summary', async () => {

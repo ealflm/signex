@@ -14,7 +14,6 @@ describe('ReleaseController', () => {
     service = {
       listReleases: jest.fn().mockResolvedValue([{ version: 1 }]),
       getLive: jest.fn().mockResolvedValue({ version: 1 }),
-      diff: jest.fn().mockResolvedValue({ dirty: false }),
       getByVersion: jest.fn().mockResolvedValue({ version: 2 }),
       publish: jest.fn().mockResolvedValue({
         status: 'published',
@@ -35,10 +34,9 @@ describe('ReleaseController', () => {
     controller = moduleRef.get(ReleaseController);
   });
 
-  it('GET list/live/diff delegate to the service', async () => {
+  it('GET list/live delegate to the service', async () => {
     expect(await controller.list()).toEqual([{ version: 1 }]);
     expect(await controller.live()).toEqual({ version: 1 });
-    expect(await controller.diff()).toEqual({ dirty: false });
   });
 
   it('GET :version delegates with a parsed numeric version', async () => {
@@ -48,26 +46,22 @@ describe('ReleaseController', () => {
 
   it('POST publish passes the current user as actor', async () => {
     const res = await controller.publish(ACTOR, {
-      expectedRevision: 5,
+      themeId: 'ctheme1',
+      expectedDraftRevision: 5,
       note: 'go',
     });
     expect(res).toEqual({ status: 'published', version: 3, releaseId: 'r3' });
     expect(service.publish).toHaveBeenCalledWith(ACTOR, {
-      expectedRevision: 5,
+      themeId: 'ctheme1',
+      expectedDraftRevision: 5,
       note: 'go',
     });
   });
 
   it('POST rollback passes the current user as actor', async () => {
-    const res = await controller.rollback(ACTOR, {
-      toVersion: 2,
-      restoreWorkingState: false,
-    });
+    const res = await controller.rollback(ACTOR, { toVersion: 2 });
     expect(res).toEqual({ version: 4, releaseId: 'r4' });
-    expect(service.rollback).toHaveBeenCalledWith(ACTOR, {
-      toVersion: 2,
-      restoreWorkingState: false,
-    });
+    expect(service.rollback).toHaveBeenCalledWith(ACTOR, { toVersion: 2 });
   });
 
   it('POST :version/revalidate re-fires queued revalidations', async () => {

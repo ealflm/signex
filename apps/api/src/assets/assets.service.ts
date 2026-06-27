@@ -19,6 +19,7 @@ import {
   type ReplaceInput,
 } from './dto/assets.dto';
 import type { Asset, AssetKind } from '@signex/db';
+import { collectAssetIds } from '../release/snapshot-assets';
 
 export type LocalizedText = { en: string; vi: string };
 
@@ -357,22 +358,27 @@ export class AssetsService {
     }[];
     releases: { releaseId: string }[];
   }> {
-    const [working, releases] = await Promise.all([
-      this.prisma.client.assetRef.findMany({ where: { assetId } }),
+    // Working refs now live inside each Theme's draftSnapshot (no relational
+    // AssetRef table). A theme "uses" the asset iff its draftSnapshot references
+    // the assetId anywhere (block AssetRef/VideoRef or catalog image).
+    const [themes, releases] = await Promise.all([
+      this.prisma.client.theme.findMany({
+        select: { id: true, name: true, draftSnapshot: true },
+      }),
       this.prisma.client.releaseAssetRef.findMany({
         where: { assetId },
         select: { releaseId: true },
       }),
     ]);
-    return {
-      working: working.map((w) => ({
-        id: w.id,
-        ownerType: w.ownerType,
-        ownerId: w.ownerId,
-        field: w.field,
-      })),
-      releases,
-    };
+    const working = themes
+      .filter((t) => collectAssetIds(t.draftSnapshot).has(assetId))
+      .map((t) => ({
+        id: t.id,
+        ownerType: 'theme',
+        ownerId: t.id,
+        field: 'draftSnapshot',
+      }));
+    return { working, releases };
   }
 
   /** Replace = register the new bytes; callers repoint imageId/posterId atomically at the catalog/content layer. */

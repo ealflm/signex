@@ -1,7 +1,7 @@
 /**
  * Pure, DB-free helpers for asset freezing and id collection.
- * Extracted from snapshot.serializer.ts so they can be tested and reused
- * without NestJS DI or Prisma.
+ * Shared by the release publish path, ThemeService.applyDraftMutation, the
+ * importer, and AssetsService.usage — no NestJS DI or Prisma needed.
  */
 
 export type AssetRow = {

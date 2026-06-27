@@ -7,7 +7,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import type { User } from '@signex/db';
+import type { Theme, User } from '@signex/db';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -26,7 +26,7 @@ export class ThemeController {
 
   @Get(':id')
   @Roles('EDITOR')
-  get(@Param('id') id: string) {
+  get(@Param('id') id: string): Promise<Theme> {
     return this.themes.get(id);
   }
 
@@ -36,19 +36,19 @@ export class ThemeController {
     @CurrentUser() user: User,
     @Param('id') id: string,
     @Body('name') name: string,
-  ) {
+  ): Promise<Theme> {
     return this.themes.duplicate(user as any, id, name);
   }
 
   @Patch(':id')
   @Roles('EDITOR')
-  rename(@Param('id') id: string, @Body('name') name: string) {
+  rename(@Param('id') id: string, @Body('name') name: string): Promise<Theme> {
     return this.themes.rename(id, name);
   }
 
   @Delete(':id')
   @Roles('PUBLISHER')
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string): Promise<Theme> {
     return this.themes.remove(id);
   }
 

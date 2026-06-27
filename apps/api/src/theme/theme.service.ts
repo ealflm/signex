@@ -3,7 +3,7 @@ import {
   Injectable,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { Prisma } from '@signex/db';
+import { Prisma } from '@signex/db';
 import {
   BLOCK_REGISTRY,
   parseBlock,
@@ -193,7 +193,7 @@ export class ThemeService {
       data: {
         name,
         draftSnapshot: structuredClone(src.draftSnapshot) as Prisma.InputJsonValue,
-        liveSnapshot: null,
+        liveSnapshot: Prisma.DbNull,
         draftRevision: 0,
         lastPublishedRevision: 0,
         createdById: actor.id,

@@ -14,6 +14,7 @@ jest.mock('@signex/shared', () => ({
 
 import { ConflictException, UnprocessableEntityException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { Prisma } from '@signex/db';
 import { ThemeService } from './theme.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -134,7 +135,8 @@ describe('ThemeService.duplicate', () => {
 
     const data = prisma.client.theme.create.mock.calls[0][0].data;
     expect(data.name).toBe('Default Copy');
-    expect(data.liveSnapshot).toBeNull();
+    // Json? column set to SQL NULL via Prisma.DbNull (literal null is a type error).
+    expect(data.liveSnapshot).toBe(Prisma.DbNull);
     expect(data.draftRevision).toBe(0);
     expect(data.lastPublishedRevision).toBe(0);
     expect(data.createdById).toBe(ACTOR.id);

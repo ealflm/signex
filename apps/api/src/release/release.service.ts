@@ -208,7 +208,7 @@ export class ReleaseService {
 
   async rollback(
     actor: User,
-    input: { toVersion: number; restoreWorkingState?: boolean },
+    input: { toVersion: number },
   ): Promise<{ version: number; releaseId: string }> {
     this.assertMediaBaseConfigured();
 
@@ -277,16 +277,6 @@ export class ReleaseService {
           });
         }
 
-        if (input.restoreWorkingState) {
-          // Opt-in: mark the working state as aligned to the restored release.
-          // Full working-table rehydrate from snapshot is a documented seam
-          // (content reconcile); foundation updates bookkeeping only.
-          await tx.workingState.update({
-            where: { id: 'singleton' },
-            data: { lastPublishedRevision: { increment: 0 } },
-          });
-        }
-
         await this.audit.record(tx as unknown as Prisma.TransactionClient, {
           userId: actor.id,
           action: 'release.rollback',
@@ -306,25 +296,6 @@ export class ReleaseService {
     });
 
     return result;
-  }
-
-  async diff(): Promise<{
-    dirty: boolean;
-    revision: number;
-    lastPublishedRevision: number;
-  }> {
-    const ws = await this.prisma.client.workingState.findUniqueOrThrow({
-      where: { id: 'singleton' },
-    });
-    return {
-      dirty: ws.revision !== ws.lastPublishedRevision,
-      revision: ws.revision,
-      lastPublishedRevision: ws.lastPublishedRevision,
-    };
-  }
-
-  async isDirty(): Promise<boolean> {
-    return (await this.diff()).dirty;
   }
 
   async getLive(): Promise<{

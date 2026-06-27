@@ -3,6 +3,21 @@ import { ImporterService } from './importer.service';
 // ---------------------------------------------------------------------------
 // Stubs for heavy importer helpers — not under test here (unit level)
 // ---------------------------------------------------------------------------
+const BLOCK_KEYS = [
+  'hero',
+  'features',
+  'about',
+  'productsHeader',
+  'footer',
+  'nav',
+  'meta',
+  'businessContact',
+  'formConfig',
+  'aboutPage',
+  'contactPage',
+  'notFound',
+];
+
 jest.mock('./dict-source', () => ({
   loadDicts: jest.fn(() => ({ en: {}, vi: {} })),
   resolveRepoRoot: jest.fn(() => '/tmp/repo'),
@@ -12,10 +27,37 @@ jest.mock('./asset-importer', () => ({
   importAssets: jest.fn(async () => new Map()),
 }));
 jest.mock('./catalog-builder', () => ({
-  buildCatalog: jest.fn(() => ({ categories: [] })),
+  // One category with one product, both carrying an imageId resolvable below.
+  buildCatalog: jest.fn(() => ({
+    categories: [
+      {
+        slug: 'cat-a',
+        sortOrder: 0,
+        title: { en: 'A', vi: 'A' },
+        tag: { en: 't', vi: 't' },
+        intro: { en: 'i', vi: 'i' },
+        productCount: 1,
+        materialCount: 1,
+        imageId: 'asset-cat',
+        items: [
+          {
+            slug: 'prod-a',
+            sortOrder: 0,
+            title: { en: 'P', vi: 'P' },
+            tag: { en: 't', vi: 't' },
+            desc: { en: 'd', vi: 'd' },
+            imageId: 'asset-prod',
+          },
+        ],
+      },
+    ],
+  })),
 }));
 jest.mock('./block-builder', () => ({
-  buildBlocks: jest.fn(() => []),
+  // 12 registry-keyed blocks; data carries no asset refs (irrelevant here).
+  buildBlocks: jest.fn(() =>
+    BLOCK_KEYS.map((key) => ({ kind: 'PAGE', key, data: { stub: key } })),
+  ),
 }));
 jest.mock('./snapshot-emit', () => ({
   emitInitialSnapshot: jest.fn(() => '// generated'),
@@ -32,232 +74,50 @@ jest.mock('@signex/shared', () => ({
 // Factory
 // ---------------------------------------------------------------------------
 function makeDeps() {
-  const tx = {
-    asset: {
-      findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn(async ({ data }: any) => data),
-    },
-    category: {
-      create: jest.fn(async ({ data }: any) => ({ id: 'c', ...data })),
-    },
-    product: {
-      create: jest.fn(async ({ data }: any) => ({ id: 'p', ...data })),
-    },
-    contentBlock: { upsert: jest.fn(async ({ create }: any) => create) },
-    workingState: {
-      upsert: jest.fn(async () => ({ revision: 1 })),
-      update: jest.fn(async () => ({ revision: 1 })),
-    },
-  };
-
   const prisma = {
-    // Advisory lock — default: acquired
-    $executeRawUnsafe: jest.fn().mockResolvedValue(undefined),
     $queryRawUnsafe: jest.fn().mockImplementation((sql: string) => {
       if (sql.includes('pg_try_advisory_lock')) {
         return Promise.resolve([{ pg_try_advisory_lock: true }]);
       }
-      // pg_advisory_unlock
       return Promise.resolve([{ pg_advisory_unlock: true }]);
     }),
-    // Single transaction call
-    $transaction: jest.fn(async (fn: any) => fn(tx)),
     user: {
       findUniqueOrThrow: jest
         .fn()
         .mockResolvedValue({ id: 'sys', email: 'a@b.c', role: 'ADMIN' }),
     },
-    workingState: {
-      findUnique: jest.fn().mockResolvedValue({ id: 'singleton', revision: 1 }),
+    theme: {
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn(async ({ data }: any) => ({ id: 'theme-1', ...data })),
+    },
+    asset: {
+      findMany: jest.fn(async () => [
+        {
+          id: 'asset-cat',
+          r2Key: 'k/cat',
+          mime: 'image/png',
+          width: 100,
+          height: 100,
+          poster: null,
+        },
+        {
+          id: 'asset-prod',
+          r2Key: 'k/prod',
+          mime: 'image/png',
+          width: 100,
+          height: 100,
+          poster: null,
+        },
+      ]),
     },
     release: {
       findUniqueOrThrow: jest.fn().mockResolvedValue({
         id: 'r1',
-        snapshot: {
-          schemaVersion: 1,
-          blocks: {
-            hero: {
-              titleTop: { en: '', vi: '' },
-              titleBottom: { en: '', vi: '' },
-              subtitle: { en: '', vi: '' },
-              image: { assetId: 'a1', alt: { en: '', vi: '' } },
-            },
-            features: {
-              eyebrow: { en: '', vi: '' },
-              title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-              cta: { label: { en: '', vi: '' }, href: '' },
-              video: {
-                title: { en: '', vi: '' },
-                text: { en: '', vi: '' },
-                media: {
-                  posterAssetId: 'a1',
-                  mp4AssetId: 'a1',
-                  webmAssetId: 'a1',
-                },
-              },
-              featured: { title: { en: '', vi: '' }, desc: { en: '', vi: '' } },
-              cards: [],
-            },
-            about: {
-              eyebrow: { en: '', vi: '' },
-              title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-              body: { en: '', vi: '' },
-              mission: {
-                title: { en: '', vi: '' },
-                body: { en: '', vi: '' },
-                items: [],
-              },
-              vision: { title: { en: '', vi: '' }, body: { en: '', vi: '' } },
-              values: { title: { en: '', vi: '' }, body: { en: '', vi: '' } },
-            },
-            productsHeader: {
-              eyebrow: { en: '', vi: '' },
-              title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-              body: { en: '', vi: '' },
-              statLabels: {
-                products: { en: '', vi: '' },
-                materials: { en: '', vi: '' },
-              },
-              detail: {
-                listTitle: {
-                  top: { en: '', vi: '' },
-                  bottom: { en: '', vi: '' },
-                },
-              },
-              product: {
-                categoryLabel: { en: '', vi: '' },
-                materialLabel: { en: '', vi: '' },
-                cta: { en: '', vi: '' },
-                ctaHref: '',
-                back: { en: '', vi: '' },
-                zoomHint: { en: '', vi: '' },
-              },
-            },
-            aboutPage: {
-              hero: {
-                title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-                subtitle: { en: '', vi: '' },
-              },
-              testimonial: {
-                eyebrow: { en: '', vi: '' },
-                title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-                body: [],
-              },
-              approach: [],
-              intro: {
-                eyebrow: { en: '', vi: '' },
-                title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-                body: { en: '', vi: '' },
-              },
-              capability: {
-                eyebrow: { en: '', vi: '' },
-                title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-                body: { en: '', vi: '' },
-                groups: [],
-                closing: [],
-              },
-              process: {
-                eyebrow: { en: '', vi: '' },
-                title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-                body: { en: '', vi: '' },
-                steps: [],
-              },
-              timeline: {
-                eyebrow: { en: '', vi: '' },
-                title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-                body: { en: '', vi: '' },
-                intro: [],
-                milestones: [],
-              },
-            },
-            contactPage: {
-              hero: {
-                title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-                subtitle: { en: '', vi: '' },
-              },
-              map: {
-                eyebrow: { en: '', vi: '' },
-                title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-              },
-            },
-            notFound: {
-              eyebrow: { en: '', vi: '' },
-              title: { top: { en: '', vi: '' }, bottom: { en: '', vi: '' } },
-              body: { en: '', vi: '' },
-              cta: { label: { en: '', vi: '' }, href: '' },
-              image: { assetId: 'a1', alt: { en: '', vi: '' } },
-            },
-            footer: {
-              tagline: [],
-              contactHeading: { en: '', vi: '' },
-              quickHeading: { en: '', vi: '' },
-              links: [],
-              shipLabel: { en: '', vi: '' },
-              payLabel: { en: '', vi: '' },
-              payments: [],
-            },
-            businessContact: {
-              legalName: { en: '', vi: '' },
-              brand: { en: '', vi: '' },
-              emails: [],
-              phones: [],
-              taxId: '',
-              taxLabel: { en: '', vi: '' },
-              sites: [],
-              social: [],
-            },
-            formConfig: {
-              fields: {
-                name: { label: { en: '', vi: '' }, required: true },
-                email: { label: { en: '', vi: '' }, required: true },
-                phone: { label: { en: '', vi: '' }, required: true },
-                quantity: { label: { en: '', vi: '' } },
-                standard: { label: { en: '', vi: '' } },
-                height: { label: { en: '', vi: '' } },
-                width: { label: { en: '', vi: '' } },
-                thickness: { label: { en: '', vi: '' } },
-                upload: { label: { en: '', vi: '' } },
-                message: { label: { en: '', vi: '' } },
-              },
-              uploadHelp: { en: '', vi: '' },
-              standardOptions: [],
-              submit: { en: '', vi: '' },
-              success: { en: '', vi: '' },
-              fail: { en: '', vi: '' },
-            },
-            nav: {
-              skip: { en: '', vi: '' },
-              logo: { assetId: 'a1' },
-              cta: { label: { en: '', vi: '' }, href: '' },
-              links: [],
-            },
-            meta: {
-              siteName: '',
-              siteUrl: '',
-              themeColor: '',
-              title: { en: '', vi: '' },
-              description: { en: '', vi: '' },
-              ogImage: { assetId: 'a1', alt: { en: '', vi: '' } },
-              favicons: [],
-              about: {
-                title: { en: '', vi: '' },
-                description: { en: '', vi: '' },
-              },
-              contact: {
-                title: { en: '', vi: '' },
-                description: { en: '', vi: '' },
-              },
-            },
-          },
-          catalog: { categories: [] },
-          assets: {},
-        },
+        snapshot: { schemaVersion: 1, blocks: {}, catalog: { categories: [] }, assets: {} },
       }),
-      count: jest.fn().mockResolvedValue(0),
     },
   };
 
-  // AssetsService mock — register returns an AssetDto-shaped object
   const assets = {
     register: jest.fn(async () => ({
       id: 'asset-1',
@@ -277,7 +137,6 @@ function makeDeps() {
     })),
   };
 
-  // ReleaseService mock — publish returns the actual PublishResult type
   const release = {
     publish: jest.fn(async () => ({
       status: 'published' as const,
@@ -286,7 +145,7 @@ function makeDeps() {
     })),
   };
 
-  return { prisma, assets, release, tx };
+  return { prisma, assets, release };
 }
 
 // ---------------------------------------------------------------------------
@@ -303,7 +162,7 @@ describe('ImporterService', () => {
     delete process.env.MEDIA_PUBLIC_BASE;
   });
 
-  it('runs exclusively, persists in one tx, mints v1 via release.publish with the system actor, emits snapshot', async () => {
+  it('mints one Default theme + Release v1: assembles a 12-block snapshot with minted catalog ids + assets map', async () => {
     const { prisma, assets, release } = makeDeps();
     const svc = new ImporterService(
       { client: prisma } as any,
@@ -316,22 +175,50 @@ describe('ImporterService', () => {
 
     const res = await svc.run();
 
-    // Advisory lock was attempted
+    // Advisory lock was attempted.
     expect(prisma.$queryRawUnsafe).toHaveBeenCalledWith(
       expect.stringContaining('pg_try_advisory_lock'),
     );
-    // Single tx => single revision bump
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    // Release published exactly once
+
+    // Exactly one Default theme created.
+    expect(prisma.theme.create).toHaveBeenCalledTimes(1);
+    const data = prisma.theme.create.mock.calls[0][0].data;
+    expect(data.name).toBe('Default');
+    expect(data.draftRevision).toBe(1);
+    expect(data.lastPublishedRevision).toBe(1);
+    expect(typeof data.lastPublishedChecksum).toBe('string');
+    expect(data.createdById).toBe('sys');
+    // draft == live snapshot.
+    expect(data.draftSnapshot).toBe(data.liveSnapshot);
+
+    // Assembled snapshot shape.
+    const snap = data.draftSnapshot;
+    expect(Object.keys(snap.blocks).sort()).toEqual([...BLOCK_KEYS].sort());
+    expect(snap.catalog.categories).toHaveLength(1);
+    const cat = snap.catalog.categories[0];
+    expect(typeof cat.id).toBe('string');
+    expect(cat.id.startsWith('c')).toBe(true);
+    expect(cat.image).toBeDefined();
+    expect(cat.items[0].id).not.toBe(cat.id);
+    expect(cat.items[0].image).toBeDefined();
+    // assets map keyed by assetId.
+    expect(snap.assets).toHaveProperty('asset-cat');
+    expect(snap.assets).toHaveProperty('asset-prod');
+
+    // Release published exactly once with the new themeId/expectedDraftRevision shape.
     expect(release.publish).toHaveBeenCalledTimes(1);
     const [actor, args] = release.publish.mock.calls[0];
     expect(actor.id).toBe('sys');
-    expect(args.expectedRevision).toBe(1);
-    // Snapshot read from the Release row
+    expect(args).toEqual({
+      themeId: 'theme-1',
+      expectedDraftRevision: 1,
+      note: 'Initial content import (v1)',
+    });
+
+    // Snapshot read back from the Release row, then emitted.
     expect(prisma.release.findUniqueOrThrow).toHaveBeenCalledWith({
       where: { id: 'r1' },
     });
-    // Return contains expected fields
     expect(res.version).toBe(1);
     expect(res.releaseId).toBe('r1');
     expect(typeof res.snapshotPath).toBe('string');
@@ -350,28 +237,27 @@ describe('ImporterService', () => {
       assets as any,
       release as any,
     );
-    await expect(svc.run()).rejects.toThrow(/already (running|imported)|lock/i);
-    // Must NOT proceed to publish
+    await expect(svc.run()).rejects.toThrow(/already running|lock/i);
+    expect(prisma.theme.create).not.toHaveBeenCalled();
     expect(release.publish).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('refuses to run when content already imported (release exists)', async () => {
+  it('refuses to run when a Theme already exists (content already imported)', async () => {
     const { prisma, assets, release } = makeDeps();
-    prisma.release.count = jest.fn().mockResolvedValue(1);
+    prisma.theme.count = jest.fn().mockResolvedValue(1);
     const svc = new ImporterService(
       { client: prisma } as any,
       assets as any,
       release as any,
     );
-    await expect(svc.run()).rejects.toThrow(/already imported|release exists/i);
+    await expect(svc.run()).rejects.toThrow(/already imported|theme already exists/i);
+    expect(prisma.theme.create).not.toHaveBeenCalled();
     expect(release.publish).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('asserts publish returned "published" status (not noop)', async () => {
     const { prisma, assets, release } = makeDeps();
-    release.publish = jest.fn(async () => ({ status: 'noop' as const }));
+    release.publish = jest.fn(async () => ({ status: 'noop' as const })) as any;
     const svc = new ImporterService(
       { client: prisma } as any,
       assets as any,
