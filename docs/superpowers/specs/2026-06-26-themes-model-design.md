@@ -69,35 +69,57 @@ so in practice every node has one. `resolveForLang` ignores it (identity is inte
 **Extract** `freezeAsset` + `collectAssetIds` from `snapshot.serializer.ts` into a new
 `apps/api/src/release/snapshot-assets.ts` (reused by edit/publish/import). `serialize()` is deleted.
 
-## Edit flow (per-theme concurrency + validation)
+## Edit flow — instant preview, explicit Save draft
+
+**Edits are held CLIENT-SIDE and shown in the preview instantly; nothing is persisted until the user
+clicks Save draft.** This gives WYSIWYG + the ability to discard. Three states the user controls:
+edit (instant preview, unsaved) → **Save draft** (persist to the theme) → **Publish** (go live).
 
 **Per-theme optimistic lock** — `ThemeService.guardAndBump(tx, themeId, expectedDraftRevision)`:
 re-read `draftRevision` INSIDE the tx (closes TOCTOU); mismatch → 409 `STALE_DRAFT`; else
-`draftRevision += 1`. Independent counters per theme → true parallel authoring.
+`draftRevision += 1`. Independent counters per theme → true parallel authoring. The lock is checked
+ONCE per Save-draft batch (not per keystroke).
 
-**Block edit** — `PUT /api/themes/:themeId/blocks/:key` body `{data, expectedDraftRevision}`:
-1. `validated = parseBlock(key, data)` (registry; ZodError → 422 `INVALID_BLOCK`, unknown key → 422
-   `UNKNOWN_BLOCK`).
-2. tx: `guardAndBump`.
-3. `snap.blocks[key] = validated`.
-4. `reconcileAssets(snap)` — walk blocks + catalog image ids (`collectAssetIds`), `Asset.findMany`,
+**Instant preview (no persist):** picking/uploading media for a zone records a pending edit
+`{field → MediaRef + resolved URL}` in the editor's client state and posts it to the preview iframe;
+`EditOverlay` swaps that zone's `<img>`/`<video>` `src` live (DOM only, no server round-trip, no
+reload). The asset UPLOAD still happens immediately (to mint the `assetId` + get a URL for the
+swap); only APPLYING it to content is deferred to Save draft. A "Save draft" button is enabled while
+pending edits exist; a count/"unsaved" indicator shows.
+
+**Save draft** — `POST /api/themes/:themeId/save-draft` body `{edits, expectedDraftRevision}` where
+`edits` = a list of block patches `{key, data}` (the visual editor batches all pending edits). In
+ONE tx:
+1. `guardAndBump` (bumps once for the whole batch).
+2. each patch: `validated = parseBlock(key, data)` (422 `INVALID_BLOCK`/`UNKNOWN_BLOCK` → abort, no
+   persist/bump); `snap.blocks[key] = validated`.
+3. `reconcileAssets(snap)` — walk blocks + catalog image ids (`collectAssetIds`), `Asset.findMany`,
    `freezeAsset` each → rebuild `snap.assets` (prune orphans, add new, refresh `r2Key`/dims).
-5. **Backstop:** `ReleaseSnapshotSchema.safeParse(snap)` — on failure reject; do NOT persist/bump.
-6. `theme.update({draftSnapshot, draftRevision})` + audit `theme.block.update {key}`.
+4. **Backstop:** `ReleaseSnapshotSchema.safeParse(snap)` — fail → 422, abort.
+5. `theme.update({draftSnapshot, draftRevision})` + audit `theme.savedraft {keys}`. Returns the new
+   `draftRevision`; the client adopts it and clears pending.
 
-**Catalog edit** — theme-scoped `POST/PATCH/DELETE /api/themes/:themeId/catalog/categories[/:id]`
-and `.../products`. `CatalogService` mutates `snap.catalog.categories[]` (+ nested `items[]`) and
-enforces, in code (no DB constraints): slug uniqueness (per scope) → 422 `DUPLICATE_SLUG`; image
-existence via `Asset.findUnique` (missing/soft-deleted → 422 `INVALID_ASSET`, else inline
-`freezeAsset`); contiguous `sortOrder` (+ a `reorder {order:[id…]}` route); delete = splice node.
-After each: validate the sub-tree (`FrozenCategory.parse`), `reconcileAssets`, whole-snapshot
-`safeParse` backstop, then `guardAndBump` + write + audit. Identity is the stable `id` (slug may
-change).
+**Discard** — leaving/closing the editor with pending edits prompts a warning (`beforeunload` +
+in-app guard); discarding drops the client-side pending (nothing was persisted) and reverts the
+preview. No server call.
 
-## Publish / save-draft / preview / web-read
+**Catalog admin** (a separate form-based surface, not the live visual editor) persists on each form
+submit — its own explicit per-item "Save", via theme-scoped `POST/PATCH/DELETE
+/api/themes/:themeId/catalog/categories[/:id]` and `.../products`. `CatalogService` mutates
+`snap.catalog.categories[]` (+ nested `items[]`) under the same `guardAndBump` + validation +
+`reconcileAssets` + whole-snapshot backstop, enforcing in code (no DB constraints): slug uniqueness
+per scope → 422 `DUPLICATE_SLUG`; image existence via `Asset.findUnique` (missing/soft-deleted → 422
+`INVALID_ASSET`); contiguous `sortOrder` (+ a `reorder {order:[id…]}` route); delete = splice node.
+Identity is the stable `id` (slug may change). Both surfaces feed the same `Theme.draftSnapshot`;
+`draftRevision` coordinates concurrency.
 
-**Save-draft = the edit flow.** Every block/catalog mutation persists `draftSnapshot` + bumps
-`draftRevision`. No separate save step; every mutation is a durable, always-publishable draft.
+## Publish / preview / web-read
+
+**Save draft is explicit** (above) — there is no auto-save; the user persists when they choose.
+
+**Publish** publishes the **saved** draft. If the visual editor has unsaved pending edits, Publish
+first persists them (calls Save draft, then publishes) so you never publish stale content; the
+confirm dialog says "Save & publish" in that case.
 
 **Publish** — `release.service.ts publish(actor, {themeId, expectedDraftRevision, note})`:
 1. `theme = findUniqueOrThrow`; `snapshot = ReleaseSnapshotSchema.parse(theme.draftSnapshot)`;
@@ -164,9 +186,13 @@ deletes. (Confirm exact gates in the plan against the existing role helpers.)
   non-destructive `AlertDialog` ("visitors will see this theme; current live saved as a draft").
 - **Active theme context** — admin holds `activeThemeId` (cookie/store); a theme switcher in the
   dash header sets it; all editing surfaces read it.
-- **Visual editor** (`visual-editor.tsx`) — target URL prepends `activeThemeId`; sends
-  `expectedDraftRevision`; preview iframe `/preview/[lang]?themeId=active`. A pinned "Editing:
-  {name}" + dirty/needs-publish signals. Publish targets `/api/themes/:activeId/publish`.
+- **Visual editor** (`visual-editor.tsx`) — edits update the preview INSTANTLY but are held
+  client-side as pending; the toolbar has **Save draft** (enabled while pending exist, with an
+  unsaved count) → `POST /api/themes/:themeId/save-draft {edits, expectedDraftRevision}` → on
+  success clears pending + adopts the new revision; and **Publish** (saves pending first if any,
+  then publishes). An unsaved-changes guard (`beforeunload` + in-app nav) warns before discard.
+  Preview iframe `/preview/[lang]?themeId=active`; a pinned "Editing: {name}" + signals: *unsaved*
+  (pending exist), *saved · not live* (draft ≠ live), *live*.
 - **Catalog admin + content forms + (old) releases actions** — retarget to the theme-scoped routes
   carrying `themeId` + `expectedDraftRevision`.
 
@@ -192,6 +218,9 @@ deletes. (Confirm exact gates in the plan against the existing role helpers.)
    persist/bump → every stored draft satisfies the 12-block invariant and is publishable.
 9. **Concurrent publish of two themes** — advisory lock serializes; second demotes whatever the
    first made live; each Release carries origin `themeId`.
+10. **Unsaved pending edits on close** — pending edits live only client-side; leaving without Save
+    draft discards them (after a warning) and nothing was persisted. Publish auto-saves pending
+    first, so you never publish a half-edited preview.
 
 ## Out of scope (v1)
 
@@ -236,11 +265,13 @@ importer `buildBlocks`/`buildCatalog`/`asset-importer`/`parity`/`snapshot-emit`.
   `collectAssetIds`/`freezeAsset` extracted helpers; catalog code-level validators (dup slug,
   invalid asset, reorder); the gated no-op (same-theme byte-match → noop; theme switch → never noop).
 - **Api e2e:** theme CRUD (duplicate isolation — editing the copy doesn't touch the source; rename
-  clash 409; delete-live 409); per-theme optimistic lock (409 STALE_DRAFT); publish B while A live
-  (A's draft intact, Release.themeId stamped, pointer repointed, revalidate called); asset-delete
-  refusal when referenced.
-- **Whole-stack (`test/acceptance.sh` adapted):** seed Default → edit a block in theme → preview
-  shows it → publish → web serves it → duplicate → edit copy → publish copy → web flips → original
-  theme unchanged.
-- **Editor (agent-browser):** /themes list + live badge; switch active theme; edit + publish from
-  the visual editor; the public site reflects the published theme.
+  clash 409; delete-live 409); per-theme optimistic lock (409 STALE_DRAFT); **save-draft batch**
+  (multiple block patches in one call → one revision bump, all-or-nothing on a bad patch); publish B
+  while A live (A's draft intact, Release.themeId stamped, pointer repointed, revalidate called);
+  **publish with unsaved pending → saves then publishes**; asset-delete refusal when referenced.
+- **Whole-stack (`test/acceptance.sh` adapted):** seed Default → edit a block (NOT yet persisted) →
+  Save draft → preview shows it → publish → web serves it → duplicate → edit copy → publish copy →
+  web flips → original theme unchanged.
+- **Editor (agent-browser):** /themes list + live badge; switch active theme; **edit → preview
+  updates instantly while "unsaved" shows → Save draft → "saved · not live" → Publish**; leaving
+  with unsaved pending warns + discards; the public site reflects only the published theme.
