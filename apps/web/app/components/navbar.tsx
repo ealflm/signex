@@ -2,7 +2,7 @@
 import { Fragment } from "react";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { LangToggle } from "@/app/components/lang-toggle";
-import { editAttrs } from "@/app/lib/edit-attrs";
+import { editAttrs, editText } from "@/app/lib/edit-attrs";
 
 export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; editable?: boolean }) {
   return (
@@ -59,12 +59,12 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
                     {/* Top-level nav: Home / About / Contact (dict-driven, EN + VI). Replaces
                         Caladan's Company-dropdown + About us + Gallery. A .divider_mobile-menu
                         precedes each item (mobile menu styling), matching the original pattern. */}
-                    {dict.links.map((l) => (
+                    {dict.links.map((l, i) => (
                       <Fragment key={l.label}>
                         <div className="divider_mobile-menu" />
                         <a className="link_nav w-inline-block" href={l.href} nav-link="">
                           <div>
-                            {l.label}
+                            <span {...editText(editable, `nav.links.${i}.label`, { maxLength: 80 })}>{l.label}</span>
                           </div>
                         </a>
                       </Fragment>
@@ -135,7 +135,7 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
               >
                 <div className="button_text-mask">
                   <div button-text="" className="text-button">
-                    {dict.cta}
+                    <span {...editText(editable, "nav.cta.label", { maxLength: 80 })}>{dict.cta}</span>
                   </div>
                 </div>
                 <div button-bg="" className="btn-bg" />

@@ -1,6 +1,6 @@
 // app/components/footer.tsx
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editAttrs } from "@/app/lib/edit-attrs";
+import { editAttrs, editText } from "@/app/lib/edit-attrs";
 
 /**
  * Footer — signex content poured into Caladan's master_footer shell. The shell
@@ -81,7 +81,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                   matching the Quick links column. */}
               <div className="footer-signex_col">
                 <div className="label-large tone-medium">
-                  {t.contactHeading}
+                  <span {...editText(editable, "footer.contactHeading", { maxLength: 80 })}>{t.contactHeading}</span>
                 </div>
                 <div className="footer-signex_contact">
                   <div className="text-size-small text_body-bold footer-signex_company">
@@ -128,12 +128,12 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                   bold-white heading the brand/contact columns use. */}
               <div className="footer-signex_col">
                 <div className="label-large tone-medium">
-                  {t.quickHeading}
+                  <span {...editText(editable, "footer.quickHeading", { maxLength: 80 })}>{t.quickHeading}</span>
                 </div>
                 <div className="column_footer-links">
-                  {t.links.map((l) => (
+                  {t.links.map((l, i) => (
                     <a className="link_footer" href={l.href} key={l.label}>
-                      {l.label}
+                      <span {...editText(editable, `footer.links.${i}.label`, { maxLength: 80 })}>{l.label}</span>
                     </a>
                   ))}
                 </div>
