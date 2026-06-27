@@ -87,5 +87,5 @@ export const SURFACE_PATH_BY_BLOCK: Record<BlockKey, string | null> = {
   meta: null,
   businessContact: null,
   formConfig: null,
-  notFound: null,
+  notFound: "/404",
 };
