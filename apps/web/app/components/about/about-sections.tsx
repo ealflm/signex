@@ -5,7 +5,7 @@
 // visual-editor data-* hooks on the two media zones (aboutPage.hero.video, aboutPage.testimonial.image)
 // via editAttrs() — a no-op on public renders (editable=false), so the static HTML is unchanged.
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editAttrs } from "@/app/lib/edit-attrs";
+import { editAttrs, editText } from "@/app/lib/edit-attrs";
 
 // lucide line icons for the manufacturing-approach cards (index-aligned with aboutPage.approach),
 // chosen per card content: factory (direct/in-house), badge-check (brand standards), lock
@@ -80,15 +80,15 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
               <div className="heading_hero-home-c">
                 <div className="title_home-c">
                   <h1 className="heading-style-h0">
-                    {dict.aboutPage.hero.title}
-                    <span className="tone-medium">
+                    <span {...editText(editable, "aboutPage.hero.title.lead", { maxLength: 80 })}>{dict.aboutPage.hero.title}</span>
+                    <span className="tone-medium" {...editText(editable, "aboutPage.hero.title.accent", { maxLength: 80 })}>
                       {dict.aboutPage.hero.titleAccent}
                     </span>
                   </h1>
                 </div>
                 <div className="p_hero-home-c">
                   <p className="margin-0">
-                    {dict.aboutPage.hero.subtitle}
+                    <span {...editText(editable, "aboutPage.hero.subtitle", { maxLength: 200 })}>{dict.aboutPage.hero.subtitle}</span>
                   </p>
                 </div>
               </div>
@@ -153,12 +153,12 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
               <div className="heading_testimonials-v2">
                 <div className="master_label" data-wf--tag--variant="base">
                   <div className="label-small">
-                    {dict.aboutPage.testimonial.eyebrow}
+                    <span {...editText(editable, "aboutPage.testimonial.eyebrow", { maxLength: 80 })}>{dict.aboutPage.testimonial.eyebrow}</span>
                   </div>
                 </div>
                 <h2 className="margin-0">
-                  {dict.aboutPage.testimonial.title}
-                  <span className="tone-medium">
+                  <span {...editText(editable, "aboutPage.testimonial.title.lead", { maxLength: 80 })}>{dict.aboutPage.testimonial.title}</span>
+                  <span className="tone-medium" {...editText(editable, "aboutPage.testimonial.title.accent", { maxLength: 80 })}>
                     {dict.aboutPage.testimonial.titleAccent}
                   </span>
                 </h2>
@@ -211,18 +211,18 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  {dict.aboutPage.intro.eyebrow}
+                  <span {...editText(editable, "aboutPage.intro.eyebrow", { maxLength: 80 })}>{dict.aboutPage.intro.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                {dict.aboutPage.intro.title}
-                <span className="tone-medium">
+                <span {...editText(editable, "aboutPage.intro.title.lead", { maxLength: 80 })}>{dict.aboutPage.intro.title}</span>
+                <span className="tone-medium" {...editText(editable, "aboutPage.intro.title.accent", { maxLength: 80 })}>
                   {dict.aboutPage.intro.titleAccent}
                 </span>
               </h2>
               <div className="home_about-p">
                 <p className="tone-medium">
-                  {dict.aboutPage.intro.body}
+                  <span {...editText(editable, "aboutPage.intro.body", { maxLength: 200 })}>{dict.aboutPage.intro.body}</span>
                 </p>
               </div>
             </div>
@@ -257,18 +257,18 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  {dict.aboutPage.capability.eyebrow}
+                  <span {...editText(editable, "aboutPage.capability.eyebrow", { maxLength: 80 })}>{dict.aboutPage.capability.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                {dict.aboutPage.capability.title}
-                <span className="tone-medium">
+                <span {...editText(editable, "aboutPage.capability.title.lead", { maxLength: 80 })}>{dict.aboutPage.capability.title}</span>
+                <span className="tone-medium" {...editText(editable, "aboutPage.capability.title.accent", { maxLength: 80 })}>
                   {dict.aboutPage.capability.titleAccent}
                 </span>
               </h2>
               <div className="home_about-p">
                 <p className="tone-medium">
-                  {dict.aboutPage.capability.body}
+                  <span {...editText(editable, "aboutPage.capability.body", { maxLength: 200 })}>{dict.aboutPage.capability.body}</span>
                 </p>
               </div>
             </div>
@@ -309,18 +309,18 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  {dict.aboutPage.process.eyebrow}
+                  <span {...editText(editable, "aboutPage.process.eyebrow", { maxLength: 80 })}>{dict.aboutPage.process.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                {dict.aboutPage.process.title}
-                <span className="tone-medium">
+                <span {...editText(editable, "aboutPage.process.title.lead", { maxLength: 80 })}>{dict.aboutPage.process.title}</span>
+                <span className="tone-medium" {...editText(editable, "aboutPage.process.title.accent", { maxLength: 80 })}>
                   {dict.aboutPage.process.titleAccent}
                 </span>
               </h2>
               <div className="home_about-p">
                 <p className="tone-medium">
-                  {dict.aboutPage.process.body}
+                  <span {...editText(editable, "aboutPage.process.body", { maxLength: 200 })}>{dict.aboutPage.process.body}</span>
                 </p>
               </div>
             </div>
@@ -355,18 +355,18 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  {dict.aboutPage.timeline.eyebrow}
+                  <span {...editText(editable, "aboutPage.timeline.eyebrow", { maxLength: 80 })}>{dict.aboutPage.timeline.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                {dict.aboutPage.timeline.title}
-                <span className="tone-medium">
+                <span {...editText(editable, "aboutPage.timeline.title.lead", { maxLength: 80 })}>{dict.aboutPage.timeline.title}</span>
+                <span className="tone-medium" {...editText(editable, "aboutPage.timeline.title.accent", { maxLength: 80 })}>
                   {dict.aboutPage.timeline.titleAccent}
                 </span>
               </h2>
               <div className="home_about-p">
                 <p className="tone-medium">
-                  {dict.aboutPage.timeline.body}
+                  <span {...editText(editable, "aboutPage.timeline.body", { maxLength: 200 })}>{dict.aboutPage.timeline.body}</span>
                 </p>
               </div>
             </div>
