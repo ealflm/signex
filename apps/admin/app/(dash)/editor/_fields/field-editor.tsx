@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactElement } from "react";
 import type { FieldPlan } from "@/app/lib/zodform-fields";
 import { Field } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -29,6 +30,18 @@ export interface FieldEditorProps {
    * they fall back to the native <select>.
    */
   onPickMedia?: (fieldName: string, kind: "image" | "video") => void;
+  /**
+   * Two-way highlight (panel→canvas). Fired with the field's full dotted name
+   * (e.g. "titleTop" / "title.accent") when an input inside it gains focus; the
+   * shell posts {type:"highlight", field:`${blockKey}.${name}`} to the iframe.
+   */
+  onFieldFocus?: (fieldName: string) => void;
+  /**
+   * Two-way highlight (canvas→panel). When `flashField.name` matches this field's
+   * dotted name, the field scrolls into view and rings. `nonce` bumps each time so
+   * re-focusing the same canvas leaf re-triggers the flash.
+   */
+  flashField?: { name: string; nonce: number } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +230,8 @@ function ObjectField({
   onValidityChange,
   assets,
   onPickMedia,
+  onFieldFocus,
+  flashField,
 }: {
   field: FieldPlan;
   value: unknown;
@@ -224,6 +239,8 @@ function ObjectField({
   onValidityChange: (name: string, valid: boolean) => void;
   assets: FieldAssetRow[];
   onPickMedia?: (fieldName: string, kind: "image" | "video") => void;
+  onFieldFocus?: (fieldName: string) => void;
+  flashField?: { name: string; nonce: number } | null;
 }) {
   const obj = (value as Record<string, unknown>) ?? {};
   return (
@@ -240,6 +257,8 @@ function ObjectField({
           onChange={(v) => onChange({ ...obj, [child.name]: v })}
           onValidityChange={onValidityChange}
           onPickMedia={onPickMedia}
+          onFieldFocus={onFieldFocus}
+          flashField={flashField}
         />
       ))}
     </fieldset>
@@ -309,16 +328,30 @@ export function FieldEditor({
   onValidityChange,
   assets,
   onPickMedia,
+  onFieldFocus,
+  flashField,
 }: FieldEditorProps) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  // Flash this field when the matching canvas leaf is focused (canvas→panel highlight).
+  const flashNonce = flashField && flashField.name === field.name ? flashField.nonce : null;
+  useEffect(() => {
+    if (flashNonce == null) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("sx-field-flash");
+    const t = window.setTimeout(() => el.classList.remove("sx-field-flash"), 900);
+    return () => window.clearTimeout(t);
+  }, [flashNonce]);
+
+  let inner: ReactElement;
   if (field.kind === "string") {
-    return <StringField field={field} value={value} onChange={onChange} />;
-  }
-  if (field.kind === "localized") {
-    return <LocalizedField field={field} value={value} onChange={onChange} />;
-  }
-  if (field.kind === "assetRef") {
+    inner = <StringField field={field} value={value} onChange={onChange} />;
+  } else if (field.kind === "localized") {
+    inner = <LocalizedField field={field} value={value} onChange={onChange} />;
+  } else if (field.kind === "assetRef") {
     // TODO: alt editing
-    return (
+    inner = (
       <AssetRefField
         field={field}
         value={value}
@@ -327,9 +360,8 @@ export function FieldEditor({
         onPickMedia={onPickMedia}
       />
     );
-  }
-  if (field.kind === "videoRef") {
-    return (
+  } else if (field.kind === "videoRef") {
+    inner = (
       <VideoRefField
         field={field}
         value={value}
@@ -338,9 +370,8 @@ export function FieldEditor({
         onPickMedia={onPickMedia}
       />
     );
-  }
-  if (field.kind === "object") {
-    return (
+  } else if (field.kind === "object") {
+    inner = (
       <ObjectField
         field={field}
         value={value}
@@ -348,16 +379,38 @@ export function FieldEditor({
         onValidityChange={onValidityChange}
         assets={assets}
         onPickMedia={onPickMedia}
+        onFieldFocus={onFieldFocus}
+        flashField={flashField}
+      />
+    );
+  } else {
+    // localizedArray, array, json → raw JSON textarea (client-side parseBlock validates on submit)
+    inner = (
+      <JsonField
+        field={field}
+        value={value}
+        onChange={onChange}
+        onValidityChange={onValidityChange}
       />
     );
   }
-  // localizedArray, array, json → raw JSON textarea (client-side parseBlock validates on submit)
+
+  // Layout-neutral wrapper: catches focus from any input within so the panel field can drive the
+  // panel→canvas highlight. stopPropagation keeps a nested-object parent from also firing (the leaf's
+  // dotted name is the canvas identity); object-recursion threads onFieldFocus to the leaves directly.
   return (
-    <JsonField
-      field={field}
-      value={value}
-      onChange={onChange}
-      onValidityChange={onValidityChange}
-    />
+    <div
+      ref={wrapRef}
+      onFocus={
+        onFieldFocus
+          ? (e) => {
+              e.stopPropagation();
+              onFieldFocus(field.name);
+            }
+          : undefined
+      }
+    >
+      {inner}
+    </div>
   );
 }

@@ -116,6 +116,18 @@ interface MediaPreview {
   webmUrl?: string;
 }
 
+// A pending inline TEXT edit, mirrored to the overlay's applyEdits re-apply on `ready`. `field` is
+// the locale-agnostic snapshot path (matches data-edit-field); `locale` says which locale's canvas
+// it belongs to (the iframe is per-locale, so only the current locale's entries are re-posted).
+interface TextPreview {
+  field: string;
+  value: string;
+  locale: Locale;
+}
+
+// The union the overlay's applyEdits handler accepts (media live-swap + inline-text re-apply).
+type ApplyEdit = MediaPreview | { field: string; kind: "text"; text: string };
+
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
 export function EditorShell(props: EditorShellProps) {
@@ -153,14 +165,27 @@ export function EditorShell(props: EditorShellProps) {
   const [mediaTarget, setMediaTarget] = useState<EditTarget | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mediaPreview, setMediaPreview] = useState<Map<string, MediaPreview>>(new Map());
+  // Pending inline-text edits to re-apply to the canvas on `ready` (keyed by `${field}.${locale}` so
+  // both locales of the same leaf survive independently). Cleared on Save / Discard like mediaPreview.
+  const [textPreview, setTextPreview] = useState<Map<string, TextPreview>>(new Map());
+  // Canvas→panel highlight: which panel field to flash (dotted path within the block) + a bumping
+  // nonce so re-focusing the same canvas leaf re-triggers the flash.
+  const [flashField, setFlashField] = useState<{ name: string; nonce: number } | null>(null);
 
   // base snapshot is the last server-known draft; pending layers on top for the panel + dirty dots.
   const baseRef = useRef<ReleaseSnapshot>(structuredClone(initialSnapshot));
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const savingRef = useRef(false);
+  const flashNonce = useRef(0);
   // Read fresh inside the (stably-subscribed) message listener without re-subscribing each render.
   const mediaPreviewRef = useRef(mediaPreview);
   mediaPreviewRef.current = mediaPreview;
+  const textPreviewRef = useRef(textPreview);
+  textPreviewRef.current = textPreview;
+  // Live locale for the once-subscribed listener (inbound textEdit appends `.${langRef.current}`;
+  // `ready` re-posts only this locale's pending text). Same pattern as mediaPreviewRef.
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   const workingBlockData = useCallback(
     (key: BlockKey): Record<string, unknown> => {
@@ -222,9 +247,20 @@ export function EditorShell(props: EditorShellProps) {
   }, [webOrigin]);
 
   const postApplyEdits = useCallback(
-    (edits: MediaPreview[]) => {
+    (edits: ApplyEdit[]) => {
       iframeRef.current?.contentWindow?.postMessage(
         { source: SOURCE, type: "applyEdits", edits },
+        webOrigin,
+      );
+    },
+    [webOrigin],
+  );
+
+  // Panel→canvas highlight: flash the canvas leaf matching a focused panel field's snapshot path.
+  const postHighlight = useCallback(
+    (field: string) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { source: SOURCE, type: "highlight", field },
         webOrigin,
       );
     },
@@ -307,6 +343,18 @@ export function EditorShell(props: EditorShellProps) {
     [lang, previewPath],
   );
 
+  // Canvas→panel highlight (web→admin {type:"highlight"}): a canvas text-leaf was focused → select
+  // its owning block (+ navigate the surface if needed — usually already current), then flash the
+  // matching panel field. Stable (reads live locale via langRef + functional setState) so the
+  // once-subscribed message listener can call it without re-subscribing.
+  const onCanvasHighlight = useCallback((blockKey: BlockKey, fieldPath: string) => {
+    setSelection({ blockKey, fieldPath, locale: langRef.current });
+    const surface = SURFACE_PATH_BY_BLOCK[blockKey];
+    if (surface !== null) setPreviewPath((p) => (p !== surface ? surface : p));
+    flashNonce.current += 1;
+    setFlashField({ name: fieldPath, nonce: flashNonce.current });
+  }, []);
+
   // ── Step 4: Save draft ───────────────────────────────────────────────────────
   const dirtyKeys = useMemo(() => new Set(pending.keys()), [pending]);
 
@@ -334,6 +382,7 @@ export function EditorShell(props: EditorShellProps) {
         setDraftRevision(body.draftRevision);
         setPending(new Map());
         setMediaPreview(new Map());
+        setTextPreview(new Map());
         toast.success("Saved to draft.");
         postRefresh();
         return body.draftRevision;
@@ -451,15 +500,38 @@ export function EditorShell(props: EditorShellProps) {
       if (data.type === "edit" && typeof data.field === "string") {
         const kind = data.mediaKind === "video" ? "video" : "image";
         openMediaPicker(data.field, kind);
+      } else if (data.type === "textEdit" && typeof data.field === "string") {
+        // A committed inline text edit. `field` is the snapshot path WITHOUT locale; append the live
+        // locale so ONLY that leaf is written (the other locale stays untouched). Rides the SAME
+        // pending Map + Save-draft batch + status pill as a panel edit — no separate persistence.
+        const field = data.field as string;
+        const value = String(data.value ?? "");
+        const locale = langRef.current;
+        const [blockKey, ...rest] = field.split(".") as [BlockKey, ...string[]];
+        applyFieldEdit(blockKey, `${rest.join(".")}.${locale}`, value);
+        // Mirror it so `ready` can re-apply it to the canvas after a refresh / locale remount.
+        setTextPreview((prev) => {
+          const n = new Map(prev);
+          n.set(`${field}.${locale}`, { field, value, locale });
+          return n;
+        });
+      } else if (data.type === "highlight" && typeof data.field === "string") {
+        // canvas→panel half of the two-way highlight: select + flash the matching panel field.
+        const [blockKey, ...rest] = (data.field as string).split(".") as [BlockKey, ...string[]];
+        onCanvasHighlight(blockKey, rest.join("."));
       } else if (data.type === "ready") {
-        // Re-apply all live media swaps after a (re)load / locale-surface remount.
-        const all = [...mediaPreviewRef.current.values()];
+        // Re-apply live media swaps AND this-locale pending inline TEXT after a (re)load / remount.
+        const media = [...mediaPreviewRef.current.values()];
+        const text: ApplyEdit[] = [...textPreviewRef.current.values()]
+          .filter((t) => t.locale === langRef.current)
+          .map((t) => ({ field: t.field, kind: "text" as const, text: t.value }));
+        const all: ApplyEdit[] = [...media, ...text];
         if (all.length > 0) postApplyEdits(all);
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [webOrigin, openMediaPicker, postApplyEdits]);
+  }, [webOrigin, openMediaPicker, postApplyEdits, applyFieldEdit, onCanvasHighlight]);
 
   // ── Toolbar handlers ──────────────────────────────────────────────────────────
   const onSave = useCallback(() => {
@@ -473,6 +545,7 @@ export function EditorShell(props: EditorShellProps) {
   const doDiscard = useCallback(() => {
     setPending(new Map());
     setMediaPreview(new Map());
+    setTextPreview(new Map());
     setDiscardAsk(null);
     postRefresh();
   }, [postRefresh]);
@@ -603,6 +676,10 @@ export function EditorShell(props: EditorShellProps) {
                 if (selection) openMediaPicker(`${selection.blockKey}.${name}`, kind);
               }}
               onValidityChange={onValidityChange}
+              onFieldFocus={(name) => {
+                if (selection) postHighlight(`${selection.blockKey}.${name}`);
+              }}
+              flashField={flashField}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

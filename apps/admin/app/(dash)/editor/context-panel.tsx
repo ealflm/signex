@@ -21,6 +21,10 @@ export interface ContextPanelProps {
   onFieldChange: (fieldName: string, value: unknown) => void;
   onPickMedia: (fieldName: string, kind: "image" | "video") => void;
   onValidityChange: (name: string, valid: boolean) => void;
+  /** Panel→canvas highlight: an input gained focus (fieldName = full dotted path within the block). */
+  onFieldFocus?: (fieldName: string) => void;
+  /** Canvas→panel highlight: scroll + ring the field whose dotted name matches `flashField.name`. */
+  flashField?: { name: string; nonce: number } | null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -32,6 +36,8 @@ export function ContextPanel({
   onFieldChange,
   onPickMedia,
   onValidityChange,
+  onFieldFocus,
+  flashField,
 }: ContextPanelProps): React.ReactElement {
   // Empty state: no block selected
   if (blockKey === null) {
@@ -66,6 +72,8 @@ export function ContextPanel({
               onChange={(v) => onFieldChange(f.name, v)}
               onPickMedia={onPickMedia}
               onValidityChange={onValidityChange}
+              onFieldFocus={onFieldFocus}
+              flashField={flashField}
             />
           ))}
           {fields.length === 0 && (

@@ -68,6 +68,14 @@
   --text-2xl: 1.75rem; --text-2xl--line-height: 2.125rem;
   --text-3xl: 2.25rem; --text-3xl--line-height: 2.5rem;
 }
+/* Two-way highlight (editor canvas → panel): a context-panel field briefly rings when its
+   matching canvas text-leaf is focused. Box-shadow ring paints outside the box (no reflow). */
+@keyframes sx-field-flash {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(0 0 0 / 0); }
+  20%, 60% { box-shadow: 0 0 0 2px var(--ring); }
+}
+.sx-field-flash { animation: sx-field-flash 0.9s ease; border-radius: var(--radius); }
+
 @layer base {
   * { @apply border-border outline-ring/50; }
   body { @apply bg-background text-foreground; font-feature-settings: "rlig" 1, "calt" 1; }
