@@ -21,7 +21,10 @@
 //
 // postMessage protocol (both directions use { source: "signex-editor", ... }):
 //   preview → admin:  { source, type: "edit", field: "<block>.<path>", mediaKind: "image"|"video" }
+//                     { source, type: "ready" }   // handshake on mount — admin re-applies pending edits
 //   admin   → preview: { source, type: "refresh" }   // reload to show the just-saved working state
+//                     { source, type: "applyEdits", edits:[…] }  // live DOM media swap (no reload)
+//     applyEdits edit shape: { field, kind:"image"|"video", url?, posterUrl?, mp4Url?, webmUrl? }
 //
 // SECURITY: we postMessage with targetOrigin "*" for simplicity in this internal tool (the admin
 // VERIFIES event.origin on receipt). The inbound listener does NOT restrict origin so dev across
@@ -74,8 +77,11 @@ export function EditOverlay() {
     layer.className = "sx-edit-layer";
     document.body.appendChild(layer);
 
+    // Narrow to media zones only (data-edit-kind="image" or "video").
+    // Plan 4 will add data-edit-kind="text" for inline editing; restricting here ensures
+    // text zones never accidentally get hotspots in Plan 3.
     const fields = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-edit-field]"),
+      document.querySelectorAll<HTMLElement>('[data-edit-kind="image"],[data-edit-kind="video"]'),
     );
 
     const entries = fields.map((el) => {
@@ -130,6 +136,11 @@ export function EditOverlay() {
 
       return { el, hot };
     });
+
+    // ---- ready handshake: tell the admin shell the overlay is live and it should re-apply any
+    // pending media swaps. Sent AFTER entries are built so the overlay is ready to receive the
+    // follow-up applyEdits message immediately. targetOrigin "*" matches the refresh direction.
+    window.parent.postMessage({ source: SOURCE, type: "ready" }, "*");
 
     // ---- position sync: mirror each element's viewport rect onto its hotspot every frame ----------
     // A rAF loop (not scroll/resize listeners) is used deliberately: Lenis smooth-scroll moves content
@@ -198,6 +209,7 @@ export function EditOverlay() {
         ? hereSegments[2]
         : LOCALES[1]; // default vi (matches DEFAULT_LOCALE)
       const secret = new URLSearchParams(here.search).get("secret") ?? "";
+      const theme = new URLSearchParams(here.search).get("theme") ?? "";
 
       // Normalize the target: drop the query/hash, then strip a leading /<locale> →
       // logicalPath ("" for home, "/about", "/contact", "/products/x", …).
@@ -207,17 +219,61 @@ export function EditOverlay() {
       const logicalPath = segs.join("/").replace(/^\/+/, "/").replace(/^\/$/, "");
 
       e.preventDefault();
-      const qs = `?secret=${encodeURIComponent(secret)}&editable=1`;
+      const qs = `?secret=${encodeURIComponent(secret)}&editable=1${theme ? `&theme=${encodeURIComponent(theme)}` : ""}`;
       window.location.assign(`/preview/${lang}${logicalPath}${qs}`);
     };
     // Capture phase so we intercept before the Webflow runtime / anchor default navigation.
     document.addEventListener("click", onDocClick, true);
 
-    // ---- inbound: parent → preview "refresh" → reload to render the saved working state ----
+    // ---- inbound: parent → preview messages ------------------------------------------------
     const onMessage = (e: MessageEvent) => {
       const data = e.data;
-      if (data && typeof data === "object" && data.source === SOURCE && data.type === "refresh") {
+      if (!data || typeof data !== "object" || data.source !== SOURCE) return;
+
+      if (data.type === "refresh") {
         window.location.reload();
+        return;
+      }
+
+      // applyEdits: live DOM swap for image/video zones — no reload needed.
+      // edits: Array<{ field, kind:"image"|"video", url?, posterUrl?, mp4Url?, webmUrl? }>
+      if (data.type === "applyEdits" && Array.isArray(data.edits)) {
+        for (const ed of data.edits as Array<{
+          field: string;
+          kind: "image" | "video";
+          url?: string;
+          posterUrl?: string;
+          mp4Url?: string;
+          webmUrl?: string;
+        }>) {
+          const el = document.querySelector<HTMLElement>(
+            `[data-edit-field="${CSS.escape(ed.field)}"]`,
+          );
+          if (!el) continue;
+
+          if (ed.kind === "image" && ed.url) {
+            const img =
+              el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector<HTMLImageElement>("img");
+            if (img) {
+              img.removeAttribute("srcset");
+              img.src = ed.url;
+            } else {
+              el.style.backgroundImage = `url("${ed.url}")`;
+            }
+          } else if (ed.kind === "video") {
+            const video = (
+              el.tagName === "VIDEO" ? el : el.querySelector("video")
+            ) as HTMLVideoElement | null;
+            if (video) {
+              if (ed.posterUrl) video.poster = ed.posterUrl;
+              const src = video.querySelector("source");
+              if (src && ed.mp4Url) {
+                src.setAttribute("src", ed.mp4Url);
+                video.load();
+              }
+            }
+          }
+        }
       }
     };
     window.addEventListener("message", onMessage);

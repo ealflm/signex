@@ -23,15 +23,15 @@ async function PreviewCategory({
   searchParams,
 }: {
   params: Promise<{ lang: string; slug: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   await connection(); // request-time only — never prerender this subtree
-  const { secret } = await searchParams;
+  const { secret, theme } = await searchParams;
   if (!process.env.PREVIEW_SECRET || secret !== process.env.PREVIEW_SECRET) notFound();
 
   const { lang, slug } = await params;
   const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
-  const dict = await getPreviewSnapshot(locale);
+  const dict = await getPreviewSnapshot(locale, theme);
   const cat = dict.products.categories.find((c) => c.slug === slug);
   if (!cat) notFound(); // unknown category → 404 (same as the public page)
   const stats = dict.products.statLabels;
@@ -155,7 +155,7 @@ export default function PreviewCategoryPage({
   searchParams,
 }: {
   params: Promise<{ lang: string; slug: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   return (
     <Suspense fallback={null}>
