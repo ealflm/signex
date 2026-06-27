@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogClose,
@@ -71,6 +73,91 @@ function useSuccessEffect(
       toast.success(message);
     }
   }, [success, message, onOpenChange]);
+}
+
+// ── NewThemeButton (header action) ──────────────────────────────────────────────
+// A new theme can't be blank (every theme must satisfy the 12-block snapshot invariant),
+// so "New theme" creates a copy of an existing theme (defaulting to the live one) under a
+// new name — then it's editable/publishable independently. Reuses duplicateAction.
+
+export function NewThemeButton({ themes }: { themes: ThemeListItem[] }) {
+  const [open, setOpen] = useState(false);
+  const [state, formAction, pending] = useActionState(duplicateAction, EMPTY);
+
+  useSuccessEffect(state.success, open, setOpen, "Theme created.");
+
+  const defaultSource =
+    themes.find((t) => t.isLive)?.id ?? themes[0]?.id ?? "";
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)} disabled={themes.length === 0}>
+        <Plus className="size-4" />
+        New theme
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New theme</DialogTitle>
+            <DialogDescription>
+              A new theme starts as a copy of an existing one, then you edit and
+              publish it independently.
+            </DialogDescription>
+          </DialogHeader>
+
+          {state.error && <InlineError message={state.error} />}
+
+          <form action={formAction} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="new-name">Name</Label>
+              <Input
+                id="new-name"
+                name="name"
+                defaultValue="New theme"
+                required
+                autoFocus
+                disabled={pending}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="new-source">Copy from</Label>
+              <select
+                id="new-source"
+                name="sourceId"
+                defaultValue={defaultSource}
+                disabled={pending}
+                className={cn(
+                  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs",
+                  "outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                  "disabled:cursor-not-allowed disabled:opacity-50",
+                )}
+              >
+                {themes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.isLive ? " (live)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline" type="button" disabled={pending}>
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={pending}>
+                {pending ? "Creating…" : "Create theme"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 // ── DuplicateDialog ───────────────────────────────────────────────────────────

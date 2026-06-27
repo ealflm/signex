@@ -690,9 +690,10 @@ export function EditorShell(props: EditorShellProps) {
           onPublish={() => setPublishOpen(true)}
         />
 
-        <ResizablePanelGroup orientation="horizontal" className="flex-1">
-          {/* Left — sections navigator */}
-          <ResizablePanel defaultSize={18} minSize={12} maxSize={28} className="bg-card">
+        <ResizablePanelGroup orientation="horizontal" className="flex-1 overflow-hidden">
+          {/* Left — sections navigator. NOTE: react-resizable-panels v4 treats a bare-number
+              size as PIXELS — sizes MUST be percentage strings or the panels collapse. */}
+          <ResizablePanel defaultSize="18%" minSize="13%" maxSize="30%" className="bg-card">
             <SectionsNav
               selectedBlockKey={selection?.blockKey ?? null}
               dirtyKeys={dirtyKeys}
@@ -703,7 +704,7 @@ export function EditorShell(props: EditorShellProps) {
           <ResizableHandle withHandle />
 
           {/* Center — device-framed preview iframe */}
-          <ResizablePanel defaultSize={56} minSize={30}>
+          <ResizablePanel defaultSize="54%" minSize="30%">
             <div className="flex h-full justify-center overflow-auto bg-muted/30 p-2">
               <div
                 className="h-full w-full transition-[max-width] duration-200"
@@ -724,7 +725,7 @@ export function EditorShell(props: EditorShellProps) {
           <ResizableHandle withHandle />
 
           {/* Right — context panel */}
-          <ResizablePanel defaultSize={26} minSize={18} maxSize={40} className="bg-card">
+          <ResizablePanel defaultSize="28%" minSize="20%" maxSize="42%" className="bg-card">
             <ContextPanel
               blockKey={selection?.blockKey ?? null}
               blockData={selection ? workingBlockData(selection.blockKey) : {}}

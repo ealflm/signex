@@ -4,6 +4,7 @@ import { listThemes, getActiveThemeId } from "@/app/lib/themes";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { ThemeCard } from "./theme-card";
+import { NewThemeButton } from "./theme-dialogs";
 import { Palette } from "lucide-react";
 
 export default async function ThemesPage() {
@@ -29,6 +30,7 @@ export default async function ThemesPage() {
       <PageHeader
         title="Themes"
         subtitle="Manage site themes. Publish a theme to make it live for visitors."
+        actions={<NewThemeButton themes={themes} />}
       />
 
       {/* No-live banner */}
