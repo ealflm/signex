@@ -22,6 +22,7 @@
 // it does NOT PUT per edit. Persistence happens once on Save draft (save-draft batch) / Publish.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { BlockKey, ReleaseSnapshot } from "@signex/shared";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -144,6 +145,7 @@ export function EditorShell(props: EditorShellProps) {
   } = props;
 
   // ── Step 1: state + primitives ──────────────────────────────────────────────
+  const router = useRouter();
   const [lang, setLang] = useState<Locale>("vi");
   const [device, setDevice] = useState<DeviceWidth>("desktop");
   const [previewPath, setPreviewPath] = useState<string>(""); // "" | "/about" | "/contact"
@@ -479,8 +481,9 @@ export function EditorShell(props: EditorShellProps) {
   const saveEnabled = pending.size > 0;
   const busy = saving || publishing;
 
-  // beforeunload guard — only while there are unsaved edits. A plain <a> Back (the Toolbar renders
-  // one) is a full navigation, so this also covers leaving the editor with pending edits.
+  // beforeunload guard — only while there are unsaved edits. Covers full document unloads
+  // (tab close / hard reload). Next App-Router client nav does NOT fire beforeunload, so the
+  // capture-phase click guard below handles in-app <a>/<Link> navigation.
   useEffect(() => {
     if (pending.size === 0) return;
     const h = (e: BeforeUnloadEvent) => {
@@ -489,6 +492,53 @@ export function EditorShell(props: EditorShellProps) {
     };
     window.addEventListener("beforeunload", h);
     return () => window.removeEventListener("beforeunload", h);
+  }, [pending.size]);
+
+  // In-app SPA-nav guard — only while there are unsaved edits. Clicking a sidebar <Link>, the
+  // Topbar, or the Toolbar's Back <a> would unmount EditorShell and silently drop the pending Map
+  // (beforeunload never fires for App-Router client nav). We intercept the click in the CAPTURE
+  // phase — before Next's <Link> handler runs — preventDefault the in-app navigation, and route it
+  // through the existing discard AlertDialog; router.push(href) fires only on confirm (doDiscard).
+  // The listener is attached ONLY when pending>0, so normal nav is never blocked.
+  useEffect(() => {
+    if (pending.size === 0) return;
+    const onClick = (e: MouseEvent) => {
+      // Let modified/middle clicks (new tab/window) and already-handled events through.
+      if (
+        e.defaultPrevented ||
+        e.button !== 0 ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey
+      )
+        return;
+      const anchor = (e.target as Element | null)?.closest?.("a");
+      if (!anchor) return;
+      const rawHref = anchor.getAttribute("href");
+      if (
+        !rawHref ||
+        anchor.hasAttribute("download") ||
+        (anchor.getAttribute("target") ?? "") === "_blank"
+      )
+        return;
+      let url: URL;
+      try {
+        url = new URL(anchor.href, window.location.href);
+      } catch {
+        return;
+      }
+      // Only intercept same-origin in-app navigation that actually changes the page.
+      if (url.origin !== window.location.origin) return;
+      const dest = url.pathname + url.search + url.hash;
+      if (dest === window.location.pathname + window.location.search + window.location.hash)
+        return;
+      e.preventDefault();
+      setDiscardAsk({ kind: "leave", href: dest });
+    };
+    // Capture phase so we beat <Link>'s own bubble-phase click handler.
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
   }, [pending.size]);
 
   // Inbound bridge: preview overlay → admin. Subscribed once; reads live media via a ref.
@@ -543,12 +593,16 @@ export function EditorShell(props: EditorShellProps) {
   }, [pending.size]);
 
   const doDiscard = useCallback(() => {
+    // A "leave" ask carries the intercepted in-app destination; navigate there on confirm.
+    // A plain "discard" stays put and reverts the preview to the last saved draft.
+    const leaveHref = discardAsk?.kind === "leave" ? discardAsk.href : undefined;
     setPending(new Map());
     setMediaPreview(new Map());
     setTextPreview(new Map());
     setDiscardAsk(null);
-    postRefresh();
-  }, [postRefresh]);
+    if (leaveHref) router.push(leaveHref);
+    else postRefresh();
+  }, [discardAsk, router, postRefresh]);
 
   // Validity bubbles up from JSON field editors; the API's 422 is the authoritative gate, so we do
   // not block Save on it here. Kept as a stable no-op the panel can call.
@@ -560,19 +614,25 @@ export function EditorShell(props: EditorShellProps) {
     <>
       <Toaster />
 
-      {/* Discard confirmation */}
+      {/* Discard / leave confirmation */}
       <AlertDialog open={discardAsk !== null} onOpenChange={(o) => !o && setDiscardAsk(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {discardAsk?.kind === "leave" ? "Leave with unsaved changes?" : "Discard unsaved changes?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Your {pending.size} unsaved edit{pending.size === 1 ? "" : "s"} will be lost and the
-              preview will revert to the last saved draft.
+              Your {pending.size} unsaved edit{pending.size === 1 ? "" : "s"} will be lost
+              {discardAsk?.kind === "leave"
+                ? " if you leave the editor now."
+                : " and the preview will revert to the last saved draft."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep editing</AlertDialogCancel>
-            <AlertDialogAction onClick={doDiscard}>Discard</AlertDialogAction>
+            <AlertDialogAction onClick={doDiscard}>
+              {discardAsk?.kind === "leave" ? "Leave" : "Discard"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
