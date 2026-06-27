@@ -30,7 +30,7 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                   </div>
                   <div className="p_hero-home-a">
                     <p className="margin-0 text-size-large">
-                      {t.subtitle}
+                      <span {...editText(editable, "hero.subtitle", { maxLength: 200 })}>{t.subtitle}</span>
                     </p>
                   </div>
                 </div>

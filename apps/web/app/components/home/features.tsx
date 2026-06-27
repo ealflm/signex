@@ -1,5 +1,5 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editAttrs } from "@/app/lib/edit-attrs";
+import { editAttrs, editText } from "@/app/lib/edit-attrs";
 
 /**
  * Features — the section directly below the hero, adapted to signex's manufacturing
@@ -41,13 +41,13 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
             <div className="heading_features">
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  {t.eyebrow}
+                  <span {...editText(editable, "features.eyebrow", { maxLength: 80 })}>{t.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                {t.titleTop}
+                <span {...editText(editable, "features.title.lead", { maxLength: 80 })}>{t.titleTop}</span>
                 <br />
-                <span className="tone-medium">
+                <span className="tone-medium" {...editText(editable, "features.title.accent", { maxLength: 80 })}>
                   {t.titleBottom}
                 </span>
               </h2>
@@ -56,7 +56,7 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
               <a button="" className="cta_primary w-inline-block" data-wf--cta-primary--variant="primary" href="#quote-form">
                 <div className="button_text-mask">
                   <div button-text="" className="text-button">
-                    {t.cta}
+                    <span {...editText(editable, "features.cta.label", { maxLength: 80 })}>{t.cta}</span>
                   </div>
                 </div>
                 <div button-bg="" className="btn-bg">

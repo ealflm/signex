@@ -1,4 +1,5 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
+import { editText } from "@/app/lib/edit-attrs";
 
 /**
  * HomeAbout — Caladan's "section_home-about" (an eyebrow + headline + paragraph), ported
@@ -26,11 +27,13 @@ import type { Dictionary } from "@/app/[lang]/dictionaries";
  */
 export function HomeAbout({
   dict,
+  editable = false,
   headlineWid = "0f29df12-8c38-da6f-794d-3989ac10d663",
   gridWid = "b3ac1ddc-636d-f345-c58d-b372a067ce8d",
   showMvv = true,
 }: {
   dict: Dictionary["about"];
+  editable?: boolean;
   headlineWid?: string;
   gridWid?: string;
   showMvv?: boolean;
@@ -44,18 +47,18 @@ export function HomeAbout({
           <div className="headline_home-about" data-w-id={headlineWid} style={{ opacity: 0, filter: 'blur(5px)' }}>
             <div className="master_label" data-wf--tag--variant="base">
               <div className="label-small">
-                {t.eyebrow}
+                <span {...editText(editable, "about.eyebrow", { maxLength: 80 })}>{t.eyebrow}</span>
               </div>
             </div>
             <h2 className="margin-0">
-              {t.title}
-              <span className="tone-medium">
+              <span {...editText(editable, "about.title.lead", { maxLength: 80 })}>{t.title}</span>
+              <span className="tone-medium" {...editText(editable, "about.title.accent", { maxLength: 80 })}>
                 {t.titleAccent}
               </span>
             </h2>
             <div className="home_about-p">
               <p className="tone-medium">
-                {t.body}
+                <span {...editText(editable, "about.body", { maxLength: 200 })}>{t.body}</span>
               </p>
             </div>
           </div>

@@ -47,8 +47,8 @@ async function PreviewHome({
         <Hero dict={dict} editable />
         <div className="home-a_rest-content">
           <Features dict={dict.features} editable />
-          <ProductCategories dict={dict.products} />
-          <HomeAbout dict={dict.about} />
+          <ProductCategories dict={dict.products} editable />
+          <HomeAbout dict={dict.about} editable />
           <Contact dict={dict} />
         </div>
         <Footer dict={dict.footer} editable />

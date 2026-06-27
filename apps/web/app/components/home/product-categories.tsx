@@ -1,5 +1,6 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { categoryImage } from "@/app/lib/product-images";
+import { editText } from "@/app/lib/edit-attrs";
 
 /**
  * ProductCategories — the home-page product-category grid. Repurposes Caladan's
@@ -23,7 +24,7 @@ import { categoryImage } from "@/app/lib/product-images";
  * The 6d379b8b ids are shared across all four cards on purpose: their actionLists use
  * useEventTarget:"CHILDREN", so each card animates only its own .image_cover.
  */
-export function ProductCategories({ dict }: { dict: Dictionary["products"] }) {
+export function ProductCategories({ dict, editable = false }: { dict: Dictionary["products"]; editable?: boolean }) {
   const t = dict;
 
   return (
@@ -33,18 +34,18 @@ export function ProductCategories({ dict }: { dict: Dictionary["products"] }) {
           <div className="headline_home-about" data-w-id="0f29df12-8c38-da6f-794d-3989ac10d663" style={{ opacity: 0, filter: 'blur(5px)' }}>
             <div className="master_label" data-wf--tag--variant="base">
               <div className="label-small">
-                {t.eyebrow}
+                <span {...editText(editable, "productsHeader.eyebrow", { maxLength: 80 })}>{t.eyebrow}</span>
               </div>
             </div>
             <h2 className="margin-0">
-              {t.title}
-              <span className="tone-medium">
+              <span {...editText(editable, "productsHeader.title.lead", { maxLength: 80 })}>{t.title}</span>
+              <span className="tone-medium" {...editText(editable, "productsHeader.title.accent", { maxLength: 80 })}>
                 {t.titleAccent}
               </span>
             </h2>
             <div className="home_about-p">
               <p className="tone-medium">
-                {t.body}
+                <span {...editText(editable, "productsHeader.body", { maxLength: 200 })}>{t.body}</span>
               </p>
             </div>
           </div>
