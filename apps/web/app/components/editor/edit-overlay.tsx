@@ -555,6 +555,25 @@ export function EditOverlay() {
         return;
       }
 
+      // highlight (panel→canvas half of the two-way highlight; Task 7). The admin posts the focused
+      // panel field's snapshot path (locale-agnostic — matches data-edit-field). Find the matching
+      // leaf and flash it with the pre-shipped .sx-flash class (~900ms). scrollIntoView uses "auto"
+      // when Lenis is present so the instant jump isn't fought by the smooth-scroll engine.
+      if (data.type === "highlight" && typeof data.field === "string") {
+        const el = document.querySelector<HTMLElement>(
+          `[data-edit-field="${CSS.escape(data.field)}"]`,
+        );
+        if (el) {
+          el.scrollIntoView({ block: "center", behavior: window.__lenis ? "auto" : "smooth" });
+          el.classList.remove("sx-flash"); // restart the animation if it's mid-flight
+          // Force reflow so re-adding the class re-triggers the keyframe.
+          void el.offsetWidth;
+          el.classList.add("sx-flash");
+          window.setTimeout(() => el.classList.remove("sx-flash"), 900);
+        }
+        return;
+      }
+
       // applyEdits: live DOM swap for image/video AND re-apply of pending inline TEXT — no reload.
       // edits: Array<{ field, kind:"image"|"video"|"text", url?, posterUrl?, mp4Url?, webmUrl?, text? }>
       if (data.type === "applyEdits" && Array.isArray(data.edits)) {
