@@ -24,6 +24,7 @@ import { ProductCategories } from "@/app/components/home/product-categories";
 import { HomeAbout } from "@/app/components/home/home-about";
 import { Contact } from "@/app/components/home/contact";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PreviewRuntime } from "@/app/preview/preview-runtime";
 
 async function PreviewHome({
   params,
@@ -54,6 +55,9 @@ async function PreviewHome({
         <Footer dict={dict.footer} editable />
       </main>
       <EditOverlay />
+      {/* Webflow boot lives in this dynamic subtree (not the layout) so it runs after the navbar
+          hydrates — prevents the w-nav DOM mutation → #418 → subtree-regeneration that wiped edits. */}
+      <PreviewRuntime />
     </div>
   );
 }

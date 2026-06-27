@@ -14,6 +14,7 @@ import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { Contact } from "@/app/components/home/contact";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PreviewRuntime } from "@/app/preview/preview-runtime";
 import { editAttrs, editText } from "@/app/lib/edit-attrs";
 
 // Contact info-card icons (lucide), index-aligned with contactPage.cards: mail / phone / map-pin —
@@ -163,6 +164,8 @@ async function PreviewContact({
         <Footer dict={dict.footer} editable />
       </main>
       <EditOverlay />
+      {/* Webflow boot in this dynamic subtree (not the layout) — see preview-runtime.tsx (#418 fix). */}
+      <PreviewRuntime />
     </div>
   );
 }

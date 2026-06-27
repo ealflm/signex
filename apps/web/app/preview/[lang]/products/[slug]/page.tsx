@@ -17,6 +17,7 @@ import { getPreviewSnapshot } from "@/app/lib/content";
 import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PreviewRuntime } from "@/app/preview/preview-runtime";
 
 async function PreviewCategory({
   params,
@@ -146,6 +147,8 @@ async function PreviewCategory({
         <Footer dict={dict.footer} editable />
       </main>
       <EditOverlay />
+      {/* Webflow boot in this dynamic subtree (not the layout) — see preview-runtime.tsx (#418 fix). */}
+      <PreviewRuntime />
     </div>
   );
 }

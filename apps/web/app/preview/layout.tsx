@@ -23,9 +23,6 @@
 // This layout sits ABOVE the [lang] segment, so it has no lang param; <html lang> is the default
 // (vi). IX2/profile resolution is pathname-driven client-side, so the bare lang attr is cosmetic.
 import "../globals.css";
-import { Suspense } from "react";
-import { WebflowRuntime } from "@/app/components/webflow-runtime";
-import { WebflowPageAttrs } from "@/app/components/webflow-page-attrs";
 import { siteAttrs } from "@/app/lib/webflow-bundles";
 
 // Verbatim from the public layout / legacy <head>: the FOUC guard hides animated elements until the
@@ -67,17 +64,12 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
       </head>
       <body>
         {children}
-        {/* WebflowPageAttrs/WebflowRuntime call usePathname() — request-time (uncached) data under
-            cacheComponents. They live in the layout's STATIC shell (outside the page's own Suspense),
-            and because the preview pages are dynamic (connection()), accessing usePathname() in the
-            shell without a Suspense boundary fails the static-shell prerender with a blocking-route
-            error. Wrapping them lets the shell prerender with a streamed hole. (The public [lang]
-            layout needs no wrapper: those pages are fully cached/SSG, so the path is known at build.)
-            Both components render null, so the fallback is invisible. */}
-        <Suspense fallback={null}>
-          <WebflowPageAttrs />
-          <WebflowRuntime />
-        </Suspense>
+        {/* The Webflow runtime (WebflowPageAttrs + WebflowRuntime) is NOT mounted here. It boots from
+            inside each preview page's own dynamic <Suspense> subtree via <PreviewRuntime/> (next to
+            <EditOverlay/>), so its DOM-mutating boot runs only AFTER React has hydrated the streamed
+            navbar — otherwise Webflow's w-nav widget mutates the not-yet-hydrated navbar and triggers
+            a structural hydration mismatch (#418) that regenerates the whole page subtree and wipes
+            in-progress inline edits. See app/preview/preview-runtime.tsx for the full rationale. */}
       </body>
     </html>
   );

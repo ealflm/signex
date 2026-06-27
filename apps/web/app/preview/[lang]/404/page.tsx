@@ -13,6 +13,7 @@ import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { NotFoundPreview } from "@/app/components/not-found-preview";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PreviewRuntime } from "@/app/preview/preview-runtime";
 
 async function Preview404({
   params,
@@ -37,6 +38,8 @@ async function Preview404({
         <Footer dict={dict.footer} editable />
       </main>
       <EditOverlay />
+      {/* Webflow boot in this dynamic subtree (not the layout) — see preview-runtime.tsx (#418 fix). */}
+      <PreviewRuntime />
     </div>
   );
 }
