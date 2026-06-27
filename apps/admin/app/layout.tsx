@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>{children}</TooltipProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
