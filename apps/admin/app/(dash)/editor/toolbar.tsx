@@ -7,6 +7,8 @@ import {
   MonitorIcon,
   TabletIcon,
   SmartphoneIcon,
+  Maximize2Icon,
+  Minimize2Icon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -36,6 +38,8 @@ export interface ToolbarProps {
   publishEnabled: boolean;
   saveEnabled: boolean;
   busy: boolean;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
   onReload: () => void;
   onDiscard: () => void;
   onSave: () => void;
@@ -83,6 +87,8 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
     publishEnabled,
     saveEnabled,
     busy,
+    fullscreen,
+    onToggleFullscreen,
     onReload,
     onDiscard,
     onSave,
@@ -189,6 +195,27 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
         </div>
 
         <div className="mx-1 h-4 w-px bg-border" />
+
+        {/* ── Full page ────────────────────────────────────────────────────── */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onToggleFullscreen}
+              aria-label={fullscreen ? "Exit full page" : "Full page"}
+              aria-pressed={fullscreen}
+            >
+              {fullscreen ? (
+                <Minimize2Icon className="h-4 w-4" />
+              ) : (
+                <Maximize2Icon className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{fullscreen ? "Exit full page (Esc)" : "Full page"}</TooltipContent>
+        </Tooltip>
 
         {/* ── Reload ───────────────────────────────────────────────────────── */}
         <Tooltip>

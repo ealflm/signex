@@ -27,6 +27,7 @@ import type { BlockKey, ReleaseSnapshot } from "@signex/shared";
 
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
   ResizableHandle,
@@ -173,12 +174,19 @@ export function EditorShell(props: EditorShellProps) {
   // Canvas→panel highlight: which panel field to flash (dotted path within the block) + a bumping
   // nonce so re-focusing the same canvas leaf re-triggers the flash.
   const [flashField, setFlashField] = useState<{ name: string; nonce: number } | null>(null);
+  // Editor "take full page" toggle — overlays the dash sidebar/topbar (fixed inset-0).
+  const [fullscreen, setFullscreen] = useState(false);
+  // Bumped on every section select → ContextPanel scrolls to top + flashes (right-zone half of #2).
+  const [panelFlash, setPanelFlash] = useState(0);
 
   // base snapshot is the last server-known draft; pending layers on top for the panel + dirty dots.
   const baseRef = useRef<ReleaseSnapshot>(structuredClone(initialSnapshot));
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const savingRef = useRef(false);
   const flashNonce = useRef(0);
+  // Block to scroll-to in the canvas once the iframe (re)loads — set on select, re-sent on "ready"
+  // so a select that ALSO changes the surface still scrolls after the new page has hydrated.
+  const scrollOnReadyRef = useRef<BlockKey | null>(null);
   // Read fresh inside the (stably-subscribed) message listener without re-subscribing each render.
   const mediaPreviewRef = useRef(mediaPreview);
   mediaPreviewRef.current = mediaPreview;
@@ -269,6 +277,17 @@ export function EditorShell(props: EditorShellProps) {
     [webOrigin],
   );
 
+  // Navigator→canvas: scroll the block's region into view + flash it (left-zone half of #2).
+  const postScrollToBlock = useCallback(
+    (blockKey: BlockKey) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { source: SOURCE, type: "scrollToBlock", blockKey },
+        webOrigin,
+      );
+    },
+    [webOrigin],
+  );
+
   // ── Media picker open / apply ─────────────────────────────────────────────────
   const openMediaPicker = useCallback(
     (field: string, kind: "image" | "video") => {
@@ -341,8 +360,14 @@ export function EditorShell(props: EditorShellProps) {
       setSelection({ blockKey, fieldPath: null, locale: lang });
       const surface = SURFACE_PATH_BY_BLOCK[blockKey];
       if (surface !== null && surface !== previewPath) setPreviewPath(surface);
+      // Canvas: scroll+flash now (same surface), and again on the next "ready" (if the surface changed
+      // the iframe is remounting, so the live scroll lands after the new page hydrates).
+      scrollOnReadyRef.current = blockKey;
+      postScrollToBlock(blockKey);
+      // Right panel: scroll to top + flash.
+      setPanelFlash((n) => n + 1);
     },
-    [lang, previewPath],
+    [lang, previewPath, postScrollToBlock],
   );
 
   // Canvas→panel highlight (web→admin {type:"highlight"}): a canvas text-leaf was focused → select
@@ -577,11 +602,33 @@ export function EditorShell(props: EditorShellProps) {
           .map((t) => ({ field: t.field, kind: "text" as const, text: t.value }));
         const all: ApplyEdit[] = [...media, ...text];
         if (all.length > 0) postApplyEdits(all);
+        // A select that changed the surface remounted the iframe — scroll once it's ready.
+        if (scrollOnReadyRef.current) {
+          postScrollToBlock(scrollOnReadyRef.current);
+          scrollOnReadyRef.current = null;
+        }
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [webOrigin, openMediaPicker, postApplyEdits, applyFieldEdit, onCanvasHighlight]);
+  }, [
+    webOrigin,
+    openMediaPicker,
+    postApplyEdits,
+    postScrollToBlock,
+    applyFieldEdit,
+    onCanvasHighlight,
+  ]);
+
+  // Esc exits full-page mode.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
 
   // ── Toolbar handlers ──────────────────────────────────────────────────────────
   const onSave = useCallback(() => {
@@ -669,8 +716,16 @@ export function EditorShell(props: EditorShellProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Editor column: toolbar on top, resizable 3-zone row below. */}
-      <div className="flex h-[calc(100vh-7rem)] min-h-[560px] flex-col overflow-hidden rounded-lg border border-border bg-background">
+      {/* Editor column: toolbar on top, resizable 3-zone row below. Full-page mode overlays the
+          dash sidebar/topbar (fixed inset-0) for maximum canvas. */}
+      <div
+        className={cn(
+          "flex flex-col overflow-hidden bg-background",
+          fullscreen
+            ? "fixed inset-0 z-50 h-[100dvh] rounded-none border-0"
+            : "h-[calc(100vh-7rem)] min-h-[560px] rounded-lg border border-border",
+        )}
+      >
         <Toolbar
           themeName={themeName}
           backHref="/themes"
@@ -684,6 +739,8 @@ export function EditorShell(props: EditorShellProps) {
           publishEnabled={publishEnabled}
           saveEnabled={saveEnabled}
           busy={busy}
+          fullscreen={fullscreen}
+          onToggleFullscreen={() => setFullscreen((v) => !v)}
           onReload={postRefresh}
           onDiscard={onDiscard}
           onSave={onSave}
@@ -741,6 +798,7 @@ export function EditorShell(props: EditorShellProps) {
                 if (selection) postHighlight(`${selection.blockKey}.${name}`);
               }}
               flashField={flashField}
+              panelFlash={panelFlash}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

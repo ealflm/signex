@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { deriveFields } from "@/app/lib/zodform-fields";
 import { BLOCK_REGISTRY } from "@signex/shared";
@@ -25,6 +26,8 @@ export interface ContextPanelProps {
   onFieldFocus?: (fieldName: string) => void;
   /** Canvas→panel highlight: scroll + ring the field whose dotted name matches `flashField.name`. */
   flashField?: { name: string; nonce: number } | null;
+  /** Bumped on every section select → scroll this panel to top + flash it (right-zone half of #2). */
+  panelFlash?: number;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -38,7 +41,23 @@ export function ContextPanel({
   onValidityChange,
   onFieldFocus,
   flashField,
+  panelFlash,
 }: ContextPanelProps): React.ReactElement {
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const [flashing, setFlashing] = React.useState(false);
+
+  // On each section select (panelFlash bumps): scroll the panel viewport to top + flash the panel.
+  React.useEffect(() => {
+    if (blockKey === null) return;
+    const vp = rootRef.current?.querySelector<HTMLElement>(
+      "[data-radix-scroll-area-viewport],[data-slot='scroll-area-viewport']",
+    );
+    if (vp) vp.scrollTop = 0;
+    setFlashing(true);
+    const t = window.setTimeout(() => setFlashing(false), 700);
+    return () => window.clearTimeout(t);
+  }, [blockKey, panelFlash]);
+
   // Empty state: no block selected
   if (blockKey === null) {
     return (
@@ -54,9 +73,20 @@ export function ContextPanel({
   const label = BLOCK_LABELS[blockKey] ?? blockKey;
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      ref={rootRef}
+      className={cn(
+        "flex h-full flex-col transition-shadow duration-300",
+        flashing && "ring-2 ring-inset ring-primary/40",
+      )}
+    >
       {/* Panel header */}
-      <div className="border-b border-border px-4 py-3">
+      <div
+        className={cn(
+          "border-b border-border px-4 py-3 transition-colors duration-300",
+          flashing && "bg-primary/10",
+        )}
+      >
         <h2 className="text-sm font-semibold text-foreground">{label}</h2>
       </div>
 
