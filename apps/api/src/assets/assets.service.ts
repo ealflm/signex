@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
@@ -358,12 +359,17 @@ export class AssetsService {
     }[];
     releases: { releaseId: string }[];
   }> {
-    // Working refs now live inside each Theme's draftSnapshot (no relational
-    // AssetRef table). A theme "uses" the asset iff its draftSnapshot references
-    // the assetId anywhere (block AssetRef/VideoRef or catalog image).
+    // Working refs live inside each Theme's draftSnapshot/liveSnapshot (no
+    // relational AssetRef table). A theme "uses" the asset iff EITHER snapshot
+    // references the assetId anywhere (block AssetRef/VideoRef or catalog image).
     const [themes, releases] = await Promise.all([
       this.prisma.client.theme.findMany({
-        select: { id: true, name: true, draftSnapshot: true },
+        select: {
+          id: true,
+          name: true,
+          draftSnapshot: true,
+          liveSnapshot: true,
+        },
       }),
       this.prisma.client.releaseAssetRef.findMany({
         where: { assetId },
@@ -371,14 +377,42 @@ export class AssetsService {
       }),
     ]);
     const working = themes
-      .filter((t) => collectAssetIds(t.draftSnapshot).has(assetId))
-      .map((t) => ({
-        id: t.id,
-        ownerType: 'theme',
-        ownerId: t.id,
-        field: 'draftSnapshot',
-      }));
+      .filter((t) => {
+        const inDraft = collectAssetIds(t.draftSnapshot).has(assetId);
+        const inLive = t.liveSnapshot
+          ? collectAssetIds(t.liveSnapshot).has(assetId)
+          : false;
+        return inDraft || inLive;
+      })
+      .map((t) => {
+        const inDraft = collectAssetIds(t.draftSnapshot).has(assetId);
+        return {
+          id: t.id,
+          ownerType: 'theme',
+          ownerId: t.id,
+          field: inDraft ? 'draftSnapshot' : 'liveSnapshot',
+        };
+      });
     return { working, releases };
+  }
+
+  async softDelete(actor: Actor, assetId: string): Promise<AssetDto> {
+    const asset = await this.prisma.client.asset.findUnique({
+      where: { id: assetId },
+    });
+    if (!asset || asset.deletedAt != null) {
+      throw new NotFoundException('asset not found');
+    }
+    const { working, releases } = await this.usage(assetId);
+    if (working.length > 0 || releases.length > 0) {
+      throw new ConflictException('ASSET_IN_USE');
+    }
+    const updated = await this.prisma.client.asset.update({
+      where: { id: assetId },
+      data: { deletedAt: new Date() },
+    });
+    await this.audit(actor, 'asset.delete', assetId, {});
+    return this.toAssetDto(updated);
   }
 
   /** Replace = register the new bytes; callers repoint imageId/posterId atomically at the catalog/content layer. */
