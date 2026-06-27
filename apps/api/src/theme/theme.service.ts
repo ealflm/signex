@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { Prisma } from '@signex/db';
@@ -40,30 +41,40 @@ export class ThemeService {
   ) {}
 
   /**
-   * Optimistic-lock guard: re-reads draftRevision inside a transaction,
-   * throws ConflictException('STALE_DRAFT') on mismatch, otherwise bumps
-   * and persists the new revision and returns it.
+   * Optimistic-lock guard: bumps draftRevision with a single CONDITIONAL atomic
+   * write, throws ConflictException('STALE_DRAFT') on mismatch, and returns the
+   * new revision.
+   *
+   * The `updateMany({ where: { id, draftRevision: expected } })` is the lock:
+   * only the row still at `expectedDraftRevision` is touched. Under READ
+   * COMMITTED a concurrent same-theme writer's UPDATE blocks on the first
+   * writer's row lock, then re-evaluates the `draftRevision = expected`
+   * predicate against the just-committed row — which no longer matches — so it
+   * affects 0 rows and 409s instead of blind-overwriting (the lost-update race a
+   * SELECT-then-update left open). A missing theme is distinguished as 404.
    */
   async guardAndBump(
     tx: Prisma.TransactionClient,
     themeId: string,
     expectedDraftRevision: number,
   ): Promise<number> {
-    const theme = await tx.theme.findUniqueOrThrow({
-      where: { id: themeId },
-      select: { draftRevision: true },
+    const res = await tx.theme.updateMany({
+      where: { id: themeId, draftRevision: expectedDraftRevision },
+      data: { draftRevision: { increment: 1 } },
     });
 
-    if (theme.draftRevision !== expectedDraftRevision) {
+    if (res.count === 0) {
+      // 0 rows → either the theme is gone or the revision moved on. Distinguish
+      // for a correct status (404 vs 409) with a cheap existence probe.
+      const exists = await tx.theme.findUnique({
+        where: { id: themeId },
+        select: { id: true },
+      });
+      if (!exists) throw new NotFoundException('theme not found');
       throw new ConflictException('STALE_DRAFT');
     }
 
-    const newRev = expectedDraftRevision + 1;
-    await tx.theme.update({
-      where: { id: themeId },
-      data: { draftRevision: newRev },
-    });
-    return newRev;
+    return expectedDraftRevision + 1;
   }
 
   /**

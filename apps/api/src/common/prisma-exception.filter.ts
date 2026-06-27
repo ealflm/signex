@@ -5,6 +5,7 @@ import {
   ExceptionFilter,
   HttpException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@signex/db';
 import type { Response } from 'express';
@@ -21,9 +22,13 @@ import type { Response } from 'express';
  * Everything else is intentionally left alone:
  *  - Nest `HttpException`s (e.g. the catalog's 409 `STALE_DRAFT`,
  *    422 `INVALID_INPUT`) are re-thrown verbatim so their status/body survive.
- *  - Other Prisma codes (P2025 "record not found", etc.) are re-thrown so the
- *    default exception handler keeps producing a 500 — we do NOT guess a status
- *    for codes we haven't deliberately mapped.
+ *  - **P2025 ("record not found") → 404 Not Found.** The new theme/catalog
+ *    surface leans on `findUniqueOrThrow`, which throws P2025 for ordinary
+ *    client conditions (a stale/deleted `themeId`, previewing a removed theme);
+ *    those are 404s, not 500s.
+ *  - Other Prisma codes are re-thrown so the default exception handler keeps
+ *    producing a 500 — we do NOT guess a status for codes we haven't
+ *    deliberately mapped.
  *
  * Registered globally via `APP_FILTER` in `AppModule`.
  */
@@ -58,8 +63,20 @@ export class PrismaExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    if (exception.code === 'P2025') {
+      this.logger.warn('P2025 record-not-found → 404');
+      const ctx = host.switchToHttp();
+      const res = ctx.getResponse<Response>();
+      const body = new NotFoundException({
+        code: 'NOT_FOUND',
+        message: 'Resource not found',
+      }).getResponse();
+      res.status(404).json(body);
+      return;
+    }
+
     // Codes we haven't deliberately mapped: re-throw so the framework's default
-    // handler responds (500). Do NOT invent a status for P2025 et al.
+    // handler responds (500). Do NOT invent a status for codes we haven't mapped.
     throw exception;
   }
 }

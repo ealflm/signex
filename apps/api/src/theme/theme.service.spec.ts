@@ -12,7 +12,11 @@ jest.mock('@signex/shared', () => ({
   },
 }));
 
-import { ConflictException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Prisma } from '@signex/db';
 import { ThemeService } from './theme.service';
@@ -34,6 +38,9 @@ function makeTx() {
   return {
     theme: {
       findUniqueOrThrow: jest.fn(),
+      findUnique: jest.fn(),
+      // guardAndBump's conditional atomic bump: 1 row by default (revision matched).
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       update: jest.fn().mockResolvedValue({ id: THEME_ID }),
     },
     asset: {
@@ -65,28 +72,37 @@ describe('ThemeService.guardAndBump', () => {
     service = moduleRef.get(ThemeService);
   });
 
-  it('bumps draftRevision and returns the new revision on match', async () => {
+  it('bumps draftRevision via a conditional atomic updateMany and returns the new revision', async () => {
     const tx = makeTx();
-    tx.theme.findUniqueOrThrow.mockResolvedValue({ draftRevision: 5 });
+    tx.theme.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await service.guardAndBump(tx as any, THEME_ID, 5);
 
     expect(result).toBe(6);
-    expect(tx.theme.update).toHaveBeenCalledWith({
-      where: { id: THEME_ID },
-      data: { draftRevision: 6 },
+    expect(tx.theme.updateMany).toHaveBeenCalledWith({
+      where: { id: THEME_ID, draftRevision: 5 },
+      data: { draftRevision: { increment: 1 } },
     });
   });
 
-  it('throws ConflictException(STALE_DRAFT) when revision mismatches', async () => {
+  it('throws ConflictException(STALE_DRAFT) when the conditional bump matches 0 rows but the theme exists', async () => {
     const tx = makeTx();
-    tx.theme.findUniqueOrThrow.mockResolvedValue({ draftRevision: 7 });
+    tx.theme.updateMany.mockResolvedValue({ count: 0 });
+    tx.theme.findUnique.mockResolvedValue({ id: THEME_ID }); // theme still present → 409, not 404
 
     await expect(
       service.guardAndBump(tx as any, THEME_ID, 5),
     ).rejects.toThrow(ConflictException);
+  });
 
-    expect(tx.theme.update).not.toHaveBeenCalled();
+  it('throws NotFoundException when the conditional bump matches 0 rows and the theme is gone', async () => {
+    const tx = makeTx();
+    tx.theme.updateMany.mockResolvedValue({ count: 0 });
+    tx.theme.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.guardAndBump(tx as any, THEME_ID, 5),
+    ).rejects.toThrow(NotFoundException);
   });
 });
 
@@ -283,10 +299,11 @@ describe('ThemeService.saveDraft', () => {
 
   beforeEach(async () => {
     tx = makeTx();
-    // Default: guardAndBump check first, then snapshot fetch
-    tx.theme.findUniqueOrThrow
-      .mockResolvedValueOnce({ draftRevision: 5 })      // guardAndBump
-      .mockResolvedValueOnce({ draftSnapshot: { ...BASE_SNAPSHOT } }); // snapshot
+    // guardAndBump now bumps via updateMany (count:1 by default in makeTx); the only
+    // findUniqueOrThrow left in applyDraftMutation is the snapshot fetch.
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: { ...BASE_SNAPSHOT },
+    });
 
     prisma = {
       client: {
@@ -313,8 +330,9 @@ describe('ThemeService.saveDraft', () => {
     });
 
     expect(result).toEqual({ draftRevision: 6 });
-    // guardAndBump update + final snapshot update = 2 calls total
-    expect(tx.theme.update).toHaveBeenCalledTimes(2);
+    // guardAndBump bumps via updateMany (1×); the only theme.update is the final snapshot persist.
+    expect(tx.theme.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.theme.update).toHaveBeenCalledTimes(1);
     expect(audit.record).toHaveBeenCalledWith(
       tx,
       expect.objectContaining({
@@ -327,9 +345,9 @@ describe('ThemeService.saveDraft', () => {
   });
 
   it('throws ConflictException(STALE_DRAFT) on stale expectedDraftRevision', async () => {
-    // Override: guardAndBump sees revision 7, caller expected 5
-    tx.theme.findUniqueOrThrow.mockReset();
-    tx.theme.findUniqueOrThrow.mockResolvedValue({ draftRevision: 7 });
+    // Override: the conditional bump matches 0 rows (revision moved on) but the theme exists.
+    tx.theme.updateMany.mockResolvedValue({ count: 0 });
+    tx.theme.findUnique.mockResolvedValue({ id: THEME_ID });
 
     await expect(
       service.saveDraft(ACTOR, THEME_ID, {
@@ -353,7 +371,7 @@ describe('ThemeService.saveDraft', () => {
     ).rejects.toThrow(UnprocessableEntityException);
 
     // Final snapshot update must NOT have been called (aborted mid-tx)
-    // (guardAndBump update ran but rolls back in a real DB tx)
+    // (guardAndBump's updateMany bump ran but rolls back in a real DB tx)
     const finalUpdateCalls = tx.theme.update.mock.calls.filter(
       ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
     );
@@ -374,16 +392,14 @@ describe('ThemeService.saveDraft', () => {
     // Snapshot has an old orphan asset; after reconcile it should be replaced
     // by only what asset.findMany returns
     tx.theme.findUniqueOrThrow.mockReset();
-    tx.theme.findUniqueOrThrow
-      .mockResolvedValueOnce({ draftRevision: 5 })
-      .mockResolvedValueOnce({
-        draftSnapshot: {
-          ...BASE_SNAPSHOT,
-          assets: {
-            'orphan-id': { assetId: 'orphan-id', r2Key: 'orphan.jpg', mime: 'image/jpeg', variants: [] },
-          },
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: {
+        ...BASE_SNAPSHOT,
+        assets: {
+          'orphan-id': { assetId: 'orphan-id', r2Key: 'orphan.jpg', mime: 'image/jpeg', variants: [] },
         },
-      });
+      },
+    });
 
     tx.asset.findMany.mockResolvedValue([
       { id: 'new-asset', r2Key: 'new.jpg', mime: 'image/jpeg', width: 800, height: 600, poster: null },
