@@ -47,6 +47,7 @@ model User {
   releasesPublished Release[]  @relation("ReleasePublishedBy")
   assetsUploaded    Asset[]
   auditLogs         AuditLog[]
+  themesCreated     Theme[]    @relation("ThemeCreatedBy")
 }
 
 model Session {
@@ -112,27 +113,10 @@ model Asset {
   createdAt    DateTime    @default(now())
   deletedAt    DateTime? // soft-delete; service-layer enforces "no delete while referenced"
 
-  categoriesImage Category[]        @relation("CategoryImage")
-  productsImage   Product[]         @relation("ProductImage")
-  refs            AssetRef[] // working-state usage (derived cache, rebuilt at publish)
-  releaseRefs     ReleaseAssetRef[] // indexed release<->asset (delete/GC safety)
+  releaseRefs ReleaseAssetRef[] // indexed release<->asset (delete/GC safety)
 
   @@index([status, kind])
   @@index([deletedAt])
-}
-
-// Working-state usage tracking; DERIVED from working state, rebuilt on every publish.
-model AssetRef {
-  id        String @id @default(cuid())
-  assetId   String
-  asset     Asset  @relation(fields: [assetId], references: [id])
-  ownerType String // "product"|"category"|"contentBlock"|"settings"
-  ownerId   String
-  field     String // json path e.g. "hero.image" | "gallery[2]"
-  alt       Json? // per-use LocalizedText (canonical alt source)
-
-  @@unique([ownerType, ownerId, field])
-  @@index([assetId])
 }
 
 // Indexed "which retained release references this asset" — makes delete/GC an O(1) set query.
@@ -146,66 +130,15 @@ model ReleaseAssetRef {
   @@index([assetId])
 }
 
-// ===== CATALOG (relational working state) =====
-model Category {
-  id            String    @id @default(cuid())
-  slug          String    @unique // URL key (generateStaticParams)
-  sortOrder     Int // LOAD-BEARING (index->image, sitemap)
-  title         Json // LocalizedText
-  tag           Json // LocalizedText "PVC · Silicone"
-  intro         Json // LocalizedText (category page desc + meta + JSON-LD)
-  productCount  Int // locale-invariant stat (18/24/15/12)
-  materialCount Int // (4/6/5/3)
-  imageId       String?
-  image         Asset?    @relation("CategoryImage", fields: [imageId], references: [id], onDelete: Restrict)
-  imageAlt      Json? // per-use alt (not on Asset)
-  products      Product[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
-
-  @@index([sortOrder])
-}
-
-model Product {
-  id         String    @id @default(cuid())
-  categoryId String
-  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  slug       String // unique WITHIN category
-  sortOrder  Int
-  title      Json // LocalizedText
-  tag        Json // LocalizedText
-  desc       Json // LocalizedText
-  imageId    String?
-  image      Asset?    @relation("ProductImage", fields: [imageId], references: [id], onDelete: Restrict)
-  imageAlt   Json?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
-
-  @@unique([categoryId, slug])
-  @@index([categoryId, sortOrder])
-}
-
-// ===== JSON CONTENT BLOCKS =====
+// ===== BLOCK KINDS (registry classification; mirrors @signex/shared BlockKind) =====
+// The relational ContentBlock table is gone (content now lives as JSON in Theme.draftSnapshot),
+// but this enum is retained so @signex/db continues to export `BlockKind` for the shared
+// (kind,key) registry parity assert until the importer/content code is fully on the themes model.
 enum BlockKind {
   PAGE
   SETTINGS
   NAV
   SEO
-}
-
-model ContentBlock {
-  id        String    @id @default(cuid())
-  kind      BlockKind
-  key       String // "home.hero" | "businessContact" | "nav.primary" | "seo.home"
-  data      Json // zod-validated by registry[(kind,key)]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@unique([kind, key])
-  @@index([kind])
-  @@index([key])
 }
 
 // ===== FORM SUBMISSIONS (operational-only; NOT in snapshots) =====
@@ -233,7 +166,8 @@ model FormSubmission {
 enum ReleaseStatus {
   PUBLISHED
   ARCHIVED
-} // DRAFT removed (locked #4: working tables ARE the draft)
+}
+// DRAFT removed (locked #4: working tables ARE the draft)
 
 model Release {
   id                    String        @id @default(cuid())
@@ -246,6 +180,8 @@ model Release {
   schemaVersion         Int // stamped; web gates/migrates on this
   fromRevision          Int // WorkingState.revision at serialize time
   rolledBackFromVersion Int?
+  themeId               String? // provenance: which theme this release was published from
+  theme                 Theme?        @relation(fields: [themeId], references: [id], onDelete: SetNull)
   createdById           String
   createdBy             User          @relation("ReleaseCreatedBy", fields: [createdById], references: [id])
   publishedById         String?
@@ -258,6 +194,7 @@ model Release {
 
   @@index([status])
   @@index([version])
+  @@index([themeId])
 }
 
 // Singleton: which release is LIVE. Repoint = one-row update (atomic, cheap).
@@ -270,11 +207,22 @@ model PublishedPointer {
   publishedById    String
 }
 
-// Singleton: the global optimistic lock + dirty tracking.
-model WorkingState {
-  id                    String   @id @default("singleton")
-  revision              Int      @default(0) // bumped on every committed working-state edit
-  lastPublishedRevision Int      @default(0) // dirty iff revision != lastPublishedRevision
-  updatedAt             DateTime @updatedAt
-  updatedById           String?
+// ===== THEMES (JSON-per-theme content model) =====
+// A theme = a named full ReleaseSnapshot. The editor mutates draftSnapshot in place; publish freezes
+// it into a Release. draftRevision is the per-theme optimistic lock (replaces the old WorkingState).
+model Theme {
+  id                    String    @id @default(cuid())
+  name                  String    @unique
+  draftSnapshot         Json // full ReleaseSnapshot (ReleaseSnapshotSchema) — the editable content
+  liveSnapshot          Json? // snapshot frozen at THIS theme's last publish; null if never published
+  draftRevision         Int       @default(0) // per-theme optimistic lock (bumped per save-draft)
+  lastPublishedRevision Int       @default(0) // draftRevision at last publish; dirty iff != draftRevision
+  lastPublishedChecksum String? // sha256(liveSnapshot) — gated-no-op + dirty signal
+  createdById           String
+  createdBy             User      @relation("ThemeCreatedBy", fields: [createdById], references: [id])
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  releases              Release[]
+
+  @@index([updatedAt])
 }
