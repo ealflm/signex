@@ -211,16 +211,6 @@ export function CreateProductForm({
           />
         </Field>
 
-        <Field label="Sort order" htmlFor="prod-create-sort">
-          <Input
-            id="prod-create-sort"
-            type="number"
-            name="sortOrder"
-            defaultValue={0}
-            className="w-20 font-mono tabular-nums text-sm"
-          />
-        </Field>
-
         <LocalizedPair base="title" label="Title" />
         <LocalizedPair base="tag" label="Tag" />
         <LocalizedPair base="desc" label="Description" multiline />
@@ -288,14 +278,6 @@ export function EditProductForm({
           </select>
         </div>
 
-        <Input
-          type="number"
-          name="sortOrder"
-          defaultValue={product.sortOrder}
-          aria-label="Sort order"
-          className="w-16 font-mono tabular-nums text-sm"
-        />
-
         <AssetSelect assets={assets} defaultValue={product.imageId} id={`prod-edit-image-${product.id}`} />
 
         <Button
@@ -316,9 +298,11 @@ export function EditProductForm({
 
 export function DeleteProductForm({
   productId,
+  categoryId,
   slug,
 }: {
   productId: string;
+  categoryId: string;
   slug: string;
 }) {
   const [state, formAction, pending] = useActionState(
@@ -344,6 +328,7 @@ export function DeleteProductForm({
         }}
       >
         <input type="hidden" name="id" value={productId} />
+        <input type="hidden" name="categoryId" value={categoryId} />
         <Button
           type="submit"
           variant="ghost"

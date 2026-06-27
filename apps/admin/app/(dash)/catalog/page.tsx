@@ -1,5 +1,7 @@
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
+import { getActiveThemeId } from "@/app/lib/themes";
+import type { ReleaseSnapshot, FrozenCategory } from "@signex/shared";
 import { PageHeader } from "@/components/admin/page-header";
 import { SectionCard } from "@/components/admin/section-card";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -23,7 +25,7 @@ import {
   DeleteProductForm,
 } from "./product-forms";
 
-// ── API response shapes ───────────────────────────────────────────────────────
+// ── Local row shapes (built from the theme draft snapshot) ────────────────────
 
 interface Loc {
   en: string;
@@ -53,11 +55,9 @@ interface ProductRow {
   imageId: string | null;
 }
 
-interface AssetRow {
+interface AssetOption {
   id: string;
-  status: string;
   originalName: string;
-  r2Key: string;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -66,29 +66,78 @@ export default async function CatalogPage() {
   // Hard role gate — redirects to / if under-ranked
   await requireRole("EDITOR");
 
-  const [catsRes, prodsRes, assetsRes] = await Promise.all([
-    apiServer<CategoryRow[]>("/api/catalog/categories"),
-    apiServer<ProductRow[]>("/api/catalog/products"),
-    apiServer<AssetRow[]>("/api/assets"),
+  // Catalog data is read from the active theme's draft snapshot.
+  // There are no standalone catalog GET routes in this API version.
+  const themeId = await getActiveThemeId();
+  if (!themeId) {
+    return (
+      <section className="flex flex-col gap-8">
+        <PageHeader
+          title="Catalog"
+          subtitle="Manage categories and products. Changes are unpublished until you publish a release."
+        />
+        <EmptyState
+          icon={Layers}
+          title="No active theme selected."
+          description="Pick an active theme in the header to manage its catalog."
+        />
+      </section>
+    );
+  }
+
+  const [themeRes, assetsRes] = await Promise.all([
+    apiServer<{ draftSnapshot: ReleaseSnapshot }>(`/api/themes/${themeId}`),
+    apiServer<{ id: string; status: string; originalName: string }[]>(
+      "/api/assets",
+    ),
   ]);
 
-  const categories = catsRes.ok ? catsRes.data : [];
-  const products = prodsRes.ok ? prodsRes.data : [];
+  // Build rows from the snapshot catalog
+  const cats = (
+    themeRes.ok ? themeRes.data.draftSnapshot.catalog.categories : []
+  ) as FrozenCategory[];
+
+  const categories: CategoryRow[] = cats.map((c) => ({
+    id: c.id ?? "",
+    slug: c.slug,
+    sortOrder: c.sortOrder,
+    title: c.title,
+    tag: c.tag,
+    intro: c.intro,
+    productCount: c.productCount,
+    materialCount: c.materialCount,
+    imageId: c.image?.assetId ?? null,
+  }));
+
+  // Products flattened from all categories, carrying their parent categoryId
+  const products: ProductRow[] = cats.flatMap((c) =>
+    c.items.map((p) => ({
+      id: p.id ?? "",
+      categoryId: c.id ?? "",
+      slug: p.slug,
+      sortOrder: p.sortOrder,
+      title: p.title,
+      tag: p.tag,
+      desc: p.desc,
+      imageId: p.image?.assetId ?? null,
+    })),
+  );
+
   // Asset picker only shows READY assets (status guard)
   const assets = assetsRes.ok
     ? assetsRes.data.filter((a) => a.status === "READY")
     : [];
 
-  const apiError = !catsRes.ok || !prodsRes.ok;
-
-  // Slim asset shape for form components (no r2Key needed on the client)
-  const assetOptions = assets.map(({ id, originalName }) => ({
+  // Slim asset shape for form components
+  const assetOptions: AssetOption[] = assets.map(({ id, originalName }) => ({
     id,
     originalName,
   }));
 
   // Slim category shape for product form category select
   const categoryOptions = categories.map(({ id, slug }) => ({ id, slug }));
+
+  const apiError = !themeRes.ok;
 
   return (
     <section className="flex flex-col gap-8">
@@ -300,6 +349,7 @@ export default async function CatalogPage() {
                       <TableCell className="px-4 py-3">
                         <DeleteProductForm
                           productId={p.id}
+                          categoryId={p.categoryId}
                           slug={p.slug}
                         />
                       </TableCell>
