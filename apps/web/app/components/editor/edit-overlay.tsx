@@ -96,6 +96,12 @@ export function EditOverlay() {
       [data-edit-kind="text"][contenteditable="true"] {
         outline: 2px solid #4956e3; outline-offset: 2px; background: rgba(73,86,227,.06);
       }
+      /* A media hotspot hovering OVER a text leaf defers to the text: text cursor, no media chrome,
+         so text painted on top of an image (e.g. the hero title) is clearly the edit target. */
+      .sx-edit-hotspot.sx-on-text { cursor: text; border-color: transparent !important; background: transparent !important; }
+      .sx-edit-hotspot.sx-on-text .sx-edit-badge { opacity: 0 !important; }
+      /* Text hovered THROUGH a media hotspot (the element's own :hover can't fire) gets the outline. */
+      [data-edit-kind="text"].sx-text-hover { outline: 2px solid #4956e3; outline-offset: 2px; }
       .sx-flash { animation: sx-flash .9s ease; }
       @keyframes sx-flash {
         0%,100% { outline-color: transparent; }
@@ -369,22 +375,49 @@ export function EditOverlay() {
       badge.textContent = `Edit ${mediaKind} · ${field}`;
       hot.appendChild(badge);
 
+      // The hotspot sits above ALL page content, so a full-bleed media (e.g. the hero image, which
+      // sits UNDER the headline + nav) can cover real controls AND in-place text leaves. We use
+      // elementsFromPoint — which returns the FULL stack, seeing THROUGH the (pointer-transparent)
+      // hotspot layer — to find what's really underneath, and PRIORITISE a text leaf over the image.
+      const contentUnder = (x: number, y: number) => {
+        const stack = document.elementsFromPoint(x, y) as HTMLElement[];
+        const content = stack.filter((n) => !n.closest(".sx-edit-layer"));
+        return {
+          topmost: content[0] ?? null,
+          text: (content
+            .map((n) => n.closest('[data-edit-kind="text"]'))
+            .find(Boolean) ?? null) as HTMLElement | null,
+        };
+      };
+
+      // Hover: when the cursor (over this media hotspot) is also over a text leaf, defer to the text —
+      // surface the text outline + text cursor and hide the media badge, so the user sees text wins.
+      let hoverText: HTMLElement | null = null;
+      const setHoverText = (t: HTMLElement | null) => {
+        if (t === hoverText) return;
+        hoverText?.classList.remove("sx-text-hover");
+        hoverText = t;
+        if (t) {
+          t.classList.add("sx-text-hover");
+          hot.classList.add("sx-on-text");
+        } else {
+          hot.classList.remove("sx-on-text");
+        }
+      };
+      const onMove = (e: MouseEvent) =>
+        setHoverText(contentUnder(e.clientX, e.clientY).text);
+      const onLeave = () => setHoverText(null);
+
       const onClick = (e: MouseEvent) => {
-        // The hotspot sits above ALL page content, so a full-bleed media (e.g. the hero image, which
-        // sits UNDER the headline + nav) can cover real controls AND in-place text leaves. Before
-        // claiming the click for media editing, peek at what's underneath: temporarily hide the whole
-        // hotspot layer, hit-test the page, restore.
-        layer.style.display = "none";
-        const under = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-        layer.style.display = "";
+        const { topmost, text } = contentUnder(e.clientX, e.clientY);
 
         // 1) A TEXT leaf painted over the media (e.g. the hero title over the hero image) → edit the
-        //    text in place, not the image.
-        const underText = under?.closest?.('[data-edit-kind="text"]') as HTMLElement | null;
-        if (underText) {
+        //    text in place, not the image. Text is prioritised whenever it's anywhere in the stack.
+        if (text) {
           e.preventDefault();
           e.stopPropagation();
-          beginEdit(underText, e.clientX, e.clientY);
+          setHoverText(null);
+          beginEdit(text, e.clientX, e.clientY);
           return;
         }
 
@@ -392,7 +425,7 @@ export function EditOverlay() {
         //    navigate (the document interceptor rewrites internal links to /preview). Deliberately
         //    NOT buttons/inputs: the hero quote-form submit sits under the hero hotspot, and
         //    re-dispatching to it would POST a junk lead — clicking there edits the image.
-        const control = under?.closest?.("a[href]") as HTMLElement | null;
+        const control = topmost?.closest?.("a[href]") as HTMLElement | null;
         if (control && control !== el && !el.contains(control) && !control.contains(el)) {
           control.dispatchEvent(
             new MouseEvent("click", {
@@ -412,6 +445,8 @@ export function EditOverlay() {
         window.parent.postMessage({ source: SOURCE, type: "edit", field, mediaKind }, "*");
       };
       hot.addEventListener("click", onClick);
+      hot.addEventListener("mousemove", onMove);
+      hot.addEventListener("mouseleave", onLeave);
       layer.appendChild(hot);
 
       entries.push({ el, hot, onScreen: true });
