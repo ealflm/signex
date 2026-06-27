@@ -2,6 +2,7 @@ import { requireSession } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
 import { atLeast } from "@signex/shared";
 import { Rocket } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { SectionCard } from "@/components/admin/section-card";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -14,7 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PublishForm } from "./publish-form";
 import { RollbackForm } from "./rollback-form";
 
 interface ReleaseRow {
@@ -37,40 +37,26 @@ interface LiveStatus {
   publishedAt: string;
 }
 
-/** Returned by GET /api/releases/diff */
-interface DiffStatus {
-  dirty: boolean;
-  revision: number;
-  lastPublishedRevision: number;
-}
-
 export default async function ReleasesPage() {
   const user = await requireSession();
   const canPublish = atLeast(user.role, "PUBLISHER");
 
-  // Fetch all three in parallel — no-store inherited from apiServer
-  const [listRes, liveRes, diffRes] = await Promise.all([
+  // Fetch history + live status in parallel
+  const [listRes, liveRes] = await Promise.all([
     apiServer<ReleaseList>("/api/releases"),
     apiServer<LiveStatus>("/api/releases/live"),
-    apiServer<DiffStatus>("/api/releases/diff"),
   ]);
 
   const releases = listRes.ok ? listRes.data : [];
   const live = liveRes.ok ? liveRes.data : null;
-  const diff = diffRes.ok ? diffRes.data : null;
 
-  // dirty flag from /api/releases/diff (source of truth matching the dashboard)
-  const dirty = diff?.dirty ?? false;
-  // expectedRevision for the optimistic-lock: MUST be the current working revision
-  const currentRevision = diff?.revision ?? 0;
-
-  const apiError = !listRes.ok || !diffRes.ok;
+  const apiError = !listRes.ok;
 
   return (
     <section className="flex flex-col gap-6">
       <PageHeader
         title="Releases"
-        subtitle="Publish working-state changes and manage release history."
+        subtitle="Release history and rollback. Publishing is now per-theme on the Themes page."
       />
 
       {/* API error banner */}
@@ -83,7 +69,7 @@ export default async function ReleasesPage() {
         </p>
       )}
 
-      {/* Status + Publish card */}
+      {/* Live version status card */}
       <SectionCard>
         <dl className="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-3 text-sm">
           <dt className="text-muted-foreground">Live version</dt>
@@ -91,46 +77,21 @@ export default async function ReleasesPage() {
             {live?.version != null ? live.version : <span className="text-muted-foreground">—</span>}
           </dd>
 
-          <dt className="text-muted-foreground">Working revision</dt>
-          <dd className="text-right font-mono tabular-nums font-medium text-foreground">
-            {diff?.revision ?? <span className="text-muted-foreground">—</span>}
-          </dd>
-
-          <dt className="text-muted-foreground">Last published revision</dt>
-          <dd className="text-right font-mono tabular-nums font-medium text-foreground">
-            {diff?.lastPublishedRevision ?? <span className="text-muted-foreground">—</span>}
-          </dd>
-
-          <dt className="text-muted-foreground">Status</dt>
-          <dd className="text-right">
-            {dirty ? (
-              <StatusBadge tone="warning">
-                <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                Unpublished changes
-              </StatusBadge>
-            ) : (
-              <StatusBadge tone="success">
-                <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                Up to date
-              </StatusBadge>
-            )}
+          <dt className="text-muted-foreground">Published at</dt>
+          <dd className="text-right font-mono tabular-nums text-xs text-muted-foreground">
+            {live?.publishedAt
+              ? new Date(live.publishedAt).toLocaleString()
+              : <span className="text-muted-foreground">—</span>}
           </dd>
         </dl>
 
-        {/* Publish form — affordance: only shown to Publisher+ */}
-        {canPublish ? (
-          <>
-            <hr className="my-4 border-border" />
-            <PublishForm
-              expectedRevision={currentRevision}
-              dirty={dirty}
-            />
-          </>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Publishing requires the <strong className="text-foreground">Publisher</strong> role.
-          </p>
-        )}
+        <p className="mt-4 text-sm text-muted-foreground">
+          To publish a new release, go to the{" "}
+          <Link href="/themes" className="font-medium text-foreground underline underline-offset-2 hover:text-primary">
+            Themes page
+          </Link>
+          {" "}and publish from there.
+        </p>
       </SectionCard>
 
       {/* Release history table */}
@@ -139,7 +100,7 @@ export default async function ReleasesPage() {
           <EmptyState
             icon={Rocket}
             title="No releases yet."
-            description="Publish the working state to create the first release."
+            description="Publish a theme to create the first release."
           />
         ) : (
           <div className="overflow-x-auto">

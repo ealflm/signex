@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 import { rollbackAction, type ActionState } from "./actions";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 
 interface RollbackFormProps {
   toVersion: number;
@@ -49,18 +48,6 @@ export function RollbackForm({ toVersion }: RollbackFormProps) {
         className="flex items-center gap-2"
       >
         <input type="hidden" name="toVersion" value={toVersion} />
-        <Label
-          htmlFor={`restore-draft-${toVersion}`}
-          className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground font-normal"
-        >
-          <input
-            id={`restore-draft-${toVersion}`}
-            type="checkbox"
-            name="restoreWorkingState"
-            className="h-3.5 w-3.5 rounded border-input accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          restore draft
-        </Label>
         <Button
           type="submit"
           variant="outline"
