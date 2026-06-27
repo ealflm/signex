@@ -609,6 +609,30 @@ export function EditOverlay() {
         return;
       }
 
+      // scrollToBlock (navigator→canvas): the admin clicked a section in the left navigator. Scroll
+      // that block's region into view and flash ALL its zones so the user sees what they're editing.
+      // Settings-only blocks (meta/businessContact/formConfig) have no stamped zones → no-op here.
+      if (data.type === "scrollToBlock" && typeof data.blockKey === "string") {
+        const els = [
+          ...document.querySelectorAll<HTMLElement>(
+            `[data-edit-field^="${CSS.escape(data.blockKey)}."]`,
+          ),
+        ];
+        if (els.length) {
+          els[0].scrollIntoView({
+            block: "center",
+            behavior: window.__lenis ? "auto" : "smooth",
+          });
+          for (const el of els) {
+            el.classList.remove("sx-flash");
+            void el.offsetWidth; // reflow → restart the keyframe
+            el.classList.add("sx-flash");
+            window.setTimeout(() => el.classList.remove("sx-flash"), 900);
+          }
+        }
+        return;
+      }
+
       // applyEdits: live DOM swap for image/video AND re-apply of pending inline TEXT — no reload.
       // edits: Array<{ field, kind:"image"|"video"|"text", url?, posterUrl?, mp4Url?, webmUrl?, text? }>
       if (data.type === "applyEdits" && Array.isArray(data.edits)) {
