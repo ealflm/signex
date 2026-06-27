@@ -144,7 +144,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
             <div className="footer_mid-tile footer-signex_utility">
               <div className="footer-signex_badges">
                 <span className="text-size-small tone-medium">
-                  {t.shipLabel}
+                  <span {...editText(editable, "footer.shipLabel", { maxLength: 80 })}>{t.shipLabel}</span>
                 </span>
                 <span className="footer-signex_badge is-lalamove">
                   Lalamove
@@ -155,7 +155,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
               </div>
               <div className="footer-signex_badges">
                 <span className="text-size-small tone-medium">
-                  {t.payLabel}
+                  <span {...editText(editable, "footer.payLabel", { maxLength: 80 })}>{t.payLabel}</span>
                 </span>
                 {t.payments.map((p) => (
                   <span className={`footer-signex_badge footer-signex_pay ${PAY_TONE[p] ?? "is-blue"}`} key={p}>

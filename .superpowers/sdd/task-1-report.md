@@ -1,4 +1,54 @@
-# Task 1 Report: Add Vitest to @signex/shared
+# Task 1 Report: Optional `id` on Catalog Nodes (themes-model)
+
+## Status: DONE
+
+## What Changed
+
+### `packages/shared/src/content/catalog.ts`
+- Added `id: Id.optional()` to `FrozenProduct` schema
+- Added `id: Id.optional()` to `FrozenCategory` schema
+- `Id` was already imported from `./primitives` — no new import needed
+- `schemaVersion` was NOT bumped
+
+### `packages/shared/src/content/catalog.test.ts` (new file)
+- Created with Vitest `describe/it/expect` style matching existing test conventions
+- Used same `CUID = "clr1abcd0000xyz1234567890"` constant as other test files
+- 6 cases: FrozenProduct (with id, without id, bad id) + FrozenCategory (with id, without id, bad id)
+
+## TDD Evidence
+
+### RED (before implementation)
+```
+Test Files  1 failed | 6 passed (7)
+      Tests  2 failed | 121 passed (123)
+```
+Failures: "rejects a non-cuid id on product" and "rejects a non-cuid id on category" — Zod was stripping unknown `id` field and returning success, so the "bad id" tests correctly failed before the field was declared.
+
+### GREEN (after adding `id: Id.optional()`)
+```
+Test Files  7 passed (7)
+      Tests  123 passed (123)
+```
+
+## Build
+`npm run build -w @signex/shared` — clean, no errors. dist/ is gitignored per project convention.
+
+## Commit
+- SHA: `3835511`
+- Subject: `feat(shared): optional id on FrozenCategory/FrozenProduct`
+- Branch: `feat/themes-model`
+- Files: `packages/shared/src/content/catalog.ts`, `packages/shared/src/content/catalog.test.ts`
+
+## Concerns
+None.
+
+---
+
+# Original Task 1 Report: Add Vitest to @signex/shared
+
+**Status:** DONE (historical)
+
+
 
 **Status:** DONE
 

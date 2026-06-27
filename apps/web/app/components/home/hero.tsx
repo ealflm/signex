@@ -36,6 +36,7 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                 </div>
                 <HeroQuoteForm
                   dict={dict.form}
+                  editable={editable}
                   data-w-id="e727a2b9-869a-7dcf-ee76-b8e98292f02d"
                   style={REVEAL_STYLE}
                 />

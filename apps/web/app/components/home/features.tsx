@@ -78,10 +78,10 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 <a className="content_image-features is-horizontal w-inline-block" href="#quote-form">
                   <div className="features_text-tile">
                     <div className="text_body-bold">
-                      {t.featured.title}
+                      <span {...editText(editable, "features.featured.title", { maxLength: 80 })}>{t.featured.title}</span>
                     </div>
                     <p className="text-size-small">
-                      {t.featured.desc}
+                      <span {...editText(editable, "features.featured.desc", { maxLength: 200 })}>{t.featured.desc}</span>
                     </p>
                   </div>
                   <div className="icon_arrow-right w-embed">
@@ -108,10 +108,10 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 </div>
                 <div className="wrap_text-service-card">
                   <div className="text-size-large text_body-bold">
-                    {t.cards[0].title}
+                    <span {...editText(editable, "features.cards.0.title", { maxLength: 80 })}>{t.cards[0].title}</span>
                   </div>
                   <p className="tone-medium margin-0">
-                    {t.cards[0].desc}
+                    <span {...editText(editable, "features.cards.0.desc", { maxLength: 200 })}>{t.cards[0].desc}</span>
                   </p>
                 </div>
               </div>
@@ -137,10 +137,10 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 </div>
                 <div className="wrap_text-service-card">
                   <div className="text-size-large text_body-bold">
-                    {t.cards[1].title}
+                    <span {...editText(editable, "features.cards.1.title", { maxLength: 80 })}>{t.cards[1].title}</span>
                   </div>
                   <p className="tone-medium margin-0">
-                    {t.cards[1].desc}
+                    <span {...editText(editable, "features.cards.1.desc", { maxLength: 200 })}>{t.cards[1].desc}</span>
                   </p>
                 </div>
               </div>
@@ -158,10 +158,10 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 </div>
                 <div className="wrap_text-service-card">
                   <div className="text-size-large text_body-bold">
-                    {t.cards[2].title}
+                    <span {...editText(editable, "features.cards.2.title", { maxLength: 80 })}>{t.cards[2].title}</span>
                   </div>
                   <p className="tone-medium margin-0">
-                    {t.cards[2].desc}
+                    <span {...editText(editable, "features.cards.2.desc", { maxLength: 200 })}>{t.cards[2].desc}</span>
                   </p>
                 </div>
               </div>
@@ -224,10 +224,10 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 </div>
                 <div className="content_image-features">
                   <div className="text_body-bold">
-                    {t.videoTitle}
+                    <span {...editText(editable, "features.video.title", { maxLength: 80 })}>{t.videoTitle}</span>
                   </div>
                   <p className="text-size-small">
-                    {t.videoText}
+                    <span {...editText(editable, "features.video.text", { maxLength: 200 })}>{t.videoText}</span>
                   </p>
                 </div>
               </div>

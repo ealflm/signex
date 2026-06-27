@@ -83,7 +83,7 @@ export function ProductCategories({ dict, editable = false }: { dict: Dictionary
                               {cat.products}
                             </div>
                             <div>
-                              {t.statLabels.products}
+                              <span {...editText(editable, "productsHeader.statLabels.products", { maxLength: 80 })}>{t.statLabels.products}</span>
                             </div>
                           </div>
                         </div>
@@ -100,7 +100,7 @@ export function ProductCategories({ dict, editable = false }: { dict: Dictionary
                               {cat.materials}
                             </div>
                             <div>
-                              {t.statLabels.materials}
+                              <span {...editText(editable, "productsHeader.statLabels.materials", { maxLength: 80 })}>{t.statLabels.materials}</span>
                             </div>
                           </div>
                         </div>

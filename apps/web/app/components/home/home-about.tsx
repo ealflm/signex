@@ -66,7 +66,7 @@ export function HomeAbout({
           <div className="about-mvv_grid" data-w-id={gridWid} style={{ opacity: 0, filter: 'blur(5px)' }}>
             <div className="about-mvv_mission">
               <h3 className="about-mvv_title">
-                {t.mission.title}
+                <span {...editText(editable, "about.mission.title", { maxLength: 80 })}>{t.mission.title}</span>
               </h3>
               <p className="tone-medium about-mvv_body">
                 {t.mission.body}
@@ -98,11 +98,11 @@ export function HomeAbout({
                     </svg>
                   </div>
                   <h3 className="about-mvv_card-title">
-                    {t.vision.title}
+                    <span {...editText(editable, "about.vision.title", { maxLength: 80 })}>{t.vision.title}</span>
                   </h3>
                 </div>
                 <p className="tone-medium about-mvv_body">
-                  {t.vision.body}
+                  <span {...editText(editable, "about.vision.body", { maxLength: 200 })}>{t.vision.body}</span>
                 </p>
               </div>
               <div className="about-mvv_card is-values">
@@ -114,11 +114,11 @@ export function HomeAbout({
                     </svg>
                   </div>
                   <h3 className="about-mvv_card-title">
-                    {t.values.title}
+                    <span {...editText(editable, "about.values.title", { maxLength: 80 })}>{t.values.title}</span>
                   </h3>
                 </div>
                 <p className="tone-medium about-mvv_body">
-                  {t.values.body}
+                  <span {...editText(editable, "about.values.body", { maxLength: 200 })}>{t.values.body}</span>
                 </p>
               </div>
             </div>
