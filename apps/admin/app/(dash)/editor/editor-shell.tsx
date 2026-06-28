@@ -734,10 +734,10 @@ export function EditorShell(props: EditorShellProps) {
           dash sidebar/topbar (fixed inset-0) for maximum canvas. */}
       <div
         className={cn(
-          "flex flex-col overflow-hidden bg-background",
+          "flex flex-col overflow-hidden border-0 bg-background",
           fullscreen
-            ? "fixed inset-0 z-50 h-[100dvh] rounded-none border-0"
-            : "h-[calc(100vh-7rem)] min-h-[560px] rounded-lg border border-border",
+            ? "fixed inset-0 z-50 h-[100dvh]"
+            : "h-full min-h-[480px]",
         )}
       >
         <Toolbar
