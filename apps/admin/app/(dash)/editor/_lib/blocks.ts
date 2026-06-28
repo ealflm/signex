@@ -59,7 +59,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
   {
     label: "Settings",
     items: [
-      { blockKey: "meta", label: "SEO + GA4" },
+      { blockKey: "meta", label: "SEO" },
       { blockKey: "businessContact", label: "Business contact" },
       { blockKey: "formConfig", label: "Form config" },
       { blockKey: "notFound", label: "404 page" },

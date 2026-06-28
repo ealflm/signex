@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   Users,
   Palette,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/themes", label: "Themes", icon: Palette, match: "/themes" },
   { href: "/catalog", label: "Catalog", icon: Package, match: "/catalog" },
   { href: "/media", label: "Media", icon: ImageIcon, match: "/media" },
+  { href: "/settings", label: "Settings", icon: Settings, match: "/settings" },
 ];
 
 const ADMIN_ITEM: NavItem = {
