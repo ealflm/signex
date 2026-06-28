@@ -776,9 +776,9 @@ export function EditorShell(props: EditorShellProps) {
             panelRef={leftPanelRef}
             collapsible
             collapsedSize={0}
-            defaultSize="13%"
-            minSize="10%"
-            maxSize="30%"
+            defaultSize="11%"
+            minSize="9%"
+            maxSize="18%"
             onResize={(s) => setLeftCollapsed(s.asPercentage < 1)}
             className="bg-card"
           >
@@ -792,7 +792,7 @@ export function EditorShell(props: EditorShellProps) {
           <ResizableHandle withHandle />
 
           {/* Center — device-framed preview iframe */}
-          <ResizablePanel defaultSize="74%" minSize="30%">
+          <ResizablePanel defaultSize="71%" minSize="30%">
             <div className="flex h-full justify-center overflow-auto bg-muted/30 p-2">
               <div
                 className="h-full w-full transition-[max-width] duration-200"
@@ -817,9 +817,9 @@ export function EditorShell(props: EditorShellProps) {
             panelRef={rightPanelRef}
             collapsible
             collapsedSize={0}
-            defaultSize="13%"
-            minSize="10%"
-            maxSize="30%"
+            defaultSize="18%"
+            minSize="13%"
+            maxSize="28%"
             onResize={(s) => setRightCollapsed(s.asPercentage < 1)}
             className="bg-card"
           >
