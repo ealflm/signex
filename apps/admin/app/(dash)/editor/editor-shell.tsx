@@ -34,6 +34,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import type { PanelImperativeHandle } from "react-resizable-panels";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -178,6 +179,19 @@ export function EditorShell(props: EditorShellProps) {
   const [fullscreen, setFullscreen] = useState(false);
   // Bumped on every section select → ContextPanel scrolls to top + flashes (right-zone half of #2).
   const [panelFlash, setPanelFlash] = useState(0);
+  // Collapse/expand the side panels (sections nav + context panel) to give the canvas more room.
+  const leftPanelRef = useRef<PanelImperativeHandle>(null);
+  const rightPanelRef = useRef<PanelImperativeHandle>(null);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const toggleLeftPanel = useCallback(() => {
+    const r = leftPanelRef.current;
+    if (r) (r.isCollapsed() ? r.expand() : r.collapse());
+  }, []);
+  const toggleRightPanel = useCallback(() => {
+    const r = rightPanelRef.current;
+    if (r) (r.isCollapsed() ? r.expand() : r.collapse());
+  }, []);
 
   // base snapshot is the last server-known draft; pending layers on top for the panel + dirty dots.
   const baseRef = useRef<ReleaseSnapshot>(structuredClone(initialSnapshot));
@@ -741,6 +755,10 @@ export function EditorShell(props: EditorShellProps) {
           busy={busy}
           fullscreen={fullscreen}
           onToggleFullscreen={() => setFullscreen((v) => !v)}
+          leftCollapsed={leftCollapsed}
+          rightCollapsed={rightCollapsed}
+          onToggleLeft={toggleLeftPanel}
+          onToggleRight={toggleRightPanel}
           onReload={postRefresh}
           onDiscard={onDiscard}
           onSave={onSave}
@@ -750,7 +768,16 @@ export function EditorShell(props: EditorShellProps) {
         <ResizablePanelGroup orientation="horizontal" className="flex-1 overflow-hidden">
           {/* Left — sections navigator. NOTE: react-resizable-panels v4 treats a bare-number
               size as PIXELS — sizes MUST be percentage strings or the panels collapse. */}
-          <ResizablePanel defaultSize="18%" minSize="13%" maxSize="30%" className="bg-card">
+          <ResizablePanel
+            panelRef={leftPanelRef}
+            collapsible
+            collapsedSize={0}
+            defaultSize="18%"
+            minSize="13%"
+            maxSize="30%"
+            onResize={(s) => setLeftCollapsed(s.asPercentage < 1)}
+            className="bg-card"
+          >
             <SectionsNav
               selectedBlockKey={selection?.blockKey ?? null}
               dirtyKeys={dirtyKeys}
@@ -782,7 +809,16 @@ export function EditorShell(props: EditorShellProps) {
           <ResizableHandle withHandle />
 
           {/* Right — context panel */}
-          <ResizablePanel defaultSize="28%" minSize="20%" maxSize="42%" className="bg-card">
+          <ResizablePanel
+            panelRef={rightPanelRef}
+            collapsible
+            collapsedSize={0}
+            defaultSize="28%"
+            minSize="20%"
+            maxSize="42%"
+            onResize={(s) => setRightCollapsed(s.asPercentage < 1)}
+            className="bg-card"
+          >
             <ContextPanel
               blockKey={selection?.blockKey ?? null}
               blockData={selection ? workingBlockData(selection.blockKey) : {}}

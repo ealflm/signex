@@ -9,6 +9,10 @@ import {
   SmartphoneIcon,
   Maximize2Icon,
   Minimize2Icon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -40,6 +44,10 @@ export interface ToolbarProps {
   busy: boolean;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
+  leftCollapsed: boolean;
+  rightCollapsed: boolean;
+  onToggleLeft: () => void;
+  onToggleRight: () => void;
   onReload: () => void;
   onDiscard: () => void;
   onSave: () => void;
@@ -89,6 +97,10 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
     busy,
     fullscreen,
     onToggleFullscreen,
+    leftCollapsed,
+    rightCollapsed,
+    onToggleLeft,
+    onToggleRight,
     onReload,
     onDiscard,
     onSave,
@@ -195,6 +207,46 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
         </div>
 
         <div className="mx-1 h-4 w-px bg-border" />
+
+        {/* ── Collapse / expand the side panels ────────────────────────────── */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onToggleLeft}
+              aria-label={leftCollapsed ? "Show sections panel" : "Hide sections panel"}
+              aria-pressed={!leftCollapsed}
+            >
+              {leftCollapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{leftCollapsed ? "Show sections" : "Hide sections"}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onToggleRight}
+              aria-label={rightCollapsed ? "Show properties panel" : "Hide properties panel"}
+              aria-pressed={!rightCollapsed}
+            >
+              {rightCollapsed ? (
+                <PanelRightOpen className="h-4 w-4" />
+              ) : (
+                <PanelRightClose className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{rightCollapsed ? "Show properties" : "Hide properties"}</TooltipContent>
+        </Tooltip>
 
         {/* ── Full page ────────────────────────────────────────────────────── */}
         <Tooltip>
