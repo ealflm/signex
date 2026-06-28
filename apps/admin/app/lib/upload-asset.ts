@@ -41,13 +41,40 @@ export type UploadPhase =
   | "confirming"
   | "done";
 
+// PUT bytes to the presigned URL via XHR so we can report real upload progress (fetch can't observe
+// upload bytes). All signed headers MUST be echoed. Resolves on 2xx, rejects otherwise.
+function putWithProgress(
+  url: string,
+  file: File | Blob,
+  headers: Record<string, string>,
+  onProgress?: (pct: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+    }
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300
+        ? resolve()
+        : reject(new Error(`R2 upload failed (${xhr.status}).`));
+    xhr.onerror = () => reject(new Error("R2 upload failed (network error)."));
+    xhr.send(file);
+  });
+}
+
 /**
- * Upload a single file and resolve the created (or deduped) asset. `onPhase` reports progress so
- * the drawer can show a status line. Throws on any failure (caller surfaces the message).
+ * Upload a single file and resolve the created (or deduped) asset. `onPhase` reports the current step;
+ * `onProgress` reports 0–100% of the R2 PUT. Throws on any failure (caller surfaces the message).
  */
 export async function uploadAsset(
   file: File,
   onPhase?: (phase: UploadPhase) => void,
+  onProgress?: (pct: number) => void,
 ): Promise<UploadedAsset> {
   onPhase?.("hashing");
   const buf = await file.arrayBuffer();
@@ -83,12 +110,8 @@ export async function uploadAsset(
   // x-amz-checksum-sha256 are signed and MUST be echoed). ⚠️ In local dev with placeholder R2
   // this PUT fails with a network error — expected; the flow is correct against real R2/MinIO.
   onPhase?.("uploading");
-  const putRes = await fetch(presign.upload.url, {
-    method: "PUT",
-    body: file,
-    headers: presign.upload.headers,
-  });
-  if (!putRes.ok) throw new Error(`R2 upload failed (${putRes.status}).`);
+  onProgress?.(0);
+  await putWithProgress(presign.upload.url, file, presign.upload.headers, onProgress);
 
   onPhase?.("confirming");
   const confirmRes = await fetch(`/admin-api/assets/${presign.assetId}/confirm`, {

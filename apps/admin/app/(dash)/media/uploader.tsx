@@ -1,55 +1,22 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useCallback, lazy, Suspense } from "react";
+import { UploadCloud } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { SectionCard } from "@/components/admin/section-card";
-import { Field } from "@/components/admin/field";
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { uploadAsset, type UploadPhase } from "@/app/lib/upload-asset";
 
-async function sha256Hex(buf: ArrayBuffer): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", buf);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-// Real PresignResult shapes from apps/api/src/assets/assets.service.ts
-interface AssetDto {
-  id: string;
-  status: string;
-  kind: string;
-  sha256: string;
-  r2Key: string;
-  url: string;
-  mime: string;
-  bytes: number;
-  width: number | null;
-  height: number | null;
-  duration: number | null;
-  originalName: string;
-  altDefault: { en: string; vi: string } | null;
-  posterId: string | null;
-}
-
-type PresignResult =
-  | { deduped: true; asset: AssetDto }
-  | {
-      deduped: false;
-      assetId: string;
-      r2Key: string;
-      upload: {
-        url: string;
-        headers: Record<string, string>;
-        expiresIn: number;
-      };
-    };
-
-type Phase = "idle" | "hashing" | "presigning" | "uploading" | "confirming" | "done" | "error";
-
-interface UploaderState {
-  phase: Phase;
-  message: string;
-}
+// CropView (+ react-easy-crop) is heavy and only needed when a raster image is chosen — lazy-load it.
+const CropView = lazy(() =>
+  import("@/app/(dash)/visual/crop-view").then((m) => ({ default: m.CropView })),
+);
 
 const ACCEPT = [
   "image/png",
@@ -62,180 +29,233 @@ const ACCEPT = [
   "video/webm",
 ].join(",");
 
-export function Uploader() {
-  const router = useRouter();
+// Raster images we offer a crop step for. SVG (no raster crop) and GIF (would lose animation) and
+// video upload straight through.
+const CROPPABLE = new Set(["image/png", "image/jpeg", "image/webp", "image/avif"]);
+
+const PHASE_LABEL: Record<UploadPhase, string> = {
+  hashing: "Computing checksum…",
+  presigning: "Requesting upload URL…",
+  uploading: "Uploading…",
+  confirming: "Confirming…",
+  done: "Done",
+};
+
+export function Uploader({ onUploaded }: { onUploaded?: () => void | Promise<void> }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [state, setState] = useState<UploaderState>({
-    phase: "idle",
-    message: "",
-  });
+  const [dragOver, setDragOver] = useState(false);
+  // Crop step (raster images only)
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropUrl, setCropUrl] = useState<string | null>(null);
+  // Upload status (shared by the crop + direct paths)
+  const [phase, setPhase] = useState<UploadPhase | null>(null);
+  const [pct, setPct] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
 
-  const busy = state.phase !== "idle" && state.phase !== "done" && state.phase !== "error";
+  const uploading = phase != null && phase !== "done";
 
-  function setPhase(phase: Phase, message: string) {
-    setState({ phase, message });
-  }
+  const clearCrop = useCallback(() => {
+    setCropFile(null);
+    setCropUrl((u) => {
+      if (u) URL.revokeObjectURL(u);
+      return null;
+    });
+  }, []);
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const doUpload = useCallback(
+    async (data: File | Blob, name: string) => {
+      setError(null);
+      setDone(null);
+      setPhase("hashing");
+      setPct(0);
+      try {
+        const file =
+          data instanceof File ? data : new File([data], name, { type: data.type });
+        const asset = await uploadAsset(
+          file,
+          (p) => setPhase(p),
+          (p) => setPct(p),
+        );
+        setPhase("done");
+        setDone(`Uploaded "${asset.originalName}".`);
+        clearCrop();
+        await onUploaded?.(); // parent re-fetches the asset list (instant, no page refresh)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Upload failed.");
+        setPhase(null);
+      }
+    },
+    [onUploaded, clearCrop],
+  );
 
-    // Reset input so the same file can be re-uploaded after an error
-    if (inputRef.current) inputRef.current.value = "";
-
-    setPhase("hashing", "Computing checksum…");
-    let buf: ArrayBuffer;
-    try {
-      buf = await file.arrayBuffer();
-    } catch {
-      setPhase("error", "Could not read file.");
-      return;
-    }
-
-    const sha256 = await sha256Hex(buf);
-
-    setPhase("presigning", "Requesting upload URL…");
-    let presignRes: Response;
-    try {
-      presignRes = await fetch("/admin-api/assets/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sha256,
-          mime: file.type,
-          bytes: file.size,
-          originalName: file.name,
-        }),
-      });
-    } catch (err) {
-      setPhase("error", `Presign network error: ${err instanceof Error ? err.message : "unknown"}`);
-      return;
-    }
-
-    if (!presignRes.ok) {
-      const text = await presignRes.text().catch(() => "");
-      setPhase("error", `Presign failed (${presignRes.status}): ${text}`);
-      return;
-    }
-
-    let presign: PresignResult;
-    try {
-      presign = (await presignRes.json()) as PresignResult;
-    } catch {
-      setPhase("error", "Presign returned invalid JSON.");
-      return;
-    }
-
-    // Dedup path — asset already READY, no upload needed
-    if (presign.deduped) {
-      setPhase("done", `Already exists — deduped (${presign.asset.originalName}).`);
-      router.refresh();
-      return;
-    }
-
-    // PUT bytes directly to R2, echoing ALL signed headers returned by presign
-    // (Content-Type, Cache-Control, x-amz-checksum-sha256 are signed and MUST be echoed)
-    setPhase("uploading", "Uploading to R2…");
-    let putRes: Response;
-    try {
-      putRes = await fetch(presign.upload.url, {
-        method: "PUT",
-        body: file,
-        headers: presign.upload.headers,
-      });
-    } catch (err) {
-      // ⚠️ Dev-R2 note: the dev env uses a placeholder R2 config
-      // (no real bucket), so this fetch will fail with a network error
-      // to e.g. example.r2.cloudflarestorage.com. This is expected in
-      // local dev; the flow is correct and works against real Cloudflare R2.
-      setPhase(
-        "error",
-        `R2 PUT failed (network error — expected in local dev with placeholder R2): ${err instanceof Error ? err.message : "unknown"}`,
-      );
-      return;
-    }
-
-    if (!putRes.ok) {
-      setPhase("error", `R2 PUT failed (${putRes.status}).`);
-      return;
-    }
-
-    setPhase("confirming", "Confirming upload…");
-    let confirmRes: Response;
-    try {
-      confirmRes = await fetch(`/admin-api/assets/${presign.assetId}/confirm`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-    } catch (err) {
-      setPhase("error", `Confirm network error: ${err instanceof Error ? err.message : "unknown"}`);
-      return;
-    }
-
-    if (!confirmRes.ok) {
-      const text = await confirmRes.text().catch(() => "");
-      setPhase("error", `Confirm failed (${confirmRes.status}): ${text}`);
-      return;
-    }
-
-    setPhase("done", `Uploaded: ${file.name}`);
-    router.refresh();
-  }
-
-  const isError = state.phase === "error";
-  const isDone = state.phase === "done";
+  const onPick = useCallback(
+    (file: File) => {
+      setError(null);
+      setDone(null);
+      if (inputRef.current) inputRef.current.value = "";
+      if (CROPPABLE.has(file.type)) {
+        const url = URL.createObjectURL(file);
+        setCropFile(file);
+        setCropUrl(url);
+      } else {
+        void doUpload(file, file.name); // svg / gif / video → straight to upload
+      }
+    },
+    [doUpload],
+  );
 
   return (
     <SectionCard title="Upload asset">
-      <Field label="Choose file" htmlFor="media-upload">
+      {/* Drop zone / file picker */}
+      <label
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!uploading) setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const f = e.dataTransfer.files?.[0];
+          if (f && !uploading) onPick(f);
+        }}
+        className={cn(
+          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
+          dragOver ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40",
+          uploading && "pointer-events-none opacity-60",
+        )}
+      >
         <input
-          id="media-upload"
           ref={inputRef}
           type="file"
           accept={ACCEPT}
-          disabled={busy}
-          onChange={onFile}
-          aria-describedby={state.message ? "media-upload-status" : undefined}
-          className="block w-full cursor-pointer rounded-md border border-input bg-transparent text-sm text-foreground transition-colors duration-150 file:mr-3 file:cursor-pointer file:rounded-l-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-50"
+          className="sr-only"
+          disabled={uploading}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onPick(f);
+          }}
         />
-      </Field>
+        <UploadCloud className="size-7 text-muted-foreground" aria-hidden />
+        <span className="text-sm font-medium text-foreground">
+          Drop a file here, or <span className="text-primary underline">browse</span>
+        </span>
+        <span className="text-xs text-muted-foreground">
+          PNG · JPG · WebP · AVIF · SVG · GIF · MP4 · WebM — images can be cropped before upload
+        </span>
+      </label>
 
-      {state.message && (
-        <p
-          id="media-upload-status"
-          role={isError ? "alert" : "status"}
-          aria-live={isError ? "assertive" : "polite"}
-          className={[
-            "mt-3 rounded-md border px-4 py-3 text-sm",
-            isError
-              ? "border-destructive/30 bg-destructive/10 text-destructive"
-              : isDone
-                ? "border-success/30 bg-success/10 text-success"
-                : "border-primary/30 bg-primary/10 text-primary",
-          ].join(" ")}
-        >
-          {busy && (
-            <span
-              className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent align-middle"
-              aria-hidden
+      {/* Direct-upload progress (the crop path shows its own bar inside the dialog) */}
+      {uploading && !cropFile && (
+        <div className="mt-3 flex flex-col gap-1.5">
+          <p className="flex items-center justify-between text-sm text-primary">
+            <span>{phase ? PHASE_LABEL[phase] : "Working…"}</span>
+            {phase === "uploading" && (
+              <span className="font-mono text-xs tabular-nums">{pct}%</span>
+            )}
+          </p>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-150"
+              style={{ width: `${phase === "uploading" ? pct : phase === "confirming" ? 100 : 8}%` }}
             />
-          )}
-          {state.message}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {error}
+        </p>
+      )}
+      {done && !uploading && (
+        <p
+          role="status"
+          className="mt-3 rounded-md border border-success/30 bg-success/10 px-4 py-3 text-sm text-success"
+        >
+          {done}
         </p>
       )}
 
-      {(isError || isDone) && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setPhase("idle", "")}
-          className="mt-2 text-muted-foreground"
-        >
-          Clear
-        </Button>
+      {/* Crop dialog (raster images) — reuses the visual-editor crop step */}
+      {cropFile && cropUrl && (
+        <CropDialog
+          file={cropFile}
+          url={cropUrl}
+          uploading={uploading}
+          phaseLabel={phase ? PHASE_LABEL[phase] : null}
+          pct={pct}
+          error={error}
+          onCancel={() => {
+            if (!uploading) {
+              clearCrop();
+              setError(null);
+            }
+          }}
+          onUseFull={() => void doUpload(cropFile, cropFile.name)}
+          onCrop={(blob) => void doUpload(blob, cropFile.name)}
+        />
       )}
     </SectionCard>
+  );
+}
+
+// Thin wrapper: the crop step inside a modal. CropView itself is lazy + Suspense-bounded.
+function CropDialog({
+  file,
+  url,
+  uploading,
+  phaseLabel,
+  pct,
+  error,
+  onCancel,
+  onUseFull,
+  onCrop,
+}: {
+  file: File;
+  url: string;
+  uploading: boolean;
+  phaseLabel: string | null;
+  pct: number;
+  error: string | null;
+  onCancel: () => void;
+  onUseFull: () => void;
+  onCrop: (blob: Blob) => void;
+}) {
+  return (
+    <Dialog open onOpenChange={(o: boolean) => !o && onCancel()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Crop &amp; upload</DialogTitle>
+          <DialogDescription>
+            Adjust the crop, or keep the whole image — then upload it to the library.
+          </DialogDescription>
+        </DialogHeader>
+        <Suspense
+          fallback={
+            <div className="grid h-64 place-items-center text-sm text-muted-foreground">
+              Loading editor…
+            </div>
+          }
+        >
+          <CropView
+            file={file}
+            imageUrl={url}
+            uploading={uploading}
+            saving={false}
+            uploadStatus={phaseLabel}
+            uploadError={error}
+            progressPct={pct}
+            onCancel={onCancel}
+            onUseFull={onUseFull}
+            onCrop={onCrop}
+          />
+        </Suspense>
+      </DialogContent>
+    </Dialog>
   );
 }

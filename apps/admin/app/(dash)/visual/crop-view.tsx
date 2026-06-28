@@ -24,6 +24,7 @@ interface CropViewProps {
   saving: boolean; // controller applyRef PUT in flight (after upload)
   uploadStatus: string | null; // human label for the current upload phase
   uploadError: string | null; // error from the parent's upload
+  progressPct?: number | null; // 0–100 during the R2 PUT → renders a progress bar
   onCancel: () => void;
   onUseFull: () => void;
   onCrop: (blob: Blob) => void;
@@ -37,6 +38,7 @@ export function CropView({
   saving,
   uploadStatus,
   uploadError,
+  progressPct,
   onCancel,
   onUseFull,
   onCrop,
@@ -154,6 +156,19 @@ export function CropView({
           <span className="inline-block size-3 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
           {statusLine}
         </p>
+      )}
+      {uploading && progressPct != null && (
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-150"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          <span className="w-9 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
+            {progressPct}%
+          </span>
+        </div>
       )}
       {error && (
         <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
