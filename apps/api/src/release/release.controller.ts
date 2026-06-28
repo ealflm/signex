@@ -43,16 +43,6 @@ export class ReleaseController {
     return this.releases.getLive();
   }
 
-  @Get('diff')
-  @Roles('EDITOR')
-  diff(): Promise<{
-    dirty: boolean;
-    revision: number;
-    lastPublishedRevision: number;
-  }> {
-    return this.releases.diff();
-  }
-
   @Get(':version')
   @Roles('EDITOR')
   byVersion(

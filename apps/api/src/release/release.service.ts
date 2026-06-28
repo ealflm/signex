@@ -3,11 +3,14 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import type { Prisma, Release, User } from '@signex/db';
+import { ReleaseSnapshotSchema } from '@signex/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RevalidationService } from '../revalidation/revalidation.service';
-import { SnapshotSerializer } from './snapshot.serializer';
+import { canonicalJson } from './canonical-json';
+import { collectAssetIds } from './snapshot-assets';
 import type { PublishInput } from './dto/release.dto';
 
 const SCHEMA_VERSION = 1;
@@ -31,7 +34,6 @@ export type PublishResult =
 export class ReleaseService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly serializer: SnapshotSerializer,
     private readonly revalidation: RevalidationService,
     private readonly audit: AuditService,
   ) {}
@@ -49,24 +51,34 @@ export class ReleaseService {
     // 0. GATE
     this.assertMediaBaseConfigured();
 
-    // 1. Serialize OUTSIDE the tx
-    const { snapshot, checksum, assetIds, fromRevision } =
-      await this.serializer.serialize(this.prisma.client);
+    // 1. Read theme and parse snapshot OUTSIDE the tx
+    const theme = await this.prisma.client.theme.findUniqueOrThrow({
+      where: { id: input.themeId },
+    });
+    const snapshot = ReleaseSnapshotSchema.parse(theme.draftSnapshot);
+    const checksum = createHash('sha256')
+      .update(canonicalJson(snapshot))
+      .digest('hex');
+    const assetIds = [...collectAssetIds(snapshot)];
 
-    if (input.expectedRevision !== fromRevision) {
+    // 2. Stale revision check (pre-tx fast fail)
+    if (input.expectedDraftRevision !== theme.draftRevision) {
       throw new ConflictException('STALE_DRAFT');
     }
 
-    // 2. Soft no-op: if live release has the same checksum, nothing changed
+    // 3. Gated no-op: same theme + same checksum → nothing changed
     const live = await this.prisma.client.publishedPointer.findUnique({
       where: { id: 'singleton' },
-      include: { release: { select: { checksum: true } } },
+      include: { release: { select: { themeId: true, checksum: true } } },
     });
-    if (live?.release?.checksum === checksum) {
+    if (
+      live?.release?.themeId === input.themeId &&
+      live.release.checksum === checksum
+    ) {
       return { status: 'noop' };
     }
 
-    // 3. SHORT tx — revision guard + sequence version + writes
+    // 4. SHORT tx — revision guard + sequence version + writes
     const result = await this.prisma.client.$transaction(
       async (tx) => {
         // Serialize concurrent publish/rollback operations: only one critical
@@ -74,25 +86,25 @@ export class ReleaseService {
         // commits, then re-reads the demoted PUBLISHED → single-PUBLISHED invariant.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(${RELEASE_LOCK_KEY})`;
 
-        // TOCTOU guard: re-read WorkingState inside tx
-        const ws = await tx.workingState.findUniqueOrThrow({
-          where: { id: 'singleton' },
+        // TOCTOU guard: re-read theme.draftRevision inside tx
+        const themeNow = await tx.theme.findUniqueOrThrow({
+          where: { id: input.themeId },
         });
-        if (ws.revision !== fromRevision) {
+        if (themeNow.draftRevision !== input.expectedDraftRevision) {
           throw new ConflictException('STALE_DRAFT');
         }
 
-        // CHECKSUM re-check inside the lock: if the first concurrent publish
-        // already committed a release with this exact checksum, the second
-        // request (now holding the lock) sees the updated pointer and no-ops.
-        // This is the critical dedup that proves the advisory lock is effective:
-        // without the lock, both would pass the outer noop check simultaneously
-        // (before either commits) and both would mint — violating the invariant.
+        // In-lock dedup: if the same theme+checksum was already published by a
+        // concurrent request (which committed while we were waiting for the lock),
+        // the second request no-ops here rather than minting a duplicate release.
         const liveAfterLock = await tx.publishedPointer.findUnique({
           where: { id: 'singleton' },
-          include: { release: { select: { checksum: true } } },
+          include: { release: { select: { themeId: true, checksum: true } } },
         });
-        if (liveAfterLock?.release?.checksum === checksum) {
+        if (
+          liveAfterLock?.release?.themeId === input.themeId &&
+          liveAfterLock.release.checksum === checksum
+        ) {
           return null; // noop — sibling already published identical state
         }
 
@@ -117,7 +129,8 @@ export class ReleaseService {
             snapshot: snapshot as unknown as Prisma.InputJsonValue,
             checksum,
             schemaVersion: SCHEMA_VERSION,
-            fromRevision,
+            themeId: input.themeId,
+            fromRevision: theme.draftRevision,
             createdById: actor.id,
             publishedById: actor.id,
             publishedAt: new Date(),
@@ -152,10 +165,14 @@ export class ReleaseService {
           });
         }
 
-        // Record that the working state has been published at this revision
-        await tx.workingState.update({
-          where: { id: 'singleton' },
-          data: { lastPublishedRevision: fromRevision },
+        // Freeze live snapshot + bookkeeping on the theme itself
+        await tx.theme.update({
+          where: { id: input.themeId },
+          data: {
+            liveSnapshot: snapshot as unknown as Prisma.InputJsonValue,
+            lastPublishedRevision: theme.draftRevision,
+            lastPublishedChecksum: checksum,
+          },
         });
 
         // Audit
@@ -172,12 +189,12 @@ export class ReleaseService {
       { timeout: 10000, maxWait: 5000 },
     );
 
-    // null means the in-lock checksum re-check caught a concurrent duplicate mint.
+    // null means the in-lock dedup caught a concurrent duplicate mint.
     if (result === null) {
       return { status: 'noop' };
     }
 
-    // 4. AFTER commit — non-fatal revalidation (failure must NOT roll back)
+    // 5. AFTER commit — non-fatal revalidation (failure must NOT roll back)
     await this.revalidation.revalidate({}).catch(() => {
       /* non-fatal: published release stands; reFire() can retry */
     });
@@ -191,7 +208,7 @@ export class ReleaseService {
 
   async rollback(
     actor: User,
-    input: { toVersion: number; restoreWorkingState?: boolean },
+    input: { toVersion: number },
   ): Promise<{ version: number; releaseId: string }> {
     this.assertMediaBaseConfigured();
 
@@ -260,16 +277,6 @@ export class ReleaseService {
           });
         }
 
-        if (input.restoreWorkingState) {
-          // Opt-in: mark the working state as aligned to the restored release.
-          // Full working-table rehydrate from snapshot is a documented seam
-          // (content reconcile); foundation updates bookkeeping only.
-          await tx.workingState.update({
-            where: { id: 'singleton' },
-            data: { lastPublishedRevision: { increment: 0 } },
-          });
-        }
-
         await this.audit.record(tx as unknown as Prisma.TransactionClient, {
           userId: actor.id,
           action: 'release.rollback',
@@ -289,25 +296,6 @@ export class ReleaseService {
     });
 
     return result;
-  }
-
-  async diff(): Promise<{
-    dirty: boolean;
-    revision: number;
-    lastPublishedRevision: number;
-  }> {
-    const ws = await this.prisma.client.workingState.findUniqueOrThrow({
-      where: { id: 'singleton' },
-    });
-    return {
-      dirty: ws.revision !== ws.lastPublishedRevision,
-      revision: ws.revision,
-      lastPublishedRevision: ws.lastPublishedRevision,
-    };
-  }
-
-  async isDirty(): Promise<boolean> {
-    return (await this.diff()).dirty;
   }
 
   async getLive(): Promise<{

@@ -6,6 +6,7 @@ import { WebflowRuntime } from "@/app/components/webflow-runtime";
 import { WebflowPageAttrs } from "@/app/components/webflow-page-attrs";
 import { LOCALES, hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { getSiteContent } from "@/app/lib/content";
+import { getGa4Id } from "@/app/lib/site-config";
 import { PreviewBar } from "@/app/components/preview-bar";
 import { buildMetadata, THEME_COLOR } from "@/app/lib/seo";
 import { siteAttrs } from "@/app/lib/webflow-bundles";
@@ -55,13 +56,15 @@ export default async function RootLayout({
   // string to Locale for getSiteContent (unknown locales fall back to DEFAULT_LOCALE in-render).
   const dict = await getSiteContent(hasLocale(lang) ? lang : DEFAULT_LOCALE);
   const { domain, site } = siteAttrs(); // single source for the Webflow site attrs
-  // Configurable GA4: the measurement id comes from the SAME cached snapshot loader (no extra
-  // read, stays SSG/'use cache'). ONLY inject Google Analytics when an id is actually set —
-  // empty string ⇒ render nothing (no gtag.js, no network). Id is edited in admin (meta block).
+  // Configurable GA4: the measurement id comes from the global SiteConfig singleton (admin
+  // Settings page), read via getGa4Id() — a separate 'use cache' + cacheTag('release') loader so
+  // analytics is INDEPENDENT of the published theme (a theme publish OR a site-config PATCH both
+  // refresh it). ONLY inject Google Analytics when an id is actually set — empty string ⇒ render
+  // nothing (no gtag.js, no network).
   // NOTE (follow-up for production/GDPR): gate tracking behind cookie-consent. GA4 uses
   // Consent Mode v2 — `gtag('consent','default',{analytics_storage:'denied'})` before the
   // config call, then update on opt-in — NOT the legacy UA `anonymize_ip`. Out of scope here.
-  const ga4Id = dict.meta.ga4Id;
+  const ga4Id = await getGa4Id();
   return (
     // suppressHydrationWarning: the WF_MOD_SHIM script adds w-mod-js/w-mod-touch to <html> before
     // hydration, and WebflowPageAttrs sets data-wf-page on it — both intentionally diverge from SSR.
@@ -94,7 +97,7 @@ export default async function RootLayout({
           </main>
         </div>
         <OrgJsonLd dict={dict} />
-        {/* Google Analytics is injected ONLY when a GA4 id is configured (admin → meta block). */}
+        {/* Google Analytics is injected ONLY when a GA4 id is configured (admin → Settings). */}
         {ga4Id ? <GoogleAnalytics gaId={ga4Id} /> : null}
         <PreviewBar />
         <WebflowPageAttrs />

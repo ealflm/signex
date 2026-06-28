@@ -82,15 +82,20 @@ test("[lang] layout: imports GoogleAnalytics from @next/third-parties/google", (
   );
 });
 
-test("[lang] layout: renders <GoogleAnalytics> guarded by a non-empty ga4Id from the cached dict", () => {
+test("[lang] layout: renders <GoogleAnalytics> guarded by a non-empty ga4Id from SiteConfig (getGa4Id)", () => {
   const layout = src("[lang]", "layout.tsx");
-  // id comes from the SAME cached snapshot loader (dict.meta.ga4Id) — no extra read.
-  assert.match(layout, /dict\.meta\.ga4Id/);
+  // id now comes from the global SiteConfig singleton (admin Settings), read via getGa4Id() —
+  // independent of the published theme (GA4 was split out of the theme meta block).
+  assert.match(layout, /const\s+ga4Id\s*=\s*await\s+getGa4Id\(\)/);
   // conditional render: `ga4Id ? <GoogleAnalytics gaId={ga4Id} /> : null` — no id ⇒ nothing.
   assert.match(layout, /ga4Id\s*\?\s*<GoogleAnalytics\s+gaId=\{ga4Id\}\s*\/>\s*:\s*null/);
 });
 
-test("content.ts resolves meta.ga4Id from meta.analytics?.ga4Id (empty when unset)", () => {
+test("GA4 id is sourced from the SiteConfig loader (getGa4Id), not the theme meta block", () => {
+  const layout = src("[lang]", "layout.tsx");
+  // getGa4Id is imported from the site-config loader (global SiteConfig), not derived from dict.meta.
+  assert.match(layout, /import\s*\{\s*getGa4Id\s*\}\s*from\s*["']@\/app\/lib\/site-config["']/);
+  // content.ts no longer resolves a ga4Id off the meta block.
   const content = readFileSync(join(APP, "lib", "content.ts"), "utf8");
-  assert.match(content, /ga4Id:\s*b\.meta\.analytics\?\.ga4Id\?\.trim\(\)\s*\?\?\s*""/);
+  assert.doesNotMatch(content, /ga4Id:\s*b\.meta/);
 });

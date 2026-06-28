@@ -14,11 +14,20 @@ export const footerBlock = z.object({
   // /assets/images/lotus.svg when absent (published v1 snapshot stays valid). The visual editor edits
   // it as `footer.watermark`.
   watermark: AssetRef.optional(),
+  // brandSuffix OPTIONAL: the tail of the footer brand line, rendered after "<brand> – " (default
+  // "Manufacturing Brand Identity"). The web falls back to that literal when absent, so the published
+  // v1 snapshot (which predates this field) stays valid — no re-publish required. Editable via the
+  // visual editor as `footer.brandSuffix` (the "<brand> – " prefix is a derived template, not edited).
+  brandSuffix: LocalizedText.optional(),
   tagline: LocalizedTextArray, // 2 lines
   contactHeading: LocalizedText,
   quickHeading: LocalizedText,
   links: z.array(z.object({ label: LocalizedText, href: Href })).min(1),
   shipLabel: LocalizedText,
+  // shipping OPTIONAL: courier-partner badges (Lalamove/Grab — brand names, locale-invariant).
+  // The web falls back to ["Lalamove","Grab"] when absent, so the published v1 snapshot (which
+  // predates this field) stays valid — no re-publish required. Editable as `footer.shipping`.
+  shipping: z.array(z.string()).min(1).optional(),
   payLabel: LocalizedText,
   payments: z.array(z.string()).min(1), // brand codes: VISA/JCB/Napas/COD (locale-invariant)
 });

@@ -24,6 +24,7 @@ export type FrozenAsset = z.infer<typeof FrozenAsset>;
 
 /** A product inside a frozen category (catalog.categories[].items[]). */
 export const FrozenProduct = z.object({
+  id: Id.optional(),
   slug: z.string(),
   sortOrder: z.number().int(),
   title: LocalizedText,
@@ -35,6 +36,7 @@ export type FrozenProduct = z.infer<typeof FrozenProduct>;
 
 /** A category inside the frozen catalog (catalog.categories[]). */
 export const FrozenCategory = z.object({
+  id: Id.optional(),
   slug: z.string(),
   sortOrder: z.number().int(),
   title: LocalizedText,

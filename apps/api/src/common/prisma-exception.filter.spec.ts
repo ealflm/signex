@@ -60,13 +60,30 @@ describe('PrismaExceptionFilter', () => {
     );
   });
 
-  it('re-throws non-P2002 Prisma errors (e.g. P2025) instead of guessing a status', () => {
+  it('maps P2025 → 404 Not Found with a clean code/message and no internal leak', () => {
     const { host, res } = mockHost();
     const p2025 = new Prisma.PrismaClientKnownRequestError('Record not found', {
       code: 'P2025',
       clientVersion: 'test',
     });
-    expect(() => filter.catch(p2025, host)).toThrow(p2025);
+    filter.catch(p2025, host);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    const body = res.json.mock.calls[0][0];
+    expect(body.code).toBe('NOT_FOUND');
+    expect(body.message).toBe('Resource not found');
+    expect(JSON.stringify(body)).not.toMatch(
+      /Record not found|clientVersion|stack/i,
+    );
+  });
+
+  it('re-throws Prisma codes we have NOT mapped (e.g. P2003) instead of guessing a status', () => {
+    const { host, res } = mockHost();
+    const p2003 = new Prisma.PrismaClientKnownRequestError(
+      'Foreign key constraint failed',
+      { code: 'P2003', clientVersion: 'test' },
+    );
+    expect(() => filter.catch(p2003, host)).toThrow(p2003);
     expect(res.status).not.toHaveBeenCalled();
   });
 

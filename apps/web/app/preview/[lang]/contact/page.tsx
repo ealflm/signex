@@ -14,7 +14,8 @@ import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { Contact } from "@/app/components/home/contact";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
-import { editAttrs } from "@/app/lib/edit-attrs";
+import { PreviewRuntime } from "@/app/preview/preview-runtime";
+import { editAttrs, editText } from "@/app/lib/edit-attrs";
 
 // Contact info-card icons (lucide), index-aligned with contactPage.cards: mail / phone / map-pin —
 // kept identical to the public page (icons aren't translated / editable).
@@ -43,20 +44,23 @@ const CONTACT_ICONS = [
   </svg>,
 ];
 
+// Card title leaf keys, index-aligned with contactPage.cards (Email / Phone / Address).
+const CARD_KEYS = ["email", "phone", "address"] as const;
+
 async function PreviewContact({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   await connection(); // request-time only — never prerender this subtree
-  const { secret } = await searchParams;
+  const { secret, theme } = await searchParams;
   if (!process.env.PREVIEW_SECRET || secret !== process.env.PREVIEW_SECRET) notFound();
 
   const { lang } = await params;
   const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
-  const dict = await getPreviewSnapshot(locale);
+  const dict = await getPreviewSnapshot(locale, theme);
 
   return (
     <div className="page-wrapper">
@@ -69,19 +73,19 @@ async function PreviewContact({
                 <div className="heading_contact-c">
                   <div className="master_label" data-wf--tag--variant="base">
                     <div className="label-small">
-                      Contact
+                      <span {...editText(true, "contactPage.hero.eyebrow", { maxLength: 40 })}>{dict.contactPage.hero.eyebrow}</span>
                     </div>
                   </div>
                   <h1>
-                    {dict.contactPage.hero.title}
-                    <span className="tone-medium">
+                    <span {...editText(true, "contactPage.hero.title.lead", { maxLength: 80 })}>{dict.contactPage.hero.title}</span>
+                    <span className="tone-medium" {...editText(true, "contactPage.hero.title.accent", { maxLength: 80 })}>
                       {dict.contactPage.hero.titleAccent}
                     </span>
                   </h1>
                 </div>
                 <div className="contact-c_hero-p">
                   <p className="tone-medium margin-0">
-                    {dict.contactPage.hero.subtitle}
+                    <span {...editText(true, "contactPage.hero.subtitle", { maxLength: 200 })}>{dict.contactPage.hero.subtitle}</span>
                   </p>
                 </div>
               </div>
@@ -95,22 +99,24 @@ async function PreviewContact({
                     </div>
                     <div className="text_contact-c-card">
                       <div className="text-size-large text_body-bold">
-                        {c.title}
+                        <span {...editText(true, `contactPage.cardLabels.${CARD_KEYS[i]}`, { maxLength: 40 })}>{c.title}</span>
                       </div>
                       <div className="tone-medium contact-card_lines">
-                        {c.lines && c.lines.map((line, j) => (
-                          <div key={j}>
-                            {line}
-                          </div>
-                        ))}
                         {c.company && (
                           <div>
-                            {c.company}
+                            <span {...editText(true, c.company.field, { maxLength: 80 })}>{c.company.text}</span>
                           </div>
                         )}
-                        {c.details && c.details.map((d) => (
-                          <div key={d.label}>
-                            <strong>{d.label}</strong>: {d.value}
+                        {c.rows.map((row, j) => (
+                          <div key={j}>
+                            {row.label &&
+                              (c.strongLabel ? (
+                                <strong {...editText(true, row.label.field, { maxLength: 80 })}>{row.label.text}</strong>
+                              ) : (
+                                <span {...editText(true, row.label.field, { maxLength: 80 })}>{row.label.text}</span>
+                              ))}
+                            {row.label ? ": " : ""}
+                            <span {...editText(true, row.value.field, { maxLength: 160 })}>{row.value.text}</span>
                           </div>
                         ))}
                       </div>
@@ -130,6 +136,7 @@ async function PreviewContact({
           gridWid="9ee4e313-28b4-9f47-35ac-12e943420a2d"
           formWid="a7c263a0-bae9-4cd0-4784-0bc0e59ff63b"
           showCards={false}
+          editable
         />
         <section className="section_faq">
           <div className="padding-global">
@@ -137,12 +144,12 @@ async function PreviewContact({
               <div className="headline_faq-v1" data-w-id="9dfc7646-5801-a3d5-162a-aebf30a19078">
                 <div className="master_label" data-wf--tag--variant="base">
                   <div className="label-small">
-                    {dict.contactPage.map.eyebrow}
+                    <span {...editText(true, "contactPage.map.eyebrow", { maxLength: 80 })}>{dict.contactPage.map.eyebrow}</span>
                   </div>
                 </div>
                 <h2 className="margin-0">
-                  {dict.contactPage.map.title}
-                  <span className="tone-medium">
+                  <span {...editText(true, "contactPage.map.title.lead", { maxLength: 80 })}>{dict.contactPage.map.title}</span>
+                  <span className="tone-medium" {...editText(true, "contactPage.map.title.accent", { maxLength: 80 })}>
                     {dict.contactPage.map.titleAccent}
                   </span>
                 </h2>
@@ -163,6 +170,8 @@ async function PreviewContact({
         <Footer dict={dict.footer} editable />
       </main>
       <EditOverlay />
+      {/* Webflow boot in this dynamic subtree (not the layout) — see preview-runtime.tsx (#418 fix). */}
+      <PreviewRuntime />
     </div>
   );
 }
@@ -172,7 +181,7 @@ export default function PreviewContactPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   return (
     <Suspense fallback={null}>

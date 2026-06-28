@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { AssetsService } from './assets.service';
 import { assetIdFromSha256 } from './dto/assets.dto';
@@ -17,6 +21,7 @@ function makePrisma() {
       },
       assetRef: { findMany: jest.fn().mockResolvedValue([]) },
       releaseAssetRef: { findMany: jest.fn().mockResolvedValue([]) },
+      theme: { findMany: jest.fn().mockResolvedValue([]) },
       auditLog: { create: jest.fn().mockResolvedValue({}) },
     },
   } as unknown as PrismaService;
@@ -454,8 +459,13 @@ describe('AssetsService.replace + setAlt + usage', () => {
   });
 
   it('usage returns working refs + release refs', async () => {
-    (prisma.client.assetRef.findMany as jest.Mock).mockResolvedValue([
-      { id: 'r1', ownerType: 'product', ownerId: 'p1', field: 'image' },
+    (prisma.client.theme.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 't1',
+        name: 'Theme 1',
+        draftSnapshot: { assetId: 'a1' },
+        liveSnapshot: null,
+      },
     ]);
     (prisma.client.releaseAssetRef.findMany as jest.Mock).mockResolvedValue([
       { releaseId: 'rel1' },
@@ -508,5 +518,112 @@ describe('AssetsService.replace + setAlt + usage', () => {
     await expect(
       svc.setAlt(actor, 'missing', { en: 'a', vi: 'a' }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('AssetsService.softDelete', () => {
+  let prisma: PrismaService;
+  let svc: AssetsService;
+
+  const readyAsset = {
+    id: 'del1',
+    status: 'READY',
+    kind: 'IMAGE',
+    sha256: 'aabbcc',
+    r2Key: 'originals/aabbcc/photo.png',
+    mime: 'image/png',
+    bytes: BigInt(100),
+    width: 10,
+    height: 10,
+    originalName: 'photo.png',
+    altDefault: null,
+    duration: null,
+    posterId: null,
+    deletedAt: null,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma = makePrisma();
+    svc = new AssetsService(prisma, r2);
+    // By default: asset exists, nothing references it
+    (prisma.client.asset.findUnique as jest.Mock).mockResolvedValue(readyAsset);
+    (prisma.client.theme.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.client.releaseAssetRef.findMany as jest.Mock).mockResolvedValue([]);
+  });
+
+  it('throws ConflictException(ASSET_IN_USE) when draftSnapshot references the asset', async () => {
+    (prisma.client.theme.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 't1',
+        name: 'Theme 1',
+        draftSnapshot: { assetId: 'del1' },
+        liveSnapshot: null,
+      },
+    ]);
+    await expect(svc.softDelete(actor, 'del1')).rejects.toMatchObject({
+      constructor: ConflictException,
+      message: 'ASSET_IN_USE',
+    });
+  });
+
+  it('throws ConflictException(ASSET_IN_USE) when only liveSnapshot references the asset', async () => {
+    (prisma.client.theme.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 't2',
+        name: 'Theme 2',
+        draftSnapshot: {},
+        liveSnapshot: { assetId: 'del1' },
+      },
+    ]);
+    await expect(svc.softDelete(actor, 'del1')).rejects.toMatchObject({
+      constructor: ConflictException,
+      message: 'ASSET_IN_USE',
+    });
+  });
+
+  it('throws ConflictException(ASSET_IN_USE) when a ReleaseAssetRef references the asset', async () => {
+    (prisma.client.releaseAssetRef.findMany as jest.Mock).mockResolvedValue([
+      { releaseId: 'rel99' },
+    ]);
+    await expect(svc.softDelete(actor, 'del1')).rejects.toMatchObject({
+      constructor: ConflictException,
+      message: 'ASSET_IN_USE',
+    });
+  });
+
+  it('sets deletedAt, returns dto, and writes audit when nothing references the asset', async () => {
+    const now = new Date();
+    (prisma.client.asset.update as jest.Mock).mockResolvedValue({
+      ...readyAsset,
+      deletedAt: now,
+    });
+    const dto = await svc.softDelete(actor, 'del1');
+    const updateArg = (prisma.client.asset.update as jest.Mock).mock.calls[0][0];
+    expect(updateArg.data.deletedAt).toBeInstanceOf(Date);
+    expect(dto.id).toBe('del1');
+    const auditCalls = (prisma.client.auditLog.create as jest.Mock).mock.calls;
+    const deleteAudit = auditCalls.find(
+      (c: any[]) => c[0].data.action === 'asset.delete',
+    );
+    expect(deleteAudit).toBeDefined();
+    expect(deleteAudit[0].data.entityId).toBe('del1');
+  });
+
+  it('throws NotFoundException for a missing asset', async () => {
+    (prisma.client.asset.findUnique as jest.Mock).mockResolvedValue(null);
+    await expect(svc.softDelete(actor, 'missing')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('throws NotFoundException for an already-deleted asset', async () => {
+    (prisma.client.asset.findUnique as jest.Mock).mockResolvedValue({
+      ...readyAsset,
+      deletedAt: new Date('2024-01-01'),
+    });
+    await expect(svc.softDelete(actor, 'del1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

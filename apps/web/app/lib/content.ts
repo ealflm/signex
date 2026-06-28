@@ -51,6 +51,31 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
   const office = bc.sites.find((s) => s.kind === "office");
   const factory = bc.sites.find((s) => s.kind === "factory");
 
+  // ── NAP with inline-edit field paths ──────────────────────────────────────────
+  // The footer + contact cards render the unified businessContact (NAP). To make every value
+  // click-to-edit, each leaf carries its snapshot path; the canvas edit routes to the Business
+  // contact block. Indices are the LIVE array positions so the path stays correct after reorders.
+  const BC = "businessContact";
+  const telIdx = bc.phones.findIndex((p) => p.kind === "tel");
+  const zaloIdx = bc.phones.findIndex((p) => p.kind === "zalo");
+  const officeIdx = bc.sites.findIndex((s) => s.kind === "office");
+  const factoryIdx = bc.sites.findIndex((s) => s.kind === "factory");
+  type NapLeaf = { text: string; field: string };
+  type NapRow = { label: NapLeaf | null; value: NapLeaf };
+  const leaf = (text: string, field: string): NapLeaf => ({ text, field });
+  const compact = <T,>(arr: (T | null | undefined)[]): T[] => arr.filter((x): x is T => x != null);
+  const phoneRow = (i: number): NapRow | null =>
+    i < 0
+      ? null
+      : { label: leaf(t(bc.phones[i].label, lang), `${BC}.phones.${i}.label`), value: leaf(bc.phones[i].value, `${BC}.phones.${i}.value`) };
+  const addrRow = (i: number): NapRow | null =>
+    i < 0
+      ? null
+      : { label: leaf(t(bc.sites[i].label, lang), `${BC}.sites.${i}.label`), value: leaf(t(bc.sites[i].address, lang), `${BC}.sites.${i}.address`) };
+  const emailRows: NapRow[] = bc.emails.map((v, i) => ({ label: null, value: leaf(v, `${BC}.emails.${i}`) }));
+  const taxRow: NapRow = { label: leaf(t(bc.taxLabel, lang), `${BC}.taxLabel`), value: leaf(bc.taxId, `${BC}.taxId`) };
+  const legalNameLeaf = leaf(t(bc.legalName, lang), `${BC}.legalName`);
+
   // formConfig block
   const fc = b.formConfig;
   const fFields = fc.fields;
@@ -97,6 +122,8 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       message: t(fFields.message.label, lang),
       messagePlaceholder: t(fFields.message.placeholder, lang),
       submit: t(fc.submit, lang),
+      // formConfig.submitting OPTIONAL → fall back to the literal Webflow wait-label per locale.
+      submitting: t(fc.submitting, lang, lang === "vi" ? "Vui lòng đợi..." : "Please wait..."),
       success: t(fc.success, lang),
       fail: t(fc.fail, lang),
     },
@@ -191,33 +218,37 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       })),
     },
     contact: {
-      eyebrow: lang === "vi" ? "Liên Hệ" : "Reach Out",
+      // contactPage.eyebrow is OPTIONAL in the snapshot → fall back to the original literal so the
+      // live site is byte-identical until someone edits it.
+      eyebrow: t(b.contactPage.eyebrow, lang) || (lang === "vi" ? "Liên Hệ" : "Reach Out"),
       title: t(b.contactPage.hero.title.lead, lang),
       titleAccent: t(b.contactPage.hero.title.accent, lang),
       subtitle: t(b.contactPage.hero.subtitle, lang),
       cards: [
         {
-          title: "Email",
-          lines: bc.emails,
+          // contactPage.cardLabels.* are OPTIONAL → fall back to the original literal titles.
+          title: t(b.contactPage.cardLabels?.email, lang) || "Email",
+          rows: emailRows,
         },
         {
-          title: "Phone",
-          lines: [
-            ...(tel ? [`${t(tel.label, lang)}: ${tel.value}`] : []),
-            ...(zalo ? [`${t(zalo.label, lang)}: ${zalo.value}`] : []),
-          ],
+          title: t(b.contactPage.cardLabels?.phone, lang) || "Phone",
+          rows: compact([phoneRow(telIdx), phoneRow(zaloIdx)]),
         },
         {
-          title: "Address",
-          lines: [
-            ...(office ? [t(office.address, lang)] : []),
-            ...(factory ? [t(factory.address, lang)] : []),
-          ],
+          // Home address card shows the address only (no "Office:" label), like the original.
+          title: t(b.contactPage.cardLabels?.address, lang) || "Address",
+          rows: compact([addrRow(officeIdx), addrRow(factoryIdx)]).map(
+            (r): NapRow => ({ label: null, value: r.value }),
+          ),
         },
       ],
     },
     footer: {
-      brand: `${t(bc.brand, lang)} – Manufacturing Brand Identity`,
+      // The brand line is "<brand> – <suffix>". footer.brandSuffix is OPTIONAL → fall back to the
+      // original literal so the live site is byte-identical until edited. Split into prefix + suffix
+      // so the component can stamp ONLY the editable suffix span (the "<brand> – " prefix is derived).
+      brandPrefix: `${t(bc.brand, lang)} – `,
+      brandSuffix: t(b.footer.brandSuffix, lang) || "Manufacturing Brand Identity",
       tagline: ta(b.footer.tagline, lang),
       contactHeading: t(b.footer.contactHeading, lang),
       company: t(bc.legalName, lang),
@@ -227,6 +258,16 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       tax: bc.taxId,
       office: office ? t(office.address, lang) : "",
       factory: factory ? t(factory.address, lang) : "",
+      // Structured NAP with inline-edit field paths (footer renders these so each value is editable).
+      nap: {
+        legalName: legalNameLeaf,
+        email: emailRows[0]?.value ?? leaf("", `${BC}.emails.0`),
+        tel: phoneRow(telIdx),
+        zalo: phoneRow(zaloIdx),
+        tax: taxRow,
+        office: addrRow(officeIdx),
+        factory: addrRow(factoryIdx),
+      },
       quickHeading: t(b.footer.quickHeading, lang),
       // footer.logo is AssetRef? — resolve URL; "" when absent so the component falls
       // back to the literal signex-logo.svg (published v1 snapshot stays valid).
@@ -240,8 +281,17 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
         href: l.href,
       })),
       shipLabel: t(b.footer.shipLabel, lang),
+      // footer.shipping is OPTIONAL → fall back to the original literal badges so the live site
+      // is byte-identical until edited. Locale-invariant brand names, like payments.
+      shipping: b.footer.shipping ?? ["Lalamove", "Grab"],
       payLabel: t(b.footer.payLabel, lang),
       payments: b.footer.payments,
+      // Social hrefs come from the unified businessContact.social (edited under "Business contact").
+      // The footer renders Facebook/YouTube; fall back to "#" when a network has no URL yet.
+      social: {
+        facebook: bc.social.find((s) => s.kind === "facebook")?.href ?? "#",
+        youtube: bc.social.find((s) => s.kind === "youtube")?.href ?? "#",
+      },
     },
     nav: {
       skip: t(b.nav.skip, lang),
@@ -327,6 +377,9 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
     },
     contactPage: {
       hero: {
+        // hero.eyebrow OPTIONAL → fall back to the original literal "Contact" so the live site is
+        // byte-identical until edited. Same label in both locales' mockups (locale-invariant default).
+        eyebrow: t(b.contactPage.hero.eyebrow, lang) || "Contact",
         title: t(b.contactPage.hero.title.lead, lang),
         titleAccent: t(b.contactPage.hero.title.accent, lang),
         subtitle: t(b.contactPage.hero.subtitle, lang),
@@ -337,28 +390,20 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       },
       cards: [
         {
-          title: "Email",
-          lines: bc.emails,
+          // Shared with the home contact cards: contactPage.cardLabels.* OPTIONAL → literal fallback.
+          title: t(b.contactPage.cardLabels?.email, lang) || "Email",
+          rows: emailRows,
         },
         {
-          title: "Phone",
-          lines: [
-            ...(tel ? [`${t(tel.label, lang)}: ${tel.value}`] : []),
-            ...(zalo ? [`${t(zalo.label, lang)}: ${zalo.value}`] : []),
-          ],
+          title: t(b.contactPage.cardLabels?.phone, lang) || "Phone",
+          rows: compact([phoneRow(telIdx), phoneRow(zaloIdx)]),
         },
         {
-          title: "Address",
-          company: t(bc.legalName, lang),
-          details: [
-            ...(office
-              ? [{ label: t(office.label, lang), value: t(office.address, lang) }]
-              : []),
-            ...(factory
-              ? [{ label: t(factory.label, lang), value: t(factory.address, lang) }]
-              : []),
-            { label: t(bc.taxLabel, lang), value: bc.taxId },
-          ],
+          // Address card: company line (bold, no label) + Office/Factory/Tax rows with bold labels.
+          title: t(b.contactPage.cardLabels?.address, lang) || "Address",
+          company: legalNameLeaf,
+          strongLabel: true,
+          rows: compact([addrRow(officeIdx), addrRow(factoryIdx), taxRow]),
         },
       ],
       map: {
@@ -385,9 +430,9 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       ogImageAlt: t(b.meta.ogImage.alt, lang),
       // meta.ogImage is AssetRef — resolve URL so seo.ts can serve the CDN path in og:image
       ogImageUrl: assetUrl(b.meta.ogImage.assetId),
-      // Optional GA4 measurement id. "" when the site owner hasn't set one → the layout injects
-      // NO Google Analytics (see app/[lang]/layout.tsx). Locale-invariant (same id on EN/VI).
-      ga4Id: b.meta.analytics?.ga4Id?.trim() ?? "",
+      // NOTE: GA4 no longer comes from the snapshot. It moved to the global SiteConfig singleton
+      // (admin Settings) so analytics is independent of the published theme — see
+      // app/lib/site-config.ts (getGa4Id) wired into app/[lang]/layout.tsx.
       about: {
         title: t(b.meta.about.title, lang),
         description: t(b.meta.about.description, lang),
@@ -432,10 +477,14 @@ export async function getSiteContent(lang: Locale): Promise<SiteContent> {
 // PREVIEW path — live working state via the api. NEVER cached, NEVER on the published path.
 // Called only from the <Suspense>-wrapped preview island (app/components/preview-bar.tsx) so the
 // public shell stays static. Reads PREVIEW_SECRET server-side.
-export async function getPreviewSnapshot(lang: Locale): Promise<SiteContent> {
+export async function getPreviewSnapshot(lang: Locale, themeId?: string): Promise<SiteContent> {
   try {
     const base = process.env.API_URL ?? "http://api:3060";
-    const res = await fetch(`${base}/api/preview/snapshot`, {
+    // Thread the optional themeId through to the preview controller (Task 8): when present it
+    // serves THAT theme's draftSnapshot; when omitted the controller defaults to the live theme.
+    const url = new URL(`${base}/api/preview/snapshot`);
+    if (themeId) url.searchParams.set("themeId", themeId);
+    const res = await fetch(url, {
       method: "POST",
       headers: { "x-preview-secret": process.env.PREVIEW_SECRET ?? "" },
       cache: "no-store",

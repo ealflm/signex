@@ -11,6 +11,7 @@ import { hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { getSiteContent } from "@/app/lib/content";
 import { Contact } from "@/app/components/home/contact";
 import { buildMetadata } from "@/app/lib/seo";
+import { editText } from "@/app/lib/edit-attrs";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
@@ -46,6 +47,9 @@ const CONTACT_ICONS = [
   </svg>,
 ];
 
+// Card title leaf keys, index-aligned with contactPage.cards (Email / Phone / Address).
+const CARD_KEYS = ["email", "phone", "address"] as const;
+
 export default async function ContactPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   if (!hasLocale(lang)) notFound(); // narrows lang to Locale; rejects unknown locales with a 404
@@ -59,19 +63,19 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
               <div className="heading_contact-c">
                 <div className="master_label" data-wf--tag--variant="base">
                   <div className="label-small">
-                    Contact
+                    <span {...editText(false, "contactPage.hero.eyebrow", { maxLength: 40 })}>{dict.contactPage.hero.eyebrow}</span>
                   </div>
                 </div>
                 <h1>
-                  {dict.contactPage.hero.title}
-                  <span className="tone-medium">
+                  <span {...editText(false, "contactPage.hero.title.lead", { maxLength: 80 })}>{dict.contactPage.hero.title}</span>
+                  <span className="tone-medium" {...editText(false, "contactPage.hero.title.accent", { maxLength: 80 })}>
                     {dict.contactPage.hero.titleAccent}
                   </span>
                 </h1>
               </div>
               <div className="contact-c_hero-p">
                 <p className="tone-medium margin-0">
-                  {dict.contactPage.hero.subtitle}
+                  <span {...editText(false, "contactPage.hero.subtitle", { maxLength: 200 })}>{dict.contactPage.hero.subtitle}</span>
                 </p>
               </div>
             </div>
@@ -85,22 +89,24 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
                   </div>
                   <div className="text_contact-c-card">
                     <div className="text-size-large text_body-bold">
-                      {c.title}
+                      <span {...editText(false, `contactPage.cardLabels.${CARD_KEYS[i]}`, { maxLength: 40 })}>{c.title}</span>
                     </div>
                     <div className="tone-medium contact-card_lines">
-                      {c.lines && c.lines.map((line, j) => (
-                        <div key={j}>
-                          {line}
-                        </div>
-                      ))}
                       {c.company && (
                         <div>
-                          {c.company}
+                          <span {...editText(false, c.company.field, { maxLength: 80 })}>{c.company.text}</span>
                         </div>
                       )}
-                      {c.details && c.details.map((d) => (
-                        <div key={d.label}>
-                          <strong>{d.label}</strong>: {d.value}
+                      {c.rows.map((row, j) => (
+                        <div key={j}>
+                          {row.label &&
+                            (c.strongLabel ? (
+                              <strong {...editText(false, row.label.field, { maxLength: 80 })}>{row.label.text}</strong>
+                            ) : (
+                              <span {...editText(false, row.label.field, { maxLength: 80 })}>{row.label.text}</span>
+                            ))}
+                          {row.label ? ": " : ""}
+                          <span {...editText(false, row.value.field, { maxLength: 160 })}>{row.value.text}</span>
                         </div>
                       ))}
                     </div>
@@ -131,12 +137,12 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
             <div className="headline_faq-v1" data-w-id="9dfc7646-5801-a3d5-162a-aebf30a19078">
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  {dict.contactPage.map.eyebrow}
+                  <span {...editText(false, "contactPage.map.eyebrow", { maxLength: 80 })}>{dict.contactPage.map.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                {dict.contactPage.map.title}
-                <span className="tone-medium">
+                <span {...editText(false, "contactPage.map.title.lead", { maxLength: 80 })}>{dict.contactPage.map.title}</span>
+                <span className="tone-medium" {...editText(false, "contactPage.map.title.accent", { maxLength: 80 })}>
                   {dict.contactPage.map.titleAccent}
                 </span>
               </h2>

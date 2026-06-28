@@ -4,11 +4,18 @@ export type FieldKind =
   | "string"
   | "localized"
   | "localizedArray"
+  | "stringArray"
+  | "boolean"
   | "array"
   | "assetRef"
   | "videoRef"
   | "object"
   | "json";
+
+// How deep we recurse into plain (non-special) objects before falling back to a raw-JSON textarea.
+// 3 reaches the deepest real leaves in the block registry (e.g. block → fields → name → {label}),
+// turning two-tone `{lead,accent}` titles and `formConfig.fields.*` into proper inputs.
+const MAX_OBJECT_DEPTH = 3;
 
 export interface FieldPlan {
   name: string;
@@ -101,12 +108,14 @@ function isPlainObject(s: z.ZodTypeAny): boolean {
   );
 }
 
-// depth 0 = top-level block field; depth 1 = one level into a nested object.
-// We recurse AT MOST one level (depth 1): nested-nested objects fall back to JSON so the
-// editor never produces an unbounded tree and array/union shapes stay JSON-editable.
+// depth 0 = top-level block field; each nested object adds one. We recurse plain objects up to
+// MAX_OBJECT_DEPTH so nested leaves (two-tone {lead,accent} titles, formConfig.fields.*) get proper
+// editors; objects nested deeper than that fall back to JSON so the tree can't explode and
+// array/union shapes stay JSON-editable.
 function classify(name: string, raw: z.ZodTypeAny, depth = 0): FieldPlan {
   const s = unwrap(raw);
   if (isStringSchema(s)) return { name, kind: "string", label: name };
+  if (typeName(s) === "ZodBoolean") return { name, kind: "boolean", label: name };
   if (isLocalizedArray(s)) return { name, kind: "localizedArray", label: name };
   if (isLocalized(s)) return { name, kind: "localized", label: name };
   if (isVideoRef(s)) return { name, kind: "videoRef", label: name };
@@ -121,13 +130,15 @@ function classify(name: string, raw: z.ZodTypeAny, depth = 0): FieldPlan {
       );
       return { name, kind: "array", label: name, children };
     }
-    // array of scalars — json fallback (raw validated textarea)
+    // array of plain strings/enums (e.g. emails, payment labels) → a string-list editor.
+    if (isStringSchema(element)) return { name, kind: "stringArray", label: name };
+    // array of other scalars (numbers, …) — json fallback (raw validated textarea)
     return { name, kind: "json", label: name };
   }
-  // Recurse ONE level into a plain object so nested AssetRef/VideoRef/localized/string leaves
-  // get proper editors instead of falling through to a raw-JSON textarea. Guard with depth so
-  // deeper nesting (and array items, which already pass depth+1) stays JSON — conservative by design.
-  if (depth === 0 && isPlainObject(s)) {
+  // Recurse into a plain object (up to MAX_OBJECT_DEPTH) so nested AssetRef/VideoRef/localized/
+  // string leaves — and two-tone `{lead,accent}` titles + `formConfig.fields.*` — get proper
+  // editors instead of falling through to a raw-JSON textarea. Bounded so the tree can't explode.
+  if (depth < MAX_OBJECT_DEPTH && isPlainObject(s)) {
     const shape = objectShape(s)!;
     const children = Object.entries(shape).map(([k, v]) =>
       classify(k, v as z.ZodTypeAny, depth + 1)

@@ -24,21 +24,22 @@ import { ProductCategories } from "@/app/components/home/product-categories";
 import { HomeAbout } from "@/app/components/home/home-about";
 import { Contact } from "@/app/components/home/contact";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PreviewRuntime } from "@/app/preview/preview-runtime";
 
 async function PreviewHome({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   await connection(); // request-time only — never prerender this subtree
-  const { secret } = await searchParams;
+  const { secret, theme } = await searchParams;
   if (!process.env.PREVIEW_SECRET || secret !== process.env.PREVIEW_SECRET) notFound();
 
   const { lang } = await params;
   const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
-  const dict = await getPreviewSnapshot(locale);
+  const dict = await getPreviewSnapshot(locale, theme);
 
   return (
     <div className="page-wrapper">
@@ -47,13 +48,16 @@ async function PreviewHome({
         <Hero dict={dict} editable />
         <div className="home-a_rest-content">
           <Features dict={dict.features} editable />
-          <ProductCategories dict={dict.products} />
-          <HomeAbout dict={dict.about} />
-          <Contact dict={dict} />
+          <ProductCategories dict={dict.products} editable />
+          <HomeAbout dict={dict.about} editable />
+          <Contact dict={dict} editable />
         </div>
         <Footer dict={dict.footer} editable />
       </main>
       <EditOverlay />
+      {/* Webflow boot lives in this dynamic subtree (not the layout) so it runs after the navbar
+          hydrates — prevents the w-nav DOM mutation → #418 → subtree-regeneration that wiped edits. */}
+      <PreviewRuntime />
     </div>
   );
 }
@@ -63,7 +67,7 @@ export default function PreviewHomePage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   return (
     <Suspense fallback={null}>

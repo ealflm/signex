@@ -5,12 +5,11 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Inbox,
-  Rocket,
   Package,
-  FileText,
   Image as ImageIcon,
-  MousePointerClick,
   Users,
+  Palette,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,11 +38,10 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard, match: "/" },
   { href: "/forms", label: "Leads", icon: Inbox, match: "/forms" },
-  { href: "/releases", label: "Releases", icon: Rocket, match: "/releases" },
+  { href: "/themes", label: "Themes", icon: Palette, match: "/themes" },
   { href: "/catalog", label: "Catalog", icon: Package, match: "/catalog" },
-  { href: "/content/hero", label: "Content", icon: FileText, match: "/content" },
-  { href: "/visual", label: "Visual editor", icon: MousePointerClick, match: "/visual" },
   { href: "/media", label: "Media", icon: ImageIcon, match: "/media" },
+  { href: "/settings", label: "Settings", icon: Settings, match: "/settings" },
 ];
 
 const ADMIN_ITEM: NavItem = {

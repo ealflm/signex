@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { STANDARD_VALUES } from "@/app/lib/standard-options";
+import { editText } from "@/app/lib/edit-attrs";
 
 /**
  * Hero quote form — progressive disclosure, full-width. Text comes from the server-loaded
@@ -21,10 +22,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export function HeroQuoteForm({
   dict,
+  editable = false,
   "data-w-id": dataWId,
   style,
 }: {
   dict: Dictionary["form"];
+  editable?: boolean;
   "data-w-id"?: string;
   style?: React.CSSProperties;
 }) {
@@ -62,7 +65,7 @@ export function HeroQuoteForm({
     <div button="" className={`button_submit-static ${extraClass}`}>
       <input
         className="button_submit w-button"
-        data-wait="Please wait..."
+        data-wait={dict.submitting}
         tabIndex={tabIndex}
         type="submit"
         value={dict.submit}
@@ -76,7 +79,7 @@ export function HeroQuoteForm({
       >
         <div className="button_text-mask">
           <div button-text="" className="text-button">
-            {dict.submit}
+            <span {...editText(editable, "formConfig.submit", { maxLength: 80 })}>{dict.submit}</span>
           </div>
         </div>
         <div button-bg="" className="btn-bg"></div>
@@ -118,7 +121,7 @@ export function HeroQuoteForm({
             <div className="hero-quote_bar">
               <div className="input_wrap">
                 <label className="text_input-label label-large" htmlFor="quote-name">
-                  {dict.name}
+                  <span {...editText(editable, "formConfig.fields.name.label", { maxLength: 80 })}>{dict.name}</span>
                   <sup>*</sup>
                 </label>
                 <input
@@ -135,7 +138,7 @@ export function HeroQuoteForm({
               </div>
               <div className="input_wrap">
                 <label className="text_input-label label-large" htmlFor="quote-email">
-                  {dict.email}
+                  <span {...editText(editable, "formConfig.fields.email.label", { maxLength: 80 })}>{dict.email}</span>
                   <sup>*</sup>
                 </label>
                 <input
@@ -152,7 +155,7 @@ export function HeroQuoteForm({
               </div>
               <div className="input_wrap">
                 <label className="text_input-label label-large" htmlFor="quote-phone">
-                  {dict.phone}
+                  <span {...editText(editable, "formConfig.fields.phone.label", { maxLength: 80 })}>{dict.phone}</span>
                   <sup>*</sup>
                 </label>
                 <input
@@ -181,7 +184,7 @@ export function HeroQuoteForm({
               <div className="hero-form_collapsible-inner">
                 <div className="hero-quote_grid hero-quote_grid--3">
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-quantity">{dict.quantity}</label>
+                    <label className="text_input-label label-large" htmlFor="quote-quantity"><span {...editText(editable, "formConfig.fields.quantity.label", { maxLength: 80 })}>{dict.quantity}</span></label>
                     <input
                       className="text-field w-input"
                       data-name="Quantity"
@@ -193,7 +196,7 @@ export function HeroQuoteForm({
                     />
                   </div>
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-standard">{dict.standard}</label>
+                    <label className="text_input-label label-large" htmlFor="quote-standard"><span {...editText(editable, "formConfig.fields.standard.label", { maxLength: 80 })}>{dict.standard}</span></label>
                     <select
                       className="text-field select w-select"
                       data-name="Standard"
@@ -211,7 +214,7 @@ export function HeroQuoteForm({
                     </select>
                   </div>
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-height">{dict.height}</label>
+                    <label className="text_input-label label-large" htmlFor="quote-height"><span {...editText(editable, "formConfig.fields.height.label", { maxLength: 80 })}>{dict.height}</span></label>
                     <input
                       className="text-field w-input"
                       data-name="Height"
@@ -224,7 +227,7 @@ export function HeroQuoteForm({
                     />
                   </div>
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-width">{dict.width}</label>
+                    <label className="text_input-label label-large" htmlFor="quote-width"><span {...editText(editable, "formConfig.fields.width.label", { maxLength: 80 })}>{dict.width}</span></label>
                     <input
                       className="text-field w-input"
                       data-name="Width"
@@ -237,7 +240,7 @@ export function HeroQuoteForm({
                     />
                   </div>
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-thickness">{dict.thickness}</label>
+                    <label className="text_input-label label-large" htmlFor="quote-thickness"><span {...editText(editable, "formConfig.fields.thickness.label", { maxLength: 80 })}>{dict.thickness}</span></label>
                     <input
                       className="text-field w-input"
                       data-name="Thickness"
@@ -250,7 +253,7 @@ export function HeroQuoteForm({
                     />
                   </div>
                   <div className="input_wrap">
-                    <div className="text_input-label label-large">{dict.upload}</div>
+                    <div className="text_input-label label-large"><span {...editText(editable, "formConfig.fields.upload.label", { maxLength: 80 })}>{dict.upload}</span></div>
                     {/* Custom dashed dropzone (dark-panel variant of the contact form's
                         upload): the <label> wraps the visually-hidden file input, which keeps
                         its tabIndex (progressive-disclosure tab gating) and is still counted
@@ -276,7 +279,7 @@ export function HeroQuoteForm({
                   </div>
                 </div>
                 <div className="input_wrap">
-                  <label className="text_input-label label-large" htmlFor="quote-message">{dict.message}</label>
+                  <label className="text_input-label label-large" htmlFor="quote-message"><span {...editText(editable, "formConfig.fields.message.label", { maxLength: 80 })}>{dict.message}</span></label>
                   <textarea
                     className="text-field w-input hero-quote_message"
                     data-name="Message"

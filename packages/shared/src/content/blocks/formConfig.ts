@@ -26,6 +26,10 @@ export const formConfigBlock = z.object({
     .array(z.object({ value: z.string(), label: LocalizedText }))
     .min(1),
   submit: LocalizedText,
+  // submitting OPTIONAL: the in-flight submit label (Webflow `data-wait`, shown while the form
+  // posts). The web falls back to "Please wait…" / "Vui lòng đợi…" when absent, so the published
+  // v1 snapshot (which predates this field) stays valid — no re-publish. Editable as `formConfig.submitting`.
+  submitting: LocalizedText.optional(),
   success: LocalizedText,
   fail: LocalizedText,
 });

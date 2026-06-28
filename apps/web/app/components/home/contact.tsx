@@ -1,6 +1,11 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { StaticWebflowForm } from "@/app/components/static-webflow-form";
 import { STANDARD_VALUES } from "@/app/lib/standard-options";
+import { editText } from "@/app/lib/edit-attrs";
+
+// Card title leaf keys, index-aligned with dict.contact.cards (Email / Phone / Address). Used to
+// stamp each card title with `contactPage.cardLabels.<key>` for the visual editor.
+const CARD_KEYS = ["email", "phone", "address"] as const;
 
 // Info-card icons (lucide) + per-card chip tone, index-aligned with dict.contact.cards
 // (Email / Phone / Address). Icons aren't translated, so they live here, not in the dict.
@@ -50,6 +55,7 @@ export function Contact({
   gridWid = "b3ac1ddc-636d-f345-c58d-b372a067ce8d",
   formWid = "0f29df12-8c38-da6f-794d-3989ac10d663",
   showCards = true,
+  editable = false,
 }: {
   dict: Dictionary;
   headlineWid?: string;
@@ -58,6 +64,8 @@ export function Contact({
   // The Email/Phone/Address info cards. Default on (home page); /contact passes false because
   // those cards already appear in its contact-c hero above this section (avoid duplicates).
   showCards?: boolean;
+  // Visual-editor mode: stamps the eyebrow + card-title leaves. Public render leaves them inert.
+  editable?: boolean;
 }) {
   // Reveal ids default to the home-page a-124 triggers; overridable so this section can be reused
   // on a page with a different data-wf-page (e.g. /contact uses the contact-c page id — see
@@ -74,7 +82,7 @@ export function Contact({
               <div className="heading_contact-b">
                 <div className="master_label" data-wf--tag--variant="base">
                   <div className="label-small">
-                    {c.eyebrow}
+                    <span {...editText(editable, "contactPage.eyebrow", { maxLength: 80 })}>{c.eyebrow}</span>
                   </div>
                 </div>
                 {/* Ref uses <h1> (contact-b is that page's hero); rendered as <h2> so the
@@ -82,14 +90,14 @@ export function Contact({
                     matching the About / Products headlines (size--h2) so the section headings
                     are visually consistent across the home page. */}
                 <h2 className="margin-0">
-                  {c.title}
-                  <span className="tone-medium">
+                  <span {...editText(editable, "contactPage.hero.title.lead", { maxLength: 80 })}>{c.title}</span>
+                  <span className="tone-medium" {...editText(editable, "contactPage.hero.title.accent", { maxLength: 80 })}>
                     {c.titleAccent}
                   </span>
                 </h2>
               </div>
               <p className="tone-medium">
-                {c.subtitle}
+                <span {...editText(editable, "contactPage.hero.subtitle", { maxLength: 200 })}>{c.subtitle}</span>
               </p>
             </div>
           </div>
@@ -107,12 +115,18 @@ export function Contact({
                   </div>
                   <div>
                     <div className="text_body-bold">
-                      {card.title}
+                      <span {...editText(editable, `contactPage.cardLabels.${CARD_KEYS[i]}`, { maxLength: 40 })}>{card.title}</span>
                     </div>
                     <div className="contact_info-lines tone-medium">
-                      {card.lines.map((line) => (
-                        <div key={line}>
-                          {line}
+                      {card.rows.map((row, j) => (
+                        <div key={j}>
+                          {row.label && (
+                            <>
+                              <span {...editText(editable, row.label.field, { maxLength: 80 })}>{row.label.text}</span>
+                              {": "}
+                            </>
+                          )}
+                          <span {...editText(editable, row.value.field, { maxLength: 160 })}>{row.value.text}</span>
                         </div>
                       ))}
                     </div>
@@ -139,34 +153,34 @@ export function Contact({
                   <div className="profile-form_inner contact-form_grid">
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-name">
-                        {t.name}
+                        <span {...editText(editable, "formConfig.fields.name.label", { maxLength: 80 })}>{t.name}</span>
                         <sup>*</sup>
                       </label>
                       <input className="text-field w-input" data-name="Name" id="contact-name" maxLength={256} name="Name" placeholder={t.namePlaceholder} required type="text" />
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-email">
-                        {t.email}
+                        <span {...editText(editable, "formConfig.fields.email.label", { maxLength: 80 })}>{t.email}</span>
                         <sup>*</sup>
                       </label>
                       <input className="text-field w-input" data-name="Email" id="contact-email" maxLength={256} name="Email" placeholder={t.emailPlaceholder} required type="email" />
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-phone">
-                        {t.phone}
+                        <span {...editText(editable, "formConfig.fields.phone.label", { maxLength: 80 })}>{t.phone}</span>
                         <sup>*</sup>
                       </label>
                       <input className="text-field w-input" data-name="Phone" id="contact-phone" maxLength={256} name="Phone" placeholder={t.phonePlaceholder} required type="tel" />
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-quantity">
-                        {t.quantity}
+                        <span {...editText(editable, "formConfig.fields.quantity.label", { maxLength: 80 })}>{t.quantity}</span>
                       </label>
                       <input className="text-field w-input" data-name="Quantity" id="contact-quantity" name="Quantity" placeholder={t.quantityPlaceholder} type="text" />
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-standard">
-                        {t.standard}
+                        <span {...editText(editable, "formConfig.fields.standard.label", { maxLength: 80 })}>{t.standard}</span>
                       </label>
                       <select className="text-field select w-select" data-name="Standard" defaultValue="" id="contact-standard" name="Standard">
                         <option value="">
@@ -181,7 +195,7 @@ export function Contact({
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-sample">
-                        {t.upload}
+                        <span {...editText(editable, "formConfig.fields.upload.label", { maxLength: 80 })}>{t.upload}</span>
                       </label>
                       {/* Custom upload dropzone: a <label> wraps the (visually hidden but
                           functional) file input, so the dashed box + icon + format text
@@ -196,43 +210,43 @@ export function Contact({
                           </svg>
                         </span>
                         <span className="contact-upload_text">
-                          {t.uploadHelp}
+                          <span {...editText(editable, "formConfig.uploadHelp", { maxLength: 80 })}>{t.uploadHelp}</span>
                         </span>
                       </label>
                     </div>
                     <div className="contact-form_dims">
                       <div className="input_wrap">
                         <label className="text_input-label label-large" htmlFor="contact-height">
-                          {t.height}
+                          <span {...editText(editable, "formConfig.fields.height.label", { maxLength: 80 })}>{t.height}</span>
                         </label>
                         <input className="text-field w-input" data-name="Height" id="contact-height" inputMode="decimal" name="Height" placeholder={t.heightPlaceholder} type="text" />
                       </div>
                       <div className="input_wrap">
                         <label className="text_input-label label-large" htmlFor="contact-width">
-                          {t.width}
+                          <span {...editText(editable, "formConfig.fields.width.label", { maxLength: 80 })}>{t.width}</span>
                         </label>
                         <input className="text-field w-input" data-name="Width" id="contact-width" inputMode="decimal" name="Width" placeholder={t.widthPlaceholder} type="text" />
                       </div>
                       <div className="input_wrap">
                         <label className="text_input-label label-large" htmlFor="contact-thickness">
-                          {t.thickness}
+                          <span {...editText(editable, "formConfig.fields.thickness.label", { maxLength: 80 })}>{t.thickness}</span>
                         </label>
                         <input className="text-field w-input" data-name="Thickness" id="contact-thickness" inputMode="decimal" name="Thickness" placeholder={t.thicknessPlaceholder} type="text" />
                       </div>
                     </div>
                     <div className="input_wrap contact-form_full">
                       <label className="text_input-label label-large" htmlFor="contact-message">
-                        {t.message}
+                        <span {...editText(editable, "formConfig.fields.message.label", { maxLength: 80 })}>{t.message}</span>
                       </label>
                       <textarea className="text-field text-area w-input" data-name="Message" id="contact-message" name="Message" placeholder={t.messagePlaceholder}></textarea>
                     </div>
                   </div>
                   <div button="" className="button_submit-static">
-                    <input className="button_submit w-button" data-wait="Please wait..." type="submit" value={t.submit} />
+                    <input className="button_submit w-button" data-wait={t.submitting} type="submit" value={t.submit} />
                     <a button="" className="cta_primary w-inline-block" data-wf--cta-primary--variant="primary" href="#">
                       <div className="button_text-mask">
                         <div button-text="" className="text-button">
-                          {t.submit}
+                          <span {...editText(editable, "formConfig.submit", { maxLength: 80 })}>{t.submit}</span>
                         </div>
                       </div>
                       <div button-bg="" className="btn-bg">

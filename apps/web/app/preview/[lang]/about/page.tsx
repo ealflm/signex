@@ -13,21 +13,22 @@ import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { AboutSections } from "@/app/components/about/about-sections";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PreviewRuntime } from "@/app/preview/preview-runtime";
 
 async function PreviewAbout({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   await connection();
-  const { secret } = await searchParams;
+  const { secret, theme } = await searchParams;
   if (!process.env.PREVIEW_SECRET || secret !== process.env.PREVIEW_SECRET) notFound();
 
   const { lang } = await params;
   const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
-  const dict = await getPreviewSnapshot(locale);
+  const dict = await getPreviewSnapshot(locale, theme);
 
   return (
     <div className="page-wrapper">
@@ -37,6 +38,8 @@ async function PreviewAbout({
         <Footer dict={dict.footer} editable />
       </main>
       <EditOverlay />
+      {/* Webflow boot in this dynamic subtree (not the layout) — see preview-runtime.tsx (#418 fix). */}
+      <PreviewRuntime />
     </div>
   );
 }
@@ -46,7 +49,7 @@ export default function PreviewAboutPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   return (
     <Suspense fallback={null}>

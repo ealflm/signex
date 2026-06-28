@@ -1,4 +1,5 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
+import { editText } from "@/app/lib/edit-attrs";
 
 /**
  * HomeAbout — Caladan's "section_home-about" (an eyebrow + headline + paragraph), ported
@@ -26,11 +27,13 @@ import type { Dictionary } from "@/app/[lang]/dictionaries";
  */
 export function HomeAbout({
   dict,
+  editable = false,
   headlineWid = "0f29df12-8c38-da6f-794d-3989ac10d663",
   gridWid = "b3ac1ddc-636d-f345-c58d-b372a067ce8d",
   showMvv = true,
 }: {
   dict: Dictionary["about"];
+  editable?: boolean;
   headlineWid?: string;
   gridWid?: string;
   showMvv?: boolean;
@@ -44,18 +47,18 @@ export function HomeAbout({
           <div className="headline_home-about" data-w-id={headlineWid} style={{ opacity: 0, filter: 'blur(5px)' }}>
             <div className="master_label" data-wf--tag--variant="base">
               <div className="label-small">
-                {t.eyebrow}
+                <span {...editText(editable, "about.eyebrow", { maxLength: 80 })}>{t.eyebrow}</span>
               </div>
             </div>
             <h2 className="margin-0">
-              {t.title}
-              <span className="tone-medium">
+              <span {...editText(editable, "about.title.lead", { maxLength: 80 })}>{t.title}</span>
+              <span className="tone-medium" {...editText(editable, "about.title.accent", { maxLength: 80 })}>
                 {t.titleAccent}
               </span>
             </h2>
             <div className="home_about-p">
               <p className="tone-medium">
-                {t.body}
+                <span {...editText(editable, "about.body", { maxLength: 200 })}>{t.body}</span>
               </p>
             </div>
           </div>
@@ -63,14 +66,14 @@ export function HomeAbout({
           <div className="about-mvv_grid" data-w-id={gridWid} style={{ opacity: 0, filter: 'blur(5px)' }}>
             <div className="about-mvv_mission">
               <h3 className="about-mvv_title">
-                {t.mission.title}
+                <span {...editText(editable, "about.mission.title", { maxLength: 80 })}>{t.mission.title}</span>
               </h3>
               <p className="tone-medium about-mvv_body">
-                {t.mission.body}
+                <span {...editText(editable, "about.mission.body", { maxLength: 200 })}>{t.mission.body}</span>
               </p>
               <ul className="about-mvv_list" role="list">
-                {t.mission.items.map((item) => (
-                  <li className="about-mvv_item" key={item}>
+                {t.mission.items.map((item, i) => (
+                  <li className="about-mvv_item" key={i}>
                     <div className="about-mvv_check w-embed">
                       <svg className="lucide lucide-circle-check-icon lucide-circle-check" fill="none" height="24" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="12" cy="12" r="10" />
@@ -78,7 +81,7 @@ export function HomeAbout({
                       </svg>
                     </div>
                     <div>
-                      {item}
+                      <span {...editText(editable, `about.mission.items.${i}`, { maxLength: 160 })}>{item}</span>
                     </div>
                   </li>
                 ))}
@@ -95,11 +98,11 @@ export function HomeAbout({
                     </svg>
                   </div>
                   <h3 className="about-mvv_card-title">
-                    {t.vision.title}
+                    <span {...editText(editable, "about.vision.title", { maxLength: 80 })}>{t.vision.title}</span>
                   </h3>
                 </div>
                 <p className="tone-medium about-mvv_body">
-                  {t.vision.body}
+                  <span {...editText(editable, "about.vision.body", { maxLength: 200 })}>{t.vision.body}</span>
                 </p>
               </div>
               <div className="about-mvv_card is-values">
@@ -111,11 +114,11 @@ export function HomeAbout({
                     </svg>
                   </div>
                   <h3 className="about-mvv_card-title">
-                    {t.values.title}
+                    <span {...editText(editable, "about.values.title", { maxLength: 80 })}>{t.values.title}</span>
                   </h3>
                 </div>
                 <p className="tone-medium about-mvv_body">
-                  {t.values.body}
+                  <span {...editText(editable, "about.values.body", { maxLength: 200 })}>{t.values.body}</span>
                 </p>
               </div>
             </div>

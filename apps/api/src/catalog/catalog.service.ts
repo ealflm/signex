@@ -1,235 +1,371 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { Prisma } from '@signex/db';
-import { categoryInputSchema, productInputSchema } from '@signex/shared';
-import { PrismaService } from '../prisma/prisma.service';
-import { WorkingStateService } from '../working-state/working-state.service';
-import { AuditService } from '../audit/audit.service';
-import { reconcileAssetRefs } from './asset-ref.reconcile';
-import type { CollectedRef } from '../content/asset-ref.util';
+import { freezeAsset } from '../release/snapshot-assets';
+import { ThemeService } from '../theme/theme.service';
+import type { AuthedUser } from '../auth/auth.types';
 
-function isZodError(e: unknown): boolean {
+/**
+ * Generates a cuid-v1-compatible id (passes z.string().cuid()).
+ * Starts with 'c', followed by base36 timestamp + random suffix.
+ */
+function mintCuid(): string {
   return (
-    typeof e === 'object' &&
-    e !== null &&
-    (e as { name?: string }).name === 'ZodError'
+    'c' +
+    Date.now().toString(36) +
+    Math.random().toString(36).slice(2, 15)
   );
 }
 
-function validate<T>(
-  schema: { parse: (v: unknown) => T },
-  raw: unknown,
-  what: string,
-): T {
-  try {
-    return schema.parse(raw);
-  } catch (e) {
-    if (isZodError(e)) {
-      throw new UnprocessableEntityException({
-        code: 'INVALID_INPUT',
-        message: `${what} failed validation`,
-        issues: (e as { issues: unknown }).issues,
-      });
-    }
-    throw e;
+/** Validate an asset reference inside an applyDraftMutation tx. */
+async function resolveAsset(
+  tx: Prisma.TransactionClient,
+  imageId: string,
+): Promise<{
+  id: string;
+  r2Key: string;
+  mime: string;
+  width?: number | null;
+  height?: number | null;
+  poster?: { r2Key: string } | null;
+}> {
+  const asset = await tx.asset.findUnique({
+    where: { id: imageId },
+    select: {
+      id: true,
+      r2Key: true,
+      mime: true,
+      width: true,
+      height: true,
+      poster: { select: { r2Key: true } },
+      deletedAt: true,
+    },
+  });
+  if (!asset || (asset as any).deletedAt) {
+    throw new UnprocessableEntityException({ code: 'INVALID_ASSET' });
   }
+  return asset;
 }
 
-/**
- * Build a single-element CollectedRef array for an entity's image field.
- * Returns [] when there is no imageId (no ref to reconcile).
- */
-function imageRef(imageId?: string | null, imageAlt?: unknown): CollectedRef[] {
-  if (!imageId) return [];
-  return [{ field: 'image', assetId: imageId, alt: imageAlt }];
+export interface CategoryInput {
+  slug: string;
+  title: unknown;
+  tag: unknown;
+  intro: unknown;
+  productCount: number;
+  materialCount: number;
+  imageId?: string | null;
+  imageAlt?: unknown;
+}
+
+export interface ProductInput {
+  slug: string;
+  title: unknown;
+  tag: unknown;
+  desc: unknown;
+  imageId?: string | null;
+  imageAlt?: unknown;
 }
 
 @Injectable()
 export class CatalogService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly workingState: WorkingStateService,
-    private readonly audit: AuditService,
-  ) {}
+  constructor(private readonly themeService: ThemeService) {}
 
-  // ── Category ──────────────────────────────────────────────────────────────
+  // ── Categories ─────────────────────────────────────────────────────────────
 
   async createCategory(
-    actor: { id: string },
-    input: unknown,
-    expectedRevision: number,
-  ): Promise<{ id: string; revision: number }> {
-    const data = validate(categoryInputSchema, input, 'Category');
-    return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(
-        tx,
-        expectedRevision,
-        actor.id,
-      );
-      const row = await tx.category.create({
-        data: data as unknown as Prisma.CategoryUncheckedCreateInput,
-      });
-      await reconcileAssetRefs(
-        tx,
-        'category',
-        row.id,
-        imageRef(data.imageId, data.imageAlt),
-      );
-      await this.audit.writeAudit(tx, {
-        userId: actor.id,
-        action: 'category.create',
-        entityType: 'category',
-        entityId: row.id,
-      });
-      return { id: row.id, revision };
-    });
+    actor: AuthedUser,
+    themeId: string,
+    expectedDraftRevision: number,
+    input: CategoryInput,
+  ): Promise<{ id: string; draftRevision: number }> {
+    let capturedId = '';
+
+    const result = await this.themeService.applyDraftMutation(
+      actor,
+      themeId,
+      expectedDraftRevision,
+      async (snap, tx) => {
+        const categories: any[] = snap.catalog.categories;
+
+        // Slug uniqueness — category slugs are globally unique.
+        if (categories.some((c: any) => c.slug === input.slug)) {
+          throw new UnprocessableEntityException({ code: 'DUPLICATE_SLUG' });
+        }
+
+        // Image validation.
+        let image: unknown;
+        if (input.imageId) {
+          const asset = await resolveAsset(tx, input.imageId);
+          image = freezeAsset(asset, input.imageAlt);
+        }
+
+        capturedId = mintCuid();
+        const sortOrder =
+          categories.length > 0
+            ? Math.max(...categories.map((c: any) => c.sortOrder)) + 1
+            : 0;
+
+        categories.push({
+          id: capturedId,
+          slug: input.slug,
+          sortOrder,
+          title: input.title,
+          tag: input.tag,
+          intro: input.intro,
+          productCount: input.productCount,
+          materialCount: input.materialCount,
+          ...(image ? { image } : {}),
+          items: [],
+        });
+      },
+      { action: 'catalog.category.create' },
+    );
+
+    return { id: capturedId, draftRevision: result.draftRevision };
   }
 
   async updateCategory(
-    actor: { id: string },
+    actor: AuthedUser,
+    themeId: string,
     id: string,
-    input: unknown,
-    expectedRevision: number,
-  ): Promise<{ revision: number }> {
-    const data = validate(categoryInputSchema, input, 'Category');
-    return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(
-        tx,
-        expectedRevision,
-        actor.id,
-      );
-      await tx.category.update({
-        where: { id },
-        data: data as unknown as Prisma.CategoryUncheckedUpdateInput,
-      });
-      await reconcileAssetRefs(
-        tx,
-        'category',
-        id,
-        imageRef(data.imageId, data.imageAlt),
-      );
-      await this.audit.writeAudit(tx, {
-        userId: actor.id,
-        action: 'category.update',
-        entityType: 'category',
-        entityId: id,
-      });
-      return { revision };
-    });
+    expectedDraftRevision: number,
+    input: CategoryInput,
+  ): Promise<{ draftRevision: number }> {
+    return this.themeService.applyDraftMutation(
+      actor,
+      themeId,
+      expectedDraftRevision,
+      async (snap, tx) => {
+        const categories: any[] = snap.catalog.categories;
+        const cat = categories.find((c: any) => c.id === id);
+        if (!cat) throw new NotFoundException(`Category ${id} not found`);
+
+        // Slug uniqueness — exclude the category being updated.
+        if (categories.some((c: any) => c.slug === input.slug && c.id !== id)) {
+          throw new UnprocessableEntityException({ code: 'DUPLICATE_SLUG' });
+        }
+
+        // Image validation.
+        let image: unknown;
+        if (input.imageId) {
+          const asset = await resolveAsset(tx, input.imageId);
+          image = freezeAsset(asset, input.imageAlt);
+        }
+
+        Object.assign(cat, {
+          slug: input.slug,
+          title: input.title,
+          tag: input.tag,
+          intro: input.intro,
+          productCount: input.productCount,
+          materialCount: input.materialCount,
+        });
+        if (image) {
+          cat.image = image;
+        } else {
+          delete cat.image;
+        }
+      },
+      { action: 'catalog.category.update' },
+    );
   }
 
   async deleteCategory(
-    actor: { id: string },
+    actor: AuthedUser,
+    themeId: string,
     id: string,
-    expectedRevision: number,
-  ): Promise<{ revision: number }> {
-    return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(
-        tx,
-        expectedRevision,
-        actor.id,
-      );
-      await tx.category.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
-      await this.audit.writeAudit(tx, {
-        userId: actor.id,
-        action: 'category.delete',
-        entityType: 'category',
-        entityId: id,
-      });
-      return { revision };
-    });
+    expectedDraftRevision: number,
+  ): Promise<{ draftRevision: number }> {
+    return this.themeService.applyDraftMutation(
+      actor,
+      themeId,
+      expectedDraftRevision,
+      async (snap) => {
+        const categories: any[] = snap.catalog.categories;
+        const idx = categories.findIndex((c: any) => c.id === id);
+        if (idx === -1) throw new NotFoundException(`Category ${id} not found`);
+        categories.splice(idx, 1);
+      },
+      { action: 'catalog.category.delete' },
+    );
   }
 
-  // ── Product ───────────────────────────────────────────────────────────────
+  async reorderCategories(
+    actor: AuthedUser,
+    themeId: string,
+    expectedDraftRevision: number,
+    order: string[],
+  ): Promise<{ draftRevision: number }> {
+    return this.themeService.applyDraftMutation(
+      actor,
+      themeId,
+      expectedDraftRevision,
+      async (snap) => {
+        const categories: any[] = snap.catalog.categories;
+        order.forEach((catId, idx) => {
+          const cat = categories.find((c: any) => c.id === catId);
+          if (cat) cat.sortOrder = idx;
+        });
+      },
+      { action: 'catalog.categories.reorder' },
+    );
+  }
+
+  // ── Products ───────────────────────────────────────────────────────────────
 
   async createProduct(
-    actor: { id: string },
-    input: unknown,
-    expectedRevision: number,
-  ): Promise<{ id: string; revision: number }> {
-    const data = validate(productInputSchema, input, 'Product');
-    return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(
-        tx,
-        expectedRevision,
-        actor.id,
-      );
-      const row = await tx.product.create({
-        data: data as unknown as Prisma.ProductUncheckedCreateInput,
-      });
-      await reconcileAssetRefs(
-        tx,
-        'product',
-        row.id,
-        imageRef(data.imageId, data.imageAlt),
-      );
-      await this.audit.writeAudit(tx, {
-        userId: actor.id,
-        action: 'product.create',
-        entityType: 'product',
-        entityId: row.id,
-      });
-      return { id: row.id, revision };
-    });
+    actor: AuthedUser,
+    themeId: string,
+    categoryId: string,
+    expectedDraftRevision: number,
+    input: ProductInput,
+  ): Promise<{ id: string; draftRevision: number }> {
+    let capturedId = '';
+
+    const result = await this.themeService.applyDraftMutation(
+      actor,
+      themeId,
+      expectedDraftRevision,
+      async (snap, tx) => {
+        const categories: any[] = snap.catalog.categories;
+        const cat = categories.find((c: any) => c.id === categoryId);
+        if (!cat) throw new NotFoundException(`Category ${categoryId} not found`);
+
+        const items: any[] = cat.items;
+
+        // Slug uniqueness — product slugs unique within their category.
+        if (items.some((p: any) => p.slug === input.slug)) {
+          throw new UnprocessableEntityException({ code: 'DUPLICATE_SLUG' });
+        }
+
+        // Image validation.
+        let image: unknown;
+        if (input.imageId) {
+          const asset = await resolveAsset(tx, input.imageId);
+          image = freezeAsset(asset, input.imageAlt);
+        }
+
+        capturedId = mintCuid();
+        const sortOrder =
+          items.length > 0
+            ? Math.max(...items.map((p: any) => p.sortOrder)) + 1
+            : 0;
+
+        items.push({
+          id: capturedId,
+          slug: input.slug,
+          sortOrder,
+          title: input.title,
+          tag: input.tag,
+          desc: input.desc,
+          ...(image ? { image } : {}),
+        });
+      },
+      { action: 'catalog.product.create' },
+    );
+
+    return { id: capturedId, draftRevision: result.draftRevision };
   }
 
   async updateProduct(
-    actor: { id: string },
-    id: string,
-    input: unknown,
-    expectedRevision: number,
-  ): Promise<{ revision: number }> {
-    const data = validate(productInputSchema, input, 'Product');
-    return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(
-        tx,
-        expectedRevision,
-        actor.id,
-      );
-      await tx.product.update({
-        where: { id },
-        data: data as unknown as Prisma.ProductUncheckedUpdateInput,
-      });
-      await reconcileAssetRefs(
-        tx,
-        'product',
-        id,
-        imageRef(data.imageId, data.imageAlt),
-      );
-      await this.audit.writeAudit(tx, {
-        userId: actor.id,
-        action: 'product.update',
-        entityType: 'product',
-        entityId: id,
-      });
-      return { revision };
-    });
+    actor: AuthedUser,
+    themeId: string,
+    categoryId: string,
+    pid: string,
+    expectedDraftRevision: number,
+    input: ProductInput,
+  ): Promise<{ draftRevision: number }> {
+    return this.themeService.applyDraftMutation(
+      actor,
+      themeId,
+      expectedDraftRevision,
+      async (snap, tx) => {
+        const categories: any[] = snap.catalog.categories;
+        const cat = categories.find((c: any) => c.id === categoryId);
+        if (!cat) throw new NotFoundException(`Category ${categoryId} not found`);
+
+        const items: any[] = cat.items;
+        const product = items.find((p: any) => p.id === pid);
+        if (!product) throw new NotFoundException(`Product ${pid} not found`);
+
+        // Slug uniqueness — exclude the product being updated.
+        if (items.some((p: any) => p.slug === input.slug && p.id !== pid)) {
+          throw new UnprocessableEntityException({ code: 'DUPLICATE_SLUG' });
+        }
+
+        // Image validation.
+        let image: unknown;
+        if (input.imageId) {
+          const asset = await resolveAsset(tx, input.imageId);
+          image = freezeAsset(asset, input.imageAlt);
+        }
+
+        Object.assign(product, {
+          slug: input.slug,
+          title: input.title,
+          tag: input.tag,
+          desc: input.desc,
+        });
+        if (image) {
+          product.image = image;
+        } else {
+          delete product.image;
+        }
+      },
+      { action: 'catalog.product.update' },
+    );
   }
 
   async deleteProduct(
-    actor: { id: string },
-    id: string,
-    expectedRevision: number,
-  ): Promise<{ revision: number }> {
-    return this.prisma.client.$transaction(async (tx) => {
-      const revision = await this.workingState.guardAndBump(
-        tx,
-        expectedRevision,
-        actor.id,
-      );
-      await tx.product.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
-      await this.audit.writeAudit(tx, {
-        userId: actor.id,
-        action: 'product.delete',
-        entityType: 'product',
-        entityId: id,
-      });
-      return { revision };
-    });
+    actor: AuthedUser,
+    themeId: string,
+    categoryId: string,
+    pid: string,
+    expectedDraftRevision: number,
+  ): Promise<{ draftRevision: number }> {
+    return this.themeService.applyDraftMutation(
+      actor,
+      themeId,
+      expectedDraftRevision,
+      async (snap) => {
+        const categories: any[] = snap.catalog.categories;
+        const cat = categories.find((c: any) => c.id === categoryId);
+        if (!cat) throw new NotFoundException(`Category ${categoryId} not found`);
+
+        const idx = cat.items.findIndex((p: any) => p.id === pid);
+        if (idx === -1) throw new NotFoundException(`Product ${pid} not found`);
+        cat.items.splice(idx, 1);
+      },
+      { action: 'catalog.product.delete' },
+    );
+  }
+
+  async reorderProducts(
+    actor: AuthedUser,
+    themeId: string,
+    categoryId: string,
+    expectedDraftRevision: number,
+    order: string[],
+  ): Promise<{ draftRevision: number }> {
+    return this.themeService.applyDraftMutation(
+      actor,
+      themeId,
+      expectedDraftRevision,
+      async (snap) => {
+        const categories: any[] = snap.catalog.categories;
+        const cat = categories.find((c: any) => c.id === categoryId);
+        if (!cat) throw new NotFoundException(`Category ${categoryId} not found`);
+
+        order.forEach((pid, idx) => {
+          const p = cat.items.find((item: any) => item.id === pid);
+          if (p) p.sortOrder = idx;
+        });
+      },
+      { action: 'catalog.products.reorder' },
+    );
   }
 }

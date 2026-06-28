@@ -7,14 +7,14 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { WorkingStateModule } from './working-state/working-state.module';
 import { AuditModule } from './audit/audit.module';
-import { ContentModule } from './content/content.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { AssetsModule } from './assets/assets.module';
 import { ReleaseModule } from './release/release.module';
 import { FormsModule } from './forms/forms.module';
 import { PreviewModule } from './preview/preview.module';
+import { ThemeModule } from './theme/theme.module';
+import { SiteConfigModule } from './site-config/site-config.module';
 import { OriginGuard, ALLOWED_ORIGINS } from './auth/guards/origin.guard';
 import { SessionAuthGuard } from './auth/guards/session-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -27,14 +27,14 @@ import { PrismaExceptionFilter } from './common/prisma-exception.filter';
     HealthModule,
     AuthModule,
     UsersModule,
-    WorkingStateModule,
     AuditModule,
-    ContentModule,
     CatalogModule,
     AssetsModule,
     ReleaseModule,
     FormsModule,
     PreviewModule,
+    ThemeModule,
+    SiteConfigModule,
   ],
   controllers: [AppController],
   providers: [

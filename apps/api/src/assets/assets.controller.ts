@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { AssetsService } from './assets.service';
 import {
   presignSchema,
@@ -52,5 +60,11 @@ export class AssetsController {
   @Get('usage')
   usage(@Query('assetId') assetId: string) {
     return this.assets.usage(assetId);
+  }
+
+  @Delete(':id')
+  @Roles('PUBLISHER')
+  remove(@CurrentUser() user: AuthedUser, @Param('id') id: string) {
+    return this.assets.softDelete(user, id);
   }
 }

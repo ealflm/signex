@@ -188,16 +188,6 @@ export function CreateCategoryForm({ assets }: { assets: AssetRow[] }) {
           />
         </Field>
 
-        <Field label="Sort order" htmlFor="cat-create-sort">
-          <Input
-            id="cat-create-sort"
-            type="number"
-            name="sortOrder"
-            defaultValue={0}
-            className="w-20 font-mono tabular-nums text-sm"
-          />
-        </Field>
-
         <LocalizedPair base="title" label="Title" />
         <LocalizedPair base="tag" label="Tag" />
         <LocalizedPair base="intro" label="Intro" multiline />
@@ -289,14 +279,6 @@ export function EditCategoryForm({
           type="hidden"
           name="materialCount"
           value={String(category.materialCount)}
-        />
-
-        <Input
-          type="number"
-          name="sortOrder"
-          defaultValue={category.sortOrder}
-          aria-label="Sort order"
-          className="w-16 font-mono tabular-nums text-sm"
         />
 
         <AssetSelect assets={assets} defaultValue={category.imageId} id={`cat-edit-image-${category.id}`} />

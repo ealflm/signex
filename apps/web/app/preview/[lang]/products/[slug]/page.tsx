@@ -17,21 +17,22 @@ import { getPreviewSnapshot } from "@/app/lib/content";
 import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PreviewRuntime } from "@/app/preview/preview-runtime";
 
 async function PreviewCategory({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string; slug: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   await connection(); // request-time only — never prerender this subtree
-  const { secret } = await searchParams;
+  const { secret, theme } = await searchParams;
   if (!process.env.PREVIEW_SECRET || secret !== process.env.PREVIEW_SECRET) notFound();
 
   const { lang, slug } = await params;
   const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
-  const dict = await getPreviewSnapshot(locale);
+  const dict = await getPreviewSnapshot(locale, theme);
   const cat = dict.products.categories.find((c) => c.slug === slug);
   if (!cat) notFound(); // unknown category → 404 (same as the public page)
   const stats = dict.products.statLabels;
@@ -146,6 +147,8 @@ async function PreviewCategory({
         <Footer dict={dict.footer} editable />
       </main>
       <EditOverlay />
+      {/* Webflow boot in this dynamic subtree (not the layout) — see preview-runtime.tsx (#418 fix). */}
+      <PreviewRuntime />
     </div>
   );
 }
@@ -155,7 +158,7 @@ export default function PreviewCategoryPage({
   searchParams,
 }: {
   params: Promise<{ lang: string; slug: string }>;
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; theme?: string }>;
 }) {
   return (
     <Suspense fallback={null}>

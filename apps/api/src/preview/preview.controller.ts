@@ -1,12 +1,20 @@
-import { Controller, ForbiddenException, Headers, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Headers,
+  NotFoundException,
+  Post,
+  Query,
+} from '@nestjs/common';
 import type { ReleaseSnapshot } from '@signex/shared';
 import { Public } from '../common/decorators/public.decorator';
-import { SnapshotSerializer } from '../release/snapshot.serializer';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
- * Preview endpoint — returns the live working snapshot (draft state) for
- * draft-mode preview and the acceptance gate.
+ * Preview endpoint — returns a theme's editable `draftSnapshot` for draft-mode
+ * preview and the acceptance gate.
  *
  * @Public() bypasses SessionAuthGuard + RolesGuard + OriginGuard; the
  * PREVIEW_SECRET header is the sole gate (server-to-server call).
@@ -18,26 +26,63 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Controller('preview')
 export class PreviewController {
-  constructor(
-    private readonly serializer: SnapshotSerializer,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * POST /api/preview/snapshot
+   * GET/POST /api/preview/snapshot?themeId=<id>  (themeId may also be in the body)
    * Header: x-preview-secret: <PREVIEW_SECRET>
-   * Returns: ReleaseSnapshot (working state, not published)
+   * Returns: the theme's draftSnapshot (working state, not the published release).
+   * When themeId is omitted, falls back to the currently live theme's draft.
    */
+  // NOTE: NestJS does NOT register two HTTP-method decorators stacked on one
+  // handler (the last-applied wins) — that silently 404s the other verb. The web
+  // preview island calls this with POST, so both verbs MUST be real routes. We
+  // register two thin handlers that delegate to one private resolver.
+  @Get('snapshot')
+  @Public()
+  snapshotGet(
+    @Headers('x-preview-secret') secret: string | undefined,
+    @Query('themeId') themeId?: string,
+  ): Promise<ReleaseSnapshot> {
+    return this.resolve(secret, themeId);
+  }
+
   @Post('snapshot')
   @Public()
-  async snapshot(
+  snapshotPost(
     @Headers('x-preview-secret') secret: string | undefined,
+    @Query('themeId') queryThemeId?: string,
+    @Body() body?: { themeId?: string },
+  ): Promise<ReleaseSnapshot> {
+    return this.resolve(secret, queryThemeId ?? body?.themeId);
+  }
+
+  private async resolve(
+    secret: string | undefined,
+    themeIdArg?: string,
   ): Promise<ReleaseSnapshot> {
     const expected = process.env.PREVIEW_SECRET;
     if (!expected || secret !== expected) {
       throw new ForbiddenException('Invalid preview secret');
     }
-    const { snapshot } = await this.serializer.serialize(this.prisma.client);
-    return snapshot;
+
+    let themeId = themeIdArg;
+    if (!themeId) {
+      // Default to the live theme (the one the PublishedPointer resolves to).
+      const pointer = await this.prisma.client.publishedPointer.findUnique({
+        where: { id: 'singleton' },
+        select: { release: { select: { themeId: true } } },
+      });
+      themeId = pointer?.release?.themeId ?? undefined;
+      if (!themeId) {
+        throw new NotFoundException('No live theme to preview');
+      }
+    }
+
+    const theme = await this.prisma.client.theme.findUniqueOrThrow({
+      where: { id: themeId },
+      select: { draftSnapshot: true },
+    });
+    return theme.draftSnapshot as unknown as ReleaseSnapshot;
   }
 }

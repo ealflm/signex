@@ -1,19 +1,52 @@
+// jest.mock is hoisted before imports — ReleaseSnapshotSchema.parse becomes a
+// passthrough so tests can use an arbitrary minimal object as draftSnapshot.
+jest.mock('@signex/shared', () => {
+  const actual = jest.requireActual('@signex/shared');
+  return {
+    ...actual,
+    ReleaseSnapshotSchema: {
+      parse: (v: unknown) => v,
+    },
+  };
+});
+
 import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { createHash } from 'node:crypto';
 import { ReleaseService } from './release.service';
-import { SnapshotSerializer } from './snapshot.serializer';
 import { RevalidationService } from '../revalidation/revalidation.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { canonicalJson } from './canonical-json';
 
 const ACTOR = { id: 'cuser0000000000000000001', role: 'PUBLISHER' } as any;
+const THEME_ID = 'ctheme0000000000000000001';
+const DRAFT_REVISION = 7;
+
+/**
+ * Minimal object used as theme.draftSnapshot.
+ * ReleaseSnapshotSchema.parse is mocked to return the input unchanged, so this
+ * doesn't need to satisfy the full Zod schema — it just needs to be a stable
+ * value so the computed checksum is deterministic.
+ */
+const MOCK_SNAPSHOT = {
+  schemaVersion: 1,
+  blocks: {},
+  catalog: { categories: [] },
+  assets: {},
+};
+
+/** Pre-computed: sha256(canonicalJson(MOCK_SNAPSHOT)) */
+const MOCK_CHECKSUM = createHash('sha256')
+  .update(canonicalJson(MOCK_SNAPSHOT))
+  .digest('hex');
 
 function makeTx() {
   return {
-    workingState: {
+    theme: {
       findUniqueOrThrow: jest
         .fn()
-        .mockResolvedValue({ id: 'singleton', revision: 7 }),
+        .mockResolvedValue({ id: THEME_ID, draftRevision: DRAFT_REVISION }),
       update: jest.fn().mockResolvedValue({}),
     },
     $executeRaw: jest.fn().mockResolvedValue(1),
@@ -25,14 +58,16 @@ function makeTx() {
         .mockResolvedValue({ id: 'crel0000000000000000001', version: 42 }),
     },
     publishedPointer: {
-      // In-lock checksum re-check (release.service.ts:91-97): returning null
-      // means "no live release yet" → proceed to mint (null?.release?.checksum
-      // !== 'newchecksum' is true, so the noop branch is skipped).
+      // Default: no live release yet → in-lock noop branch is skipped.
       findUnique: jest.fn().mockResolvedValue(null),
       upsert: jest.fn().mockResolvedValue({}),
     },
     releaseAssetRef: {
-      createMany: jest.fn().mockResolvedValue({ count: 2 }),
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    // keep workingState stub so rollback tests still compile against same tx shape
+    workingState: {
+      update: jest.fn().mockResolvedValue({}),
     },
   };
 }
@@ -40,7 +75,6 @@ function makeTx() {
 describe('ReleaseService.publish', () => {
   let service: ReleaseService;
   let prisma: any;
-  let serializer: { serialize: jest.Mock };
   let revalidation: { revalidate: jest.Mock };
   let audit: { record: jest.Mock };
   let tx: ReturnType<typeof makeTx>;
@@ -51,18 +85,17 @@ describe('ReleaseService.publish', () => {
     prisma = {
       client: {
         $transaction: jest.fn(async (fn: any) => fn(tx)),
+        theme: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue({
+            id: THEME_ID,
+            draftRevision: DRAFT_REVISION,
+            draftSnapshot: MOCK_SNAPSHOT,
+          }),
+        },
         publishedPointer: {
           findUnique: jest.fn().mockResolvedValue(null),
         },
       },
-    };
-    serializer = {
-      serialize: jest.fn().mockResolvedValue({
-        snapshot: { schemaVersion: 1, blocks: {}, catalog: { categories: [] } },
-        checksum: 'newchecksum',
-        assetIds: ['a1', 'a2'],
-        fromRevision: 7,
-      }),
     };
     revalidation = { revalidate: jest.fn().mockResolvedValue({ ok: true }) };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
@@ -71,7 +104,6 @@ describe('ReleaseService.publish', () => {
       providers: [
         ReleaseService,
         { provide: PrismaService, useValue: prisma },
-        { provide: SnapshotSerializer, useValue: serializer },
         { provide: RevalidationService, useValue: revalidation },
         { provide: AuditService, useValue: audit },
       ],
@@ -82,38 +114,68 @@ describe('ReleaseService.publish', () => {
   it('refuses to publish when MEDIA_PUBLIC_BASE is unset', async () => {
     delete process.env.MEDIA_PUBLIC_BASE;
     await expect(
-      service.publish(ACTOR, { expectedRevision: 7 }),
+      service.publish(ACTOR, {
+        themeId: THEME_ID,
+        expectedDraftRevision: DRAFT_REVISION,
+      }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
-    expect(serializer.serialize).not.toHaveBeenCalled();
+    expect(prisma.client.theme.findUniqueOrThrow).not.toHaveBeenCalled();
   });
 
   it('refuses to publish when MEDIA_PUBLIC_BASE is an r2.dev dev host', async () => {
     process.env.MEDIA_PUBLIC_BASE = 'https://pub-abc.r2.dev';
     await expect(
-      service.publish(ACTOR, { expectedRevision: 7 }),
+      service.publish(ACTOR, {
+        themeId: THEME_ID,
+        expectedDraftRevision: DRAFT_REVISION,
+      }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
-  it('throws 409 STALE_DRAFT when expectedRevision != serialized fromRevision', async () => {
+  it('throws 409 STALE_DRAFT when expectedDraftRevision != theme.draftRevision', async () => {
     await expect(
-      service.publish(ACTOR, { expectedRevision: 6 }),
+      service.publish(ACTOR, {
+        themeId: THEME_ID,
+        expectedDraftRevision: DRAFT_REVISION - 1,
+      }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(prisma.client.$transaction).not.toHaveBeenCalled();
   });
 
-  it('soft no-ops when the live checksum equals the new checksum (no version minted)', async () => {
+  it('gated no-op: same themeId + same checksum → {status:noop}, no tx opened', async () => {
     prisma.client.publishedPointer.findUnique.mockResolvedValue({
-      release: { checksum: 'newchecksum' },
+      release: { themeId: THEME_ID, checksum: MOCK_CHECKSUM },
     });
-    const res = await service.publish(ACTOR, { expectedRevision: 7 });
+    const res = await service.publish(ACTOR, {
+      themeId: THEME_ID,
+      expectedDraftRevision: DRAFT_REVISION,
+    });
     expect(res).toEqual({ status: 'noop' });
     expect(prisma.client.$transaction).not.toHaveBeenCalled();
     expect(revalidation.revalidate).not.toHaveBeenCalled();
   });
 
-  it('publishes: sequence version, demote, create, repoint, asset refs, lastPublishedRevision, audit', async () => {
+  it('does NOT no-op when live themeId differs even if checksum matches (theme switch)', async () => {
+    // Different theme published same bytes → must mint a new release from THIS theme.
+    prisma.client.publishedPointer.findUnique.mockResolvedValue({
+      release: { themeId: 'ctheme-OTHER', checksum: MOCK_CHECKSUM },
+    });
     const res = await service.publish(ACTOR, {
-      expectedRevision: 7,
+      themeId: THEME_ID,
+      expectedDraftRevision: DRAFT_REVISION,
+    });
+    expect(res.status).toBe('published');
+    expect(prisma.client.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.release.create).toHaveBeenCalledTimes(1);
+    const createArg = tx.release.create.mock.calls[0][0].data;
+    expect(createArg.themeId).toBe(THEME_ID);
+    expect(revalidation.revalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it('publishes: mints Release{themeId,checksum,fromRevision}, repoints PublishedPointer, updates theme live fields, calls revalidate', async () => {
+    const res = await service.publish(ACTOR, {
+      themeId: THEME_ID,
+      expectedDraftRevision: DRAFT_REVISION,
       note: 'launch',
     });
 
@@ -122,30 +184,44 @@ describe('ReleaseService.publish', () => {
       version: 42,
       releaseId: 'crel0000000000000000001',
     });
+
+    // sequence → version
     expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+
+    // demote existing PUBLISHED → ARCHIVED
     expect(tx.release.updateMany).toHaveBeenCalledWith({
       where: { status: 'PUBLISHED' },
       data: { status: 'ARCHIVED' },
     });
+
+    // Release.create carries themeId, checksum, fromRevision
     expect(tx.release.create).toHaveBeenCalledTimes(1);
     const createArg = tx.release.create.mock.calls[0][0].data;
     expect(createArg.version).toBe(42);
     expect(createArg.status).toBe('PUBLISHED');
-    expect(createArg.checksum).toBe('newchecksum');
-    expect(createArg.fromRevision).toBe(7);
+    expect(createArg.checksum).toBe(MOCK_CHECKSUM);
+    expect(createArg.themeId).toBe(THEME_ID);
+    expect(createArg.fromRevision).toBe(DRAFT_REVISION);
     expect(createArg.publishedById).toBe(ACTOR.id);
+    expect(createArg.note).toBe('launch');
+
+    // PublishedPointer repointed
     expect(tx.publishedPointer.upsert).toHaveBeenCalledTimes(1);
-    expect(tx.releaseAssetRef.createMany).toHaveBeenCalledWith({
-      data: [
-        { releaseId: 'crel0000000000000000001', assetId: 'a1' },
-        { releaseId: 'crel0000000000000000001', assetId: 'a2' },
-      ],
-      skipDuplicates: true,
+
+    // MOCK_SNAPSHOT has no asset refs → createMany skipped
+    expect(tx.releaseAssetRef.createMany).not.toHaveBeenCalled();
+
+    // theme live fields updated
+    expect(tx.theme.update).toHaveBeenCalledWith({
+      where: { id: THEME_ID },
+      data: expect.objectContaining({
+        liveSnapshot: MOCK_SNAPSHOT,
+        lastPublishedRevision: DRAFT_REVISION,
+        lastPublishedChecksum: MOCK_CHECKSUM,
+      }),
     });
-    expect(tx.workingState.update).toHaveBeenCalledWith({
-      where: { id: 'singleton' },
-      data: { lastPublishedRevision: 7 },
-    });
+
+    // audit logged
     expect(audit.record).toHaveBeenCalledWith(
       tx,
       expect.objectContaining({
@@ -155,63 +231,79 @@ describe('ReleaseService.publish', () => {
         entityId: 'crel0000000000000000001',
       }),
     );
+
+    // revalidation called once after commit
+    expect(revalidation.revalidate).toHaveBeenCalledTimes(1);
   });
 
-  it('re-checks revision inside the tx and throws 409 if it moved (TOCTOU)', async () => {
-    tx.workingState.findUniqueOrThrow.mockResolvedValue({
-      id: 'singleton',
-      revision: 8,
+  it('re-checks theme.draftRevision inside the tx and throws 409 if it moved (TOCTOU)', async () => {
+    // Simulate: draft was edited between the outer read and acquiring the lock.
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      id: THEME_ID,
+      draftRevision: DRAFT_REVISION + 1,
     });
     await expect(
-      service.publish(ACTOR, { expectedRevision: 7 }),
+      service.publish(ACTOR, {
+        themeId: THEME_ID,
+        expectedDraftRevision: DRAFT_REVISION,
+      }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(tx.release.create).not.toHaveBeenCalled();
   });
 
-  it('in-lock noop: returns {status:noop} when sibling already published the same checksum inside the tx', async () => {
-    // Simulates the race: outer pre-check saw a different checksum (proceeds to
+  it('in-lock noop: returns {status:noop} when sibling already published same theme+checksum inside the tx', async () => {
+    // Simulates the race: outer pre-check saw a different pointer (proceeds to
     // open the tx), but by the time we hold the advisory lock the live pointer
-    // already carries our checksum — the second concurrent publish no-ops.
+    // already carries the same theme+checksum — second concurrent publish no-ops.
     tx.publishedPointer.findUnique.mockResolvedValue({
-      release: { checksum: 'newchecksum' },
+      release: { themeId: THEME_ID, checksum: MOCK_CHECKSUM },
     });
-    const res = await service.publish(ACTOR, { expectedRevision: 7 });
+    const res = await service.publish(ACTOR, {
+      themeId: THEME_ID,
+      expectedDraftRevision: DRAFT_REVISION,
+    });
     expect(res).toEqual({ status: 'noop' });
-    // tx DID open (advisory lock was acquired), but no new release was minted
     expect(prisma.client.$transaction).toHaveBeenCalledTimes(1);
     expect(tx.release.create).not.toHaveBeenCalled();
     expect(revalidation.revalidate).not.toHaveBeenCalled();
   });
 
   it('revalidates AFTER commit (non-fatal)', async () => {
-    await service.publish(ACTOR, { expectedRevision: 7 });
+    await service.publish(ACTOR, {
+      themeId: THEME_ID,
+      expectedDraftRevision: DRAFT_REVISION,
+    });
     expect(revalidation.revalidate).toHaveBeenCalledTimes(1);
-    // revalidate runs after the transaction resolved
     const txOrder = prisma.client.$transaction.mock.invocationCallOrder[0];
     const revalOrder = revalidation.revalidate.mock.invocationCallOrder[0];
     expect(revalOrder).toBeGreaterThan(txOrder);
   });
 
-  it('does not throw if revalidation fails after a successful commit', async () => {
+  it('does not throw if revalidation resolves falsy after a successful commit', async () => {
     revalidation.revalidate.mockResolvedValue({ ok: false });
-    const res = await service.publish(ACTOR, { expectedRevision: 7 });
+    const res = await service.publish(ACTOR, {
+      themeId: THEME_ID,
+      expectedDraftRevision: DRAFT_REVISION,
+    });
     expect(res.status).toBe('published');
   });
 
-  it('publish resolves {status:published} even when revalidation REJECTS (call-site non-fatal guarantee)', async () => {
+  it('resolves {status:published} even when revalidation REJECTS (call-site non-fatal guarantee)', async () => {
     revalidation.revalidate.mockRejectedValue(new Error('web down'));
-    const res = await service.publish(ACTOR, { expectedRevision: 7 });
+    const res = await service.publish(ACTOR, {
+      themeId: THEME_ID,
+      expectedDraftRevision: DRAFT_REVISION,
+    });
     expect(res).toEqual({
       status: 'published',
       version: 42,
       releaseId: 'crel0000000000000000001',
     });
-    // tx ran and created the release
     expect(tx.release.create).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('ReleaseService rollback / diff / live / list', () => {
+describe('ReleaseService rollback / live / list', () => {
   let service: ReleaseService;
   let prisma: any;
   let revalidation: { revalidate: jest.Mock };
@@ -229,6 +321,7 @@ describe('ReleaseService rollback / diff / live / list', () => {
             schemaVersion: 1,
             blocks: {},
             catalog: { categories: [] },
+            assets: {},
           },
           checksum: 'oldsum',
           assetRefs: [{ assetId: 'a1' }, { assetId: 'a2' }],
@@ -275,7 +368,6 @@ describe('ReleaseService rollback / diff / live / list', () => {
       providers: [
         ReleaseService,
         { provide: PrismaService, useValue: prisma },
-        { provide: SnapshotSerializer, useValue: { serialize: jest.fn() } },
         { provide: RevalidationService, useValue: revalidation },
         { provide: AuditService, useValue: audit },
       ],
@@ -306,21 +398,6 @@ describe('ReleaseService rollback / diff / live / list', () => {
       expect.objectContaining({ action: 'release.rollback' }),
     );
     expect(revalidation.revalidate).toHaveBeenCalledTimes(1);
-  });
-
-  it('rollback with restoreWorkingState=true updates working-state bookkeeping', async () => {
-    await service.rollback(ACTOR, { toVersion: 3, restoreWorkingState: true });
-    expect(tx.workingState.update).toHaveBeenCalled();
-  });
-
-  it('diff reports dirty when revision != lastPublishedRevision', async () => {
-    const d = await service.diff();
-    expect(d).toEqual({
-      dirty: true,
-      revision: 7,
-      lastPublishedRevision: 3,
-    });
-    expect(await service.isDirty()).toBe(true);
   });
 
   it('getLive returns the live release summary', async () => {

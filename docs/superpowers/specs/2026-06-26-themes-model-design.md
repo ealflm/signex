@@ -186,15 +186,83 @@ deletes. (Confirm exact gates in the plan against the existing role helpers.)
   non-destructive `AlertDialog` ("visitors will see this theme; current live saved as a draft").
 - **Active theme context** — admin holds `activeThemeId` (cookie/store); a theme switcher in the
   dash header sets it; all editing surfaces read it.
-- **Visual editor** (`visual-editor.tsx`) — edits update the preview INSTANTLY but are held
-  client-side as pending; the toolbar has **Save draft** (enabled while pending exist, with an
-  unsaved count) → `POST /api/themes/:themeId/save-draft {edits, expectedDraftRevision}` → on
-  success clears pending + adopts the new revision; and **Publish** (saves pending first if any,
-  then publishes). An unsaved-changes guard (`beforeunload` + in-app nav) warns before discard.
-  Preview iframe `/preview/[lang]?themeId=active`; a pinned "Editing: {name}" + signals: *unsaved*
-  (pending exist), *saved · not live* (draft ≠ live), *live*.
+- **Unified Editor** (`/editor/[themeId]`) — replaces the standalone visual editor + the per-block
+  `/content` forms with ONE workspace. See the dedicated section below.
 - **Catalog admin + content forms + (old) releases actions** — retarget to the theme-scoped routes
   carrying `themeId` + `expectedDraftRevision`.
+
+## Unified Editor (canvas + contextual panel)
+
+Merges the standalone `/visual` editor and the per-block `/content/[blockKey]` forms into ONE
+theme-scoped route `apps/admin/app/(dash)/editor/[themeId]`. Edits are held client-side (pending map),
+shown in the preview INSTANTLY, persisted on one batched **Save draft**. **Catalog stays a separate
+admin page** (the editor links to it; no catalog data flows through the pending map). Confirmed v1
+decisions: wrap inline text leaves in unconditional `<span>`s **gated by a zero-render-change audit**
+(CSS-selector grep + visual regression — this is the only structural change to the faithful Webflow
+clone); two-tone titles edit as **two separate single-line spans** (lead + accent); keep
+`/content/[blockKey]` as an advanced fallback during transition; max-length is **client-side UX only**
+(no schema `.max()` churn in v1); the `save-draft` batched endpoint is built to
+`{edits:[{key,data}], expectedDraftRevision}` (one revision bump per batch).
+
+**Shell** — 3 zones (`Resizable`, both sides collapsible, canvas dominant): a **toolbar** (Back to
+Themes · theme name/rename · `[vi|en]` locale (remounts iframe via `key`) · device-width
+(Desktop/Tablet/Mobile → iframe max-width + `ScrollTrigger.refresh`) · status pill · Reload · Discard
+· **Save draft** · **Publish ▾**); a **sections navigator** (left) — a Collapsible tree from the
+block registry grouped by surface (Page: Home → Hero/Features/About/Products-header; Page: About;
+Page: Contact; Global → Nav/Footer; Settings (no canvas) → SEO+GA4 / Business contact / Form config /
+404), each with a `●` dirty dot from the pending map; the **canvas** (the `/preview` iframe at device
+width); a **contextual panel** (right) showing the selected block's structured fields.
+Selection model everywhere: `{ blockKey, fieldPath, locale }`.
+
+**Inline editing on canvas** — generalize `edit-overlay.tsx` (runs inside the cross-origin iframe):
+- **Media** keeps the floating fixed-hotspot layer → click opens `MediaPickerDialog` (browse +
+  upload/crop, reused). ★ The hotspot scan MUST narrow to `[data-edit-kind="image"],[data-edit-kind="video"]`
+  so text zones don't get an "Edit image" badge.
+- **Text** (new) uses direct in-place `contentEditable` (no hotspot): hover outline (no reflow);
+  click → `contentEditable=true` + `focus({preventScroll:true})` + caret via `caretRangeFromPoint`;
+  commit on Enter (single-line) / Cmd-Enter (multiline) / blur, revert on Escape. Mutates only the
+  inner text of the stamped span → IX2/reveal/parallax markup untouched.
+- **Inline scope (v1, per stress-test):** ONLY directly-visible single `LocalizedText` leaves that
+  render as bare text / class-only span and are NOT inside a parallax/pinned/`[count-up]`/`[stagger-text]`
+  trigger — hero titleTop/titleBottom/subtitle; features eyebrow + title.lead/accent + cta.label;
+  eyebrow/title/single-paragraph body of about, productsHeader, contactPage.hero, aboutPage section
+  headers; footer headings + nav link labels + nav.cta.label; notFound title/body/cta. Two-tone =
+  two spans. Single-line default; multiline only where the component already preserves `\n`.
+- **Five mandatory gates** before enabling inline: hotspot-scan filter (exclude text); a
+  `{type:"ready"}` handshake so the admin re-applies pending after an iframe (re)load; a post-commit
+  `ScrollTrigger.refresh()` + resize/scroll nudge (text reflow → stale parallax/pin offsets);
+  `focus({preventScroll:true})` + Lenis caret handling; IME `compositionend`-before-blur deferral
+  (`setTimeout(0)` on blur while composing) for Vietnamese Telex/VNI. Paste/drop → plain text.
+
+**Contextual panel** — extract the field editors (`StringField`/`LocalizedField`/`AssetRefField`/
+`VideoRefField`/`ObjectField`/`JsonField` + the `FieldEditor` switch) from
+`content/[blockKey]/zod-form.tsx` into `editor/_fields/*` (single source for `/content` + the panel),
+rendered via the existing `deriveFields()`. The panel WRITES INTO the central pending map (no own PUT
+button). Two-way highlight (focus a panel field → flash the canvas element, and vice-versa). Panel
+ownership per the per-block inventory: fully-inline blocks expose only hrefs/alt in the panel; hybrid
+blocks (features/footer/nav/aboutPage) keep arrays/links/settings/alt in the panel; panel/navigator-
+only whole blocks = meta (SEO + social + GA4 + ogImage), businessContact (NAP tuples + mapEmbedUrl +
+social hrefs), formConfig (10-field labels/placeholders/options/toasts). Media fields reuse
+`MediaPickerDialog`. A `JsonField` "Advanced" `Collapsible` is the escape hatch for shapes the deriver
+can't model.
+
+**Flow into themes pending/Save-draft/Publish** — one client-held `Map<key, {field, value}>`:
+text edit → `pending.set("hero.titleTop.vi", value)` (locale appended, other locale untouched); media
+→ `pending.set("hero.image", {assetId})` (merged to preserve alt). **Save draft** groups pending by
+`blockKey`, merges each onto the in-memory draft block via `setPath`, and POSTs ONE
+`/api/themes/:id/save-draft {edits:[{key,data}], expectedDraftRevision}` → 200 clears pending; 409 →
+conflict toast + refetch revision + re-apply; 422 → per-block field error. **Publish** saves pending
+first (if any) then mints the Release. Status pill: Saved·revN / Unsaved·n / Saving…; secondary
+"Draft ahead of published (rev X vs Y)"; Publish disabled when draft==published; leave/discard guards.
+
+**Editor v1 vs deferred** — v1: shell + navigator + panel (reusing extracted field editors); overlay
+generalized for text + the hotspot-scan filter; client batched edits + save-draft + status/guards;
+inline contentEditable for the v1 text scope with the five gates; theme-scoped preview
+(`/preview/[lang]?secret&editable=1&theme={themeId}`) + `/themes` "Edit theme" entry; close the
+`notFound.image` stamping gap; observer-based media hotspot positioning (replace always-on rAF).
+Deferred: Style tab (affordance only); inline editing of array-item text on tiles (panel-managed);
+keyboard entry into contentEditable (click-only in v1); optimistic in-iframe text `patch` (CE already
+updates the DOM live).
 
 ## Edge-case handling
 
@@ -247,12 +315,30 @@ dirty); `preview/preview.controller.ts` (return `theme.draftSnapshot`, accept `t
 `working-state/*` (folded into `ThemeService`); `catalog/asset-ref.reconcile.ts` (AssetRef gone);
 widen `AssetService.delete` guard to a cross-theme snapshot + `ReleaseAssetRef` scan.
 
-**Web:** `apps/web/app/lib/content.ts` — `getPublishedSnapshot` UNCHANGED; `getPreviewSnapshot`
-gains `themeId`. `initial-snapshot.ts` regenerated by importer.
+**Web (preview/overlay):** `apps/web/app/lib/content.ts` — `getPublishedSnapshot` UNCHANGED;
+`getPreviewSnapshot` gains `themeId`; `initial-snapshot.ts` regenerated by importer.
+`edit-attrs.ts` — add `"text"` kind + `EditTextOpts` (`data-edit-maxlength|multiline|required`).
+`components/editor/edit-overlay.tsx` — hotspot scan → image/video only; text outline + click→
+contentEditable + caret + composition/Enter/Escape/blur(deferred)/paste handlers; `elementFromPoint`
+pass-through routes text first; inbound `applyEdits`, outbound `textEdit` + `ready` handshake;
+post-commit `ScrollTrigger.refresh`; observer-based media positioning. Section components
+(`home/hero.tsx`, etc.) — wrap each inline localized string in its own stamped `<span>` (two-tone →
+stamp lead/accent separately; exclude `[count-up]`/`[stagger-text]`); stamp `notFound.image` + make
+404 reachable in preview. `/preview` route accepts `theme={themeId}`.
 
-**Admin:** new `apps/admin/app/(dash)/themes/*` + dash-header theme switcher + `activeThemeId` store;
-`visual/visual-editor.tsx` retarget; `catalog/actions.ts`+forms, `content/[blockKey]`, `releases/*`
-retarget to theme-scoped endpoints.
+**Admin:** new `apps/admin/app/(dash)/themes/*` (list/duplicate/rename/publish/delete) + dash-header
+theme switcher + `activeThemeId` store. **New unified editor** `apps/admin/app/(dash)/editor/[themeId]/`
+= `page.tsx` (load draft+revision+assets) · `editor-shell.tsx` (controller: selection, pending Map,
+save-draft/publish/discard, postMessage bridge — generalizes `visual/visual-editor.tsx`) ·
+`sections-nav.tsx` · `context-panel.tsx` · `toolbar.tsx` · `_fields/*` (field editors extracted from
+`content/[blockKey]/zod-form.tsx`, shared with `/content`). `catalog/actions.ts`+forms,
+`content/[blockKey]`, `releases/*` retarget to theme-scoped endpoints. shadcn to add if absent:
+`resizable`, `collapsible`, `tabs`, `tooltip`, `dropdown-menu`, `scroll-area`, `alert-dialog`.
+
+**Markup-delta gate (MAJOR):** wrapping inline text leaves in `<span>`s changes the faithful-clone
+markup. Render the wrapper UNCONDITIONALLY (preview == public, no hydration split), then grep the
+Caladan CSS for `h1>*`/`:first-child`/`+ br` selectors + visual-regress; ship only on zero render
+change.
 
 **Reused unchanged:** `ReleaseSnapshotSchema`/`parseBlock`/`BLOCK_REGISTRY`/`FrozenCatalog`,
 `canonical-json`, advisory-lock publish skeleton, `release_version_seq`,

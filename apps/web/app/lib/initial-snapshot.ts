@@ -115,6 +115,20 @@ export const INITIAL_SNAPSHOT = {
       "variants": [],
       "width": 2500
     },
+    "c8a3c5434e7e86aa2fbe80a72": {
+      "assetId": "c8a3c5434e7e86aa2fbe80a72",
+      "height": 1600,
+      "mime": "image/avif",
+      "r2Key": "originals/8a3c5434e7e86aa2fbe80a727bb9ed84/69aeefb3f6044f0563d94f4b-sara-dubler-koei-7yytio-unsplash.avif",
+      "variants": [],
+      "width": 2400
+    },
+    "c9a310afef492b1bd726ff3af": {
+      "assetId": "c9a310afef492b1bd726ff3af",
+      "mime": "video/webm",
+      "r2Key": "originals/9a310afef492b1bd726ff3aff1cf0a7f/69b06b4bfbdb2da284a4ec5e-8440992-uhd-2732-1440-25fps-webm.webm",
+      "variants": []
+    },
     "ca0c5792c16ff36fde7aad11d": {
       "assetId": "ca0c5792c16ff36fde7aad11d",
       "height": 1405,
@@ -153,6 +167,28 @@ export const INITIAL_SNAPSHOT = {
       "variants": [],
       "width": 2500
     },
+    "cbb5dcdd545e62e2ac91dc324": {
+      "assetId": "cbb5dcdd545e62e2ac91dc324",
+      "mime": "video/mp4",
+      "r2Key": "originals/bb5dcdd545e62e2ac91dc324a6d7434d/69b06b4bfbdb2da284a4ec5e-8440992-uhd-2732-1440-25fps-mp4.mp4",
+      "variants": []
+    },
+    "cc19fc91d309e90d8eb18fab7": {
+      "assetId": "cc19fc91d309e90d8eb18fab7",
+      "height": 1279,
+      "mime": "image/avif",
+      "r2Key": "originals/c19fc91d309e90d8eb18fab72e09ee03/69a9746c7ab6e4371c4aae70-pexels-saeb-mahajna-14125913-6297105.avif",
+      "variants": [],
+      "width": 1920
+    },
+    "cc4e13cd63536fa7abe006d6a": {
+      "assetId": "cc4e13cd63536fa7abe006d6a",
+      "height": 644,
+      "mime": "image/svg+xml",
+      "r2Key": "originals/c4e13cd63536fa7abe006d6ab737b18b/lotus.svg",
+      "variants": [],
+      "width": 387
+    },
     "cc5bc7b3a9d5caa8a4149a83c": {
       "assetId": "cc5bc7b3a9d5caa8a4149a83c",
       "height": 630,
@@ -176,6 +212,14 @@ export const INITIAL_SNAPSHOT = {
       "r2Key": "originals/de4dedb21ef3f3df9b6636351a554c56/69a9a5725487307243a72031-pexels-adriendrj-33980501.avif",
       "variants": [],
       "width": 2500
+    },
+    "cf3a57960f8a3e9a3abcf7032": {
+      "assetId": "cf3a57960f8a3e9a3abcf7032",
+      "height": 674,
+      "mime": "image/jpeg",
+      "r2Key": "originals/f3a57960f8a3e9a3abcf703270f841ef/69b06b4bfbdb2da284a4ec5e-8440992-uhd-2732-1440-25fps-poster-0000000.jpg",
+      "variants": [],
+      "width": 1280
     }
   },
   "blocks": {
@@ -402,6 +446,11 @@ export const INITIAL_SNAPSHOT = {
             "en": "About ",
             "vi": "Về "
           }
+        },
+        "video": {
+          "mp4AssetId": "cbb5dcdd545e62e2ac91dc324",
+          "posterAssetId": "cf3a57960f8a3e9a3abcf7032",
+          "webmAssetId": "c9a310afef492b1bd726ff3af"
         }
       },
       "intro": {
@@ -504,6 +553,13 @@ export const INITIAL_SNAPSHOT = {
         "eyebrow": {
           "en": "Signex",
           "vi": "Signex"
+        },
+        "image": {
+          "alt": {
+            "en": "Client testimonial",
+            "vi": "Cảm nhận khách hàng"
+          },
+          "assetId": "ca79a1bd46201d96beab5d94d"
         },
         "title": {
           "accent": {
@@ -736,6 +792,17 @@ export const INITIAL_SNAPSHOT = {
     },
     "contactPage": {
       "hero": {
+        "eyebrow": {
+          "en": "Contact",
+          "vi": "Contact"
+        },
+        "image": {
+          "alt": {
+            "en": "Signex contact",
+            "vi": "Liên hệ Signex"
+          },
+          "assetId": "c8a3c5434e7e86aa2fbe80a72"
+        },
         "subtitle": {
           "en": "Let's discuss how we can bring your brand identity to life",
           "vi": "Hãy cùng trao đổi để hiện thực hóa nhận diện thương hiệu của bạn"
@@ -817,6 +884,13 @@ export const INITIAL_SNAPSHOT = {
           "en": "Stable, repeatable quality across every production batch.",
           "vi": "Chất lượng đồng nhất qua từng lô sản xuất."
         },
+        "image": {
+          "alt": {
+            "en": "Consistent production quality",
+            "vi": "Chất lượng sản xuất ổn định"
+          },
+          "assetId": "cc19fc91d309e90d8eb18fab7"
+        },
         "title": {
           "en": "Consistent Production Quality",
           "vi": "Chất Lượng Sản Xuất Ổn Định"
@@ -876,6 +950,9 @@ export const INITIAL_SNAPSHOT = {
           }
         }
       ],
+      "logo": {
+        "assetId": "c7e03ed3b7902e7e5ca8eb130"
+      },
       "payLabel": {
         "en": "Payment options:",
         "vi": "Phương thức thanh toán:"
@@ -884,6 +961,10 @@ export const INITIAL_SNAPSHOT = {
         "VISA",
         "JCB",
         "Napas"
+      ],
+      "shipping": [
+        "Lalamove",
+        "Grab"
       ],
       "quickHeading": {
         "en": "Quick links",
@@ -902,6 +983,9 @@ export const INITIAL_SNAPSHOT = {
           "Chúng tôi không tạo ra thương hiệu.",
           "Chúng tôi tạo ra những giá trị mà thương hiệu đại diện."
         ]
+      },
+      "watermark": {
+        "assetId": "cc4e13cd63536fa7abe006d6a"
       }
     },
     "formConfig": {
@@ -1057,6 +1141,10 @@ export const INITIAL_SNAPSHOT = {
       "submit": {
         "en": "Send Message",
         "vi": "Gửi Thông Tin"
+      },
+      "submitting": {
+        "en": "Please wait...",
+        "vi": "Vui lòng đợi..."
       },
       "success": {
         "en": "Thank you — we've received your request and will get back to you within 24 hours.",
@@ -1302,6 +1390,7 @@ export const INITIAL_SNAPSHOT = {
   "catalog": {
     "categories": [
       {
+        "id": "cmqwcchk1v87zcbmexgi",
         "image": {
           "assetId": "ccd18e3b1444659de0a5b6b74",
           "height": 3600,
@@ -1320,6 +1409,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Flexible 2D or 3D soft-PVC patch with sharp molded detail and a sew-on or heat-seal backing for garments and caps.",
               "vi": "Nhãn PVC mềm 2D hoặc 3D với chi tiết đúc sắc nét, mặt sau may hoặc ép nhiệt, dùng cho quần áo và mũ nón."
             },
+            "id": "cmqwcchk16daqumz7c8l",
             "image": {
               "assetId": "cde4dedb21ef3f3df9b663635",
               "height": 1405,
@@ -1344,6 +1434,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Thin, stretchable silicone mark heat-pressed directly onto fabric for a clean, tagless branded finish.",
               "vi": "Logo silicone mỏng, co giãn, ép nhiệt trực tiếp lên vải, cho bề mặt thương hiệu sạch và không cần nhãn may."
             },
+            "id": "cmqwcchk1uazbjorq79r",
             "image": {
               "assetId": "cb3c0bc5aa6391c8b09cbf9c8",
               "height": 1405,
@@ -1368,6 +1459,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Printed insert sealed under a glossy doming resin for a raised, scratch-resistant emblem on bags and accessories.",
               "vi": "Tem in được phủ lớp keo PU bóng nổi, tạo biểu tượng cộm chống trầy cho túi xách và phụ kiện."
             },
+            "id": "cmqwcchk1c0tb6zig0t",
             "image": {
               "assetId": "c558390147010589195a16498",
               "height": 1405,
@@ -1392,6 +1484,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Multi-layer rubberized PU badge with embossed edges, giving a soft-touch feel and strong color contrast.",
               "vi": "Logo cao su PU nhiều lớp với viền dập nổi, cho cảm giác mềm tay và độ tương phản màu cao."
             },
+            "id": "cmqwcchk1ry08d0kazyb",
             "image": {
               "assetId": "c85ab32c93251f71a2e485ad3",
               "height": 1405,
@@ -1416,6 +1509,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Hard injection-molded TPU logo with precise edges and fixing posts for footwear and structured bags.",
               "vi": "Logo TPU ép phun cứng với cạnh sắc nét và chấu gắn, dùng cho giày dép và túi có cấu trúc."
             },
+            "id": "cmqwcchk1uq07jctwqd",
             "image": {
               "assetId": "ca0c5792c16ff36fde7aad11d",
               "height": 1405,
@@ -1440,6 +1534,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Tonal embossed PVC label with raised lettering and stitch channels for a subtle, durable brand mark.",
               "vi": "Nhãn PVC dập nổi cùng tông, chữ nổi và rãnh may sẵn, tạo dấu hiệu thương hiệu tinh tế và bền."
             },
+            "id": "cmqwcchk12oo346q8aop",
             "image": {
               "assetId": "c43f0ecc88ceaad99e422630f",
               "height": 1405,
@@ -1474,6 +1569,7 @@ export const INITIAL_SNAPSHOT = {
         }
       },
       {
+        "id": "cmqwcchk12jomdzhjvbp",
         "image": {
           "assetId": "c47aeed00890ae34ee187193d",
           "height": 1600,
@@ -1492,6 +1588,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "High-density damask weave with crisp logo definition and a soft hand-feel for main and neck labels.",
               "vi": "Nhãn dệt damask mật độ cao cho logo sắc nét, mềm tay, dùng làm nhãn chính và nhãn gáy cổ áo."
             },
+            "id": "cmqwcchk1qfbqq5kvee8",
             "image": {
               "assetId": "cde4dedb21ef3f3df9b663635",
               "height": 1405,
@@ -1516,6 +1613,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Smooth satin ribbon printed with wash-care symbols, fiber content and country of origin.",
               "vi": "Dải satin mịn in ký hiệu giặt là, thành phần sợi và xuất xứ, dùng làm nhãn bảo quản."
             },
+            "id": "cmqwcchk1jpaef0wdmo",
             "image": {
               "assetId": "cb3c0bc5aa6391c8b09cbf9c8",
               "height": 1405,
@@ -1540,6 +1638,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Center-fold or end-fold size and care tabs with clean cut edges, sewn into seams or side panels.",
               "vi": "Nhãn size, nhãn bảo quản gấp giữa hoặc gấp một biên, bo mép gọn, may vào đường ráp hoặc sườn áo."
             },
+            "id": "cmqwcchk1ztk5jkcxeoi",
             "image": {
               "assetId": "c558390147010589195a16498",
               "height": 1405,
@@ -1564,6 +1663,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Tagless heat-transfer labels pressed directly onto the fabric for soft, irritation-free care marking.",
               "vi": "Nhãn ép nhiệt không cấn cổ, ép trực tiếp lên vải cho cảm giác mềm mại, êm da."
             },
+            "id": "cmqwcchk162gqt1dtn7x",
             "image": {
               "assetId": "c85ab32c93251f71a2e485ad3",
               "height": 1405,
@@ -1588,6 +1688,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Engraved or etched zinc and brass nameplates with electroplated finish for bags and outerwear.",
               "vi": "Bảng tên kim loại kẽm hoặc đồng, khắc hoặc ăn mòn, mạ điện hoàn thiện, gắn trên túi xách và áo khoác."
             },
+            "id": "cmqwcchk11dhap64mul6",
             "image": {
               "assetId": "ca0c5792c16ff36fde7aad11d",
               "height": 1405,
@@ -1612,6 +1713,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Dense machine-embroidered badges with merrowed or laser-cut borders and iron-on or sew-on backing.",
               "vi": "Phù hiệu thêu vi tính dày, viền vắt sổ hoặc cắt laser, đế ép keo hoặc may đính."
             },
+            "id": "cmqwcchk1w9pyod4udg",
             "image": {
               "assetId": "c43f0ecc88ceaad99e422630f",
               "height": 1405,
@@ -1646,6 +1748,7 @@ export const INITIAL_SNAPSHOT = {
         }
       },
       {
+        "id": "cmqwcchk1wnn1vc0wt3l",
         "image": {
           "assetId": "c68e3e1726da687d5f9c720ee",
           "height": 1405,
@@ -1664,6 +1767,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Die-cast zinc-alloy pulls shaped to your logo with electroplated or matte finishes for jackets, bags, and outerwear.",
               "vi": "Tay kéo đúc hợp kim kẽm tạo hình theo logo, mạ điện hoặc hoàn thiện mờ, dùng cho áo khoác, túi và đồ mặc ngoài."
             },
+            "id": "cmqwcchk1gdunhx3ngc7",
             "image": {
               "assetId": "cde4dedb21ef3f3df9b663635",
               "height": 1405,
@@ -1688,6 +1792,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Solid brass shank and tack buttons with laser-engraved or embossed brand marks in antique, nickel, or gunmetal plating.",
               "vi": "Nút cài và nút tán bằng đồng thau khắc laser hoặc dập nổi nhãn hiệu, mạ giả cổ, niken hoặc xám súng."
             },
+            "id": "cmqwcchk1iyvc6wl5z3",
             "image": {
               "assetId": "cb3c0bc5aa6391c8b09cbf9c8",
               "height": 1405,
@@ -1712,6 +1817,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Made-to-spec side-release and slide buckles cast in zinc or molded in acetal, debossed with your mark for straps and webbing.",
               "vi": "Khóa nhả nhanh và khóa trượt làm theo quy cách, đúc kẽm hoặc ép acetal, dập chìm nhãn hiệu cho dây đai và dây dệt."
             },
+            "id": "cmqwcchk16wqrjq5aoae",
             "image": {
               "assetId": "c558390147010589195a16498",
               "height": 1405,
@@ -1736,6 +1842,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Double-cap rivets and decorative studs with a stamped logo head, finished in brass, copper, or black nickel for denim and leather goods.",
               "vi": "Đinh tán hai đầu và đinh trang trí dập logo trên đầu, hoàn thiện đồng thau, đồng đỏ hoặc niken đen cho hàng jeans và đồ da."
             },
+            "id": "cmqwcchk1u3yvqt1xl8j",
             "image": {
               "assetId": "c85ab32c93251f71a2e485ad3",
               "height": 1405,
@@ -1760,6 +1867,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Injection-molded spring cord stoppers and aglets in soft PVC or TPU, raised with a 3D logo and matched to brand Pantone colors.",
               "vi": "Chốt chặn dây lò xo và đầu bọc dây ép phun bằng PVC mềm hoặc TPU, logo nổi 3D và pha màu khớp Pantone thương hiệu."
             },
+            "id": "cmqwcchk1o7d9rgu4v5",
             "image": {
               "assetId": "ca0c5792c16ff36fde7aad11d",
               "height": 1405,
@@ -1784,6 +1892,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "Self-piercing eyelets, grommets, and ring-spring snap fasteners engraved with your logo in nickel, brass, or matte-black plating.",
               "vi": "Khoen xỏ tự đột, ô-dê và nút bấm bốn phần khắc logo, mạ niken, đồng thau hoặc đen mờ."
             },
+            "id": "cmqwcchk1yonob3fz48",
             "image": {
               "assetId": "c43f0ecc88ceaad99e422630f",
               "height": 1405,
@@ -1818,6 +1927,7 @@ export const INITIAL_SNAPSHOT = {
         }
       },
       {
+        "id": "cmqwcchk16ihcfucem1p",
         "image": {
           "assetId": "c6729c31c0192e90813086218",
           "height": 1405,
@@ -1836,6 +1946,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "A coordinated set of labels, tags, and hardware co-developed and color-matched to your brand spec sheet for a single garment program.",
               "vi": "Bộ phụ liệu đồng bộ gồm nhãn, tag treo và phụ kiện kim loại được phát triển chung và đồng màu theo spec sheet thương hiệu cho từng chương trình hàng."
             },
+            "id": "cmqwcchk11fdk9hkfgkd",
             "image": {
               "assetId": "cde4dedb21ef3f3df9b663635",
               "height": 1405,
@@ -1860,6 +1971,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "A damask-woven main label produced under your own private label, with brand-locked colors, fonts, and folding to your tech pack.",
               "vi": "Nhãn chính dệt damask sản xuất dưới thương hiệu riêng của bạn, khóa màu, font và kiểu gấp theo đúng tech pack."
             },
+            "id": "cmqwcchk14g0tr8yqekh",
             "image": {
               "assetId": "cb3c0bc5aa6391c8b09cbf9c8",
               "height": 1405,
@@ -1884,6 +1996,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "A packaged kit of branded zipper pullers, rivets, and snaps die-cast and electroplated to your logo and finish standard.",
               "vi": "Bộ phụ kiện đóng gói gồm đầu khóa kéo, đinh tán và nút bấm gắn logo, đúc và mạ điện theo chuẩn logo và bề mặt của bạn."
             },
+            "id": "cmqwcchk1guu03ou65ce",
             "image": {
               "assetId": "c558390147010589195a16498",
               "height": 1405,
@@ -1908,6 +2021,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "A debossed leather patch developed jointly with your design team, with hide grade, edge finish, and stitch spec fixed to drawing.",
               "vi": "Nhãn da dập chìm phát triển cùng đội thiết kế của bạn, cố định loại da, xử lý cạnh và quy cách đường may theo bản vẽ."
             },
+            "id": "cmqwcchk148xety5rh29",
             "image": {
               "assetId": "c85ab32c93251f71a2e485ad3",
               "height": 1405,
@@ -1932,6 +2046,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "A heat-transferred care and brand label built to your TPU film, wash-test, and placement spec for high-volume runs.",
               "vi": "Nhãn ép nhiệt thông tin và thương hiệu làm theo phim TPU, tiêu chuẩn kiểm tra giặt và vị trí ép cho đơn hàng số lượng lớn."
             },
+            "id": "cmqwcchk1lt57ghmuxo",
             "image": {
               "assetId": "ca0c5792c16ff36fde7aad11d",
               "height": 1405,
@@ -1956,6 +2071,7 @@ export const INITIAL_SNAPSHOT = {
               "en": "An etched brass logo plate manufactured to your CAD file, plating tone, and mounting method as a dedicated OEM component.",
               "vi": "Nhãn logo bằng đồng ăn mòn sản xuất theo file CAD, tông mạ và phương thức gắn của bạn như một linh kiện OEM riêng biệt."
             },
+            "id": "cmqwcchk1y0rj5xhhem",
             "image": {
               "assetId": "c43f0ecc88ceaad99e422630f",
               "height": 1405,
