@@ -191,6 +191,9 @@ function buildFooter(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
   return {
     logo: assetRef(assets, 'logoFooter'),
     watermark: assetRef(assets, 'lotus'),
+    // brandSuffix seeds the editable tail of the footer brand line ("<brand> – <suffix>"). OPTIONAL
+    // in the schema; the web falls back to this same literal when absent (FRESH seed only).
+    brandSuffix: lt('Manufacturing Brand Identity', 'Manufacturing Brand Identity'),
     tagline: ltArray(f.tagline, vf.tagline),
     contactHeading: lt(f.contactHeading, vf.contactHeading),
     quickHeading: lt(f.quickHeading, vf.quickHeading),
@@ -449,6 +452,15 @@ function buildContactPage(
   const c = E.contactPage;
   const v = V.contactPage;
   return {
+    // eyebrow + cardLabels seed the home contact section's eyebrow and the Email/Phone/Address NAP
+    // card titles (shared with the contact page). OPTIONAL in the schema; the web falls back to the
+    // same literals when absent, so this only affects a FRESH seed.
+    eyebrow: lt('Reach Out', 'Liên Hệ'),
+    cardLabels: {
+      email: lt('Email', 'Email'),
+      phone: lt('Phone', 'Điện thoại'),
+      address: lt('Address', 'Địa chỉ'),
+    },
     hero: {
       title: twoTone(
         c.hero.title,
