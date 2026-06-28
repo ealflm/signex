@@ -83,7 +83,7 @@ export function ContextPanel({
       {/* Panel header */}
       <div
         className={cn(
-          "border-b border-border px-4 py-3 transition-colors duration-300",
+          "shrink-0 border-b border-border px-4 py-3 transition-colors duration-300",
           flashing && "bg-primary/10",
         )}
       >
@@ -91,7 +91,7 @@ export function ContextPanel({
       </div>
 
       {/* Field list */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-4 p-4">
           {fields.map((f) => (
             <FieldEditor

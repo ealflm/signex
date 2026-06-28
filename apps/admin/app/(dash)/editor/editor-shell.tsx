@@ -737,7 +737,11 @@ export function EditorShell(props: EditorShellProps) {
           "flex flex-col overflow-hidden border-0 bg-background",
           fullscreen
             ? "fixed inset-0 z-50 h-[100dvh]"
-            : "h-full min-h-[480px]",
+            : // Hard-cap to the viewport minus the dash topbar (h-14). The flex chain uses
+              // min-h-svh (grows with content), so h-full wouldn't bound the editor and a tall
+              // panel would stretch the whole page. A fixed height keeps each panel's ScrollArea
+              // scrolling INTERNALLY — no full-page scroll.
+              "h-[calc(100dvh-3.5rem)]",
         )}
       >
         <Toolbar
