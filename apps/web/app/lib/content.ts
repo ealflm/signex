@@ -393,9 +393,9 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       ogImageAlt: t(b.meta.ogImage.alt, lang),
       // meta.ogImage is AssetRef — resolve URL so seo.ts can serve the CDN path in og:image
       ogImageUrl: assetUrl(b.meta.ogImage.assetId),
-      // Optional GA4 measurement id. "" when the site owner hasn't set one → the layout injects
-      // NO Google Analytics (see app/[lang]/layout.tsx). Locale-invariant (same id on EN/VI).
-      ga4Id: b.meta.analytics?.ga4Id?.trim() ?? "",
+      // NOTE: GA4 no longer comes from the snapshot. It moved to the global SiteConfig singleton
+      // (admin Settings) so analytics is independent of the published theme — see
+      // app/lib/site-config.ts (getGa4Id) wired into app/[lang]/layout.tsx.
       about: {
         title: t(b.meta.about.title, lang),
         description: t(b.meta.about.description, lang),
