@@ -92,41 +92,52 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                   <span {...editText(editable, "footer.contactHeading", { maxLength: 80 })}>{t.contactHeading}</span>
                 </div>
                 <div className="footer-signex_contact">
+                  {/* Field labels (Email:/Tel:/…) stay literal by design (locale-invariant); only the
+                      VALUES are stamped, so each NAP value is click-to-edit (routes to Business contact).
+                      Labels themselves remain editable in the Business contact panel. */}
                   <div className="text-size-small text_body-bold footer-signex_company">
-                    {t.company}
+                    <span {...editText(editable, t.nap.legalName.field, { maxLength: 120 })}>{t.nap.legalName.text}</span>
                   </div>
                   <div className="text-size-small">
                     <span className="text_body-bold">Email:</span>{" "}
-                    <span className="tone-medium">{t.email}</span>
+                    <span className="tone-medium" {...editText(editable, t.nap.email.field, { maxLength: 120 })}>{t.nap.email.text}</span>
                   </div>
-                  <div className="text-size-small">
-                    <span className="text_body-bold">Tel:</span>{" "}
-                    <span className="tone-medium">{t.tel}</span>
-                  </div>
-                  <div className="text-size-small">
-                    <span className="text_body-bold">Zalo:</span>{" "}
-                    <span className="tone-medium">{t.zalo}</span>
-                  </div>
+                  {t.nap.tel && (
+                    <div className="text-size-small">
+                      <span className="text_body-bold">Tel:</span>{" "}
+                      <span className="tone-medium" {...editText(editable, t.nap.tel.value.field, { maxLength: 80 })}>{t.nap.tel.value.text}</span>
+                    </div>
+                  )}
+                  {t.nap.zalo && (
+                    <div className="text-size-small">
+                      <span className="text_body-bold">Zalo:</span>{" "}
+                      <span className="tone-medium" {...editText(editable, t.nap.zalo.value.field, { maxLength: 80 })}>{t.nap.zalo.value.text}</span>
+                    </div>
+                  )}
                   <div className="text-size-small">
                     <span className="text_body-bold">Tax:</span>{" "}
-                    <span className="tone-medium">{t.tax}</span>
+                    <span className="tone-medium" {...editText(editable, t.nap.tax.value.field, { maxLength: 80 })}>{t.nap.tax.value.text}</span>
                   </div>
-                  <div className="footer-signex_address">
-                    <div className="text-size-small text_body-bold">
-                      Office:
+                  {t.nap.office && (
+                    <div className="footer-signex_address">
+                      <div className="text-size-small text_body-bold">
+                        Office:
+                      </div>
+                      <div className="text-size-small tone-medium">
+                        <span {...editText(editable, t.nap.office.value.field, { maxLength: 160 })}>{t.nap.office.value.text}</span>
+                      </div>
                     </div>
-                    <div className="text-size-small tone-medium">
-                      {t.office}
+                  )}
+                  {t.nap.factory && (
+                    <div className="footer-signex_address">
+                      <div className="text-size-small text_body-bold">
+                        Factory:
+                      </div>
+                      <div className="text-size-small tone-medium">
+                        <span {...editText(editable, t.nap.factory.value.field, { maxLength: 160 })}>{t.nap.factory.value.text}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="footer-signex_address">
-                    <div className="text-size-small text_body-bold">
-                      Factory:
-                    </div>
-                    <div className="text-size-small tone-medium">
-                      {t.factory}
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 

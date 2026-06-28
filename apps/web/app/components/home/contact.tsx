@@ -118,9 +118,15 @@ export function Contact({
                       <span {...editText(editable, `contactPage.cardLabels.${CARD_KEYS[i]}`, { maxLength: 40 })}>{card.title}</span>
                     </div>
                     <div className="contact_info-lines tone-medium">
-                      {card.lines.map((line) => (
-                        <div key={line}>
-                          {line}
+                      {card.rows.map((row, j) => (
+                        <div key={j}>
+                          {row.label && (
+                            <>
+                              <span {...editText(editable, row.label.field, { maxLength: 80 })}>{row.label.text}</span>
+                              {": "}
+                            </>
+                          )}
+                          <span {...editText(editable, row.value.field, { maxLength: 160 })}>{row.value.text}</span>
                         </div>
                       ))}
                     </div>

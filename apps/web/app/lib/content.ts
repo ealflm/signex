@@ -51,6 +51,31 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
   const office = bc.sites.find((s) => s.kind === "office");
   const factory = bc.sites.find((s) => s.kind === "factory");
 
+  // ── NAP with inline-edit field paths ──────────────────────────────────────────
+  // The footer + contact cards render the unified businessContact (NAP). To make every value
+  // click-to-edit, each leaf carries its snapshot path; the canvas edit routes to the Business
+  // contact block. Indices are the LIVE array positions so the path stays correct after reorders.
+  const BC = "businessContact";
+  const telIdx = bc.phones.findIndex((p) => p.kind === "tel");
+  const zaloIdx = bc.phones.findIndex((p) => p.kind === "zalo");
+  const officeIdx = bc.sites.findIndex((s) => s.kind === "office");
+  const factoryIdx = bc.sites.findIndex((s) => s.kind === "factory");
+  type NapLeaf = { text: string; field: string };
+  type NapRow = { label: NapLeaf | null; value: NapLeaf };
+  const leaf = (text: string, field: string): NapLeaf => ({ text, field });
+  const compact = <T,>(arr: (T | null | undefined)[]): T[] => arr.filter((x): x is T => x != null);
+  const phoneRow = (i: number): NapRow | null =>
+    i < 0
+      ? null
+      : { label: leaf(t(bc.phones[i].label, lang), `${BC}.phones.${i}.label`), value: leaf(bc.phones[i].value, `${BC}.phones.${i}.value`) };
+  const addrRow = (i: number): NapRow | null =>
+    i < 0
+      ? null
+      : { label: leaf(t(bc.sites[i].label, lang), `${BC}.sites.${i}.label`), value: leaf(t(bc.sites[i].address, lang), `${BC}.sites.${i}.address`) };
+  const emailRows: NapRow[] = bc.emails.map((v, i) => ({ label: null, value: leaf(v, `${BC}.emails.${i}`) }));
+  const taxRow: NapRow = { label: leaf(t(bc.taxLabel, lang), `${BC}.taxLabel`), value: leaf(bc.taxId, `${BC}.taxId`) };
+  const legalNameLeaf = leaf(t(bc.legalName, lang), `${BC}.legalName`);
+
   // formConfig block
   const fc = b.formConfig;
   const fFields = fc.fields;
@@ -203,21 +228,18 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
         {
           // contactPage.cardLabels.* are OPTIONAL → fall back to the original literal titles.
           title: t(b.contactPage.cardLabels?.email, lang) || "Email",
-          lines: bc.emails,
+          rows: emailRows,
         },
         {
           title: t(b.contactPage.cardLabels?.phone, lang) || "Phone",
-          lines: [
-            ...(tel ? [`${t(tel.label, lang)}: ${tel.value}`] : []),
-            ...(zalo ? [`${t(zalo.label, lang)}: ${zalo.value}`] : []),
-          ],
+          rows: compact([phoneRow(telIdx), phoneRow(zaloIdx)]),
         },
         {
+          // Home address card shows the address only (no "Office:" label), like the original.
           title: t(b.contactPage.cardLabels?.address, lang) || "Address",
-          lines: [
-            ...(office ? [t(office.address, lang)] : []),
-            ...(factory ? [t(factory.address, lang)] : []),
-          ],
+          rows: compact([addrRow(officeIdx), addrRow(factoryIdx)]).map(
+            (r): NapRow => ({ label: null, value: r.value }),
+          ),
         },
       ],
     },
@@ -236,6 +258,16 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       tax: bc.taxId,
       office: office ? t(office.address, lang) : "",
       factory: factory ? t(factory.address, lang) : "",
+      // Structured NAP with inline-edit field paths (footer renders these so each value is editable).
+      nap: {
+        legalName: legalNameLeaf,
+        email: emailRows[0]?.value ?? leaf("", `${BC}.emails.0`),
+        tel: phoneRow(telIdx),
+        zalo: phoneRow(zaloIdx),
+        tax: taxRow,
+        office: addrRow(officeIdx),
+        factory: addrRow(factoryIdx),
+      },
       quickHeading: t(b.footer.quickHeading, lang),
       // footer.logo is AssetRef? — resolve URL; "" when absent so the component falls
       // back to the literal signex-logo.svg (published v1 snapshot stays valid).
@@ -357,27 +389,18 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
         {
           // Shared with the home contact cards: contactPage.cardLabels.* OPTIONAL → literal fallback.
           title: t(b.contactPage.cardLabels?.email, lang) || "Email",
-          lines: bc.emails,
+          rows: emailRows,
         },
         {
           title: t(b.contactPage.cardLabels?.phone, lang) || "Phone",
-          lines: [
-            ...(tel ? [`${t(tel.label, lang)}: ${tel.value}`] : []),
-            ...(zalo ? [`${t(zalo.label, lang)}: ${zalo.value}`] : []),
-          ],
+          rows: compact([phoneRow(telIdx), phoneRow(zaloIdx)]),
         },
         {
+          // Address card: company line (bold, no label) + Office/Factory/Tax rows with bold labels.
           title: t(b.contactPage.cardLabels?.address, lang) || "Address",
-          company: t(bc.legalName, lang),
-          details: [
-            ...(office
-              ? [{ label: t(office.label, lang), value: t(office.address, lang) }]
-              : []),
-            ...(factory
-              ? [{ label: t(factory.label, lang), value: t(factory.address, lang) }]
-              : []),
-            { label: t(bc.taxLabel, lang), value: bc.taxId },
-          ],
+          company: legalNameLeaf,
+          strongLabel: true,
+          rows: compact([addrRow(officeIdx), addrRow(factoryIdx), taxRow]),
         },
       ],
       map: {

@@ -92,19 +92,21 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
                       <span {...editText(false, `contactPage.cardLabels.${CARD_KEYS[i]}`, { maxLength: 40 })}>{c.title}</span>
                     </div>
                     <div className="tone-medium contact-card_lines">
-                      {c.lines && c.lines.map((line, j) => (
-                        <div key={j}>
-                          {line}
-                        </div>
-                      ))}
                       {c.company && (
                         <div>
-                          {c.company}
+                          <span {...editText(false, c.company.field, { maxLength: 80 })}>{c.company.text}</span>
                         </div>
                       )}
-                      {c.details && c.details.map((d) => (
-                        <div key={d.label}>
-                          <strong>{d.label}</strong>: {d.value}
+                      {c.rows.map((row, j) => (
+                        <div key={j}>
+                          {row.label &&
+                            (c.strongLabel ? (
+                              <strong {...editText(false, row.label.field, { maxLength: 80 })}>{row.label.text}</strong>
+                            ) : (
+                              <span {...editText(false, row.label.field, { maxLength: 80 })}>{row.label.text}</span>
+                            ))}
+                          {row.label ? ": " : ""}
+                          <span {...editText(false, row.value.field, { maxLength: 160 })}>{row.value.text}</span>
                         </div>
                       ))}
                     </div>
