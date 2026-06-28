@@ -135,12 +135,12 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
             <div className="headline_faq-v1" data-w-id="9dfc7646-5801-a3d5-162a-aebf30a19078">
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  {dict.contactPage.map.eyebrow}
+                  <span {...editText(false, "contactPage.map.eyebrow", { maxLength: 80 })}>{dict.contactPage.map.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                {dict.contactPage.map.title}
-                <span className="tone-medium">
+                <span {...editText(false, "contactPage.map.title.lead", { maxLength: 80 })}>{dict.contactPage.map.title}</span>
+                <span className="tone-medium" {...editText(false, "contactPage.map.title.accent", { maxLength: 80 })}>
                   {dict.contactPage.map.titleAccent}
                 </span>
               </h2>
