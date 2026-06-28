@@ -86,15 +86,29 @@ export default async function MediaPage() {
                   tabIndex={0}
                   aria-label={`${a.originalName} — ${a.kind} — ${a.status}`}
                 >
-                  {/* Thumbnail */}
+                  {/* Thumbnail. IMAGE + SVG render via <img> (SVG is sanitized on upload, and <img>
+                      never executes embedded scripts; object-contain so logos aren't cropped). VIDEO
+                      renders a muted preload-metadata <video> so the browser paints the first frame as
+                      a poster. Anything else (or a missing url / still PENDING) keeps the kind label. */}
                   <div className="aspect-square w-full overflow-hidden rounded-lg bg-muted">
-                    {a.kind === "IMAGE" && a.url ? (
+                    {a.url && (a.kind === "IMAGE" || a.kind === "SVG") ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={a.url}
                         alt={a.altDefault?.en ?? a.originalName}
-                        className="h-full w-full object-cover"
+                        className={`h-full w-full ${a.kind === "SVG" ? "object-contain p-3" : "object-cover"}`}
                         loading="lazy"
+                      />
+                    ) : a.url && a.kind === "VIDEO" ? (
+                      // #t=0.1 media fragment → the browser seeks to 0.1s and PAINTS that frame as the
+                      // thumbnail (an idle <video> at position 0 stays blank in Chrome even when loaded).
+                      <video
+                        src={`${a.url}#t=0.1`}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="h-full w-full object-cover"
+                        aria-label={a.originalName}
                       />
                     ) : (
                       <div
