@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { Copy, ExternalLink, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -124,39 +126,50 @@ export function AssetDialog({ asset, canDelete, open, onOpenChange, onChanged }:
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="truncate pr-6">{asset.originalName}</DialogTitle>
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-4xl">
+          {/* Header — filename + a quick-facts line */}
+          <DialogHeader className="space-y-1.5 border-b border-border px-6 py-4 pr-12 text-left">
+            <DialogTitle className="truncate text-base">{asset.originalName}</DialogTitle>
+            <DialogDescription asChild>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <Badge variant="secondary" className="font-mono font-medium">
+                  {asset.kind}
+                </Badge>
+                {asset.width != null && asset.height != null && (
+                  <span className="font-mono tabular-nums">
+                    {asset.width}×{asset.height}
+                  </span>
+                )}
+                <span aria-hidden>·</span>
+                <span className="font-mono tabular-nums">{humanBytes(asset.bytes)}</span>
+              </div>
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          {/* Body: the asset (hero, on a checkerboard) | info rail */}
+          <div className="grid max-h-[min(85vh,640px)] sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             {/* Preview */}
-            <div className="grid aspect-square w-full place-items-center overflow-hidden rounded-lg border border-border bg-muted">
+            <div className="sx-checker grid min-h-[240px] place-items-center overflow-hidden border-b border-border p-4 sm:min-h-0 sm:border-b-0 sm:border-r">
               {asset.kind === "VIDEO" ? (
                 <video
                   src={asset.url}
                   controls
                   playsInline
-                  className="h-full w-full object-contain"
+                  className="max-h-full max-w-full rounded object-contain shadow-elevated"
                 />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element -- external R2/MinIO host
                 <img
                   src={asset.url}
                   alt={asset.altDefault?.en ?? asset.originalName}
-                  className={cn(
-                    "h-full w-full object-contain",
-                    asset.kind === "SVG" && "p-4",
-                  )}
+                  className="max-h-full max-w-full rounded object-contain shadow-elevated"
                 />
               )}
             </div>
 
-            {/* Metadata + edit */}
-            <div className="flex min-w-0 flex-col gap-4">
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                <dt className="text-muted-foreground">Kind</dt>
-                <dd>{asset.kind}</dd>
+            {/* Info rail */}
+            <div className="flex min-w-0 flex-col gap-4 overflow-y-auto p-6">
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                 {asset.width != null && asset.height != null && (
                   <>
                     <dt className="text-muted-foreground">Dimensions</dt>
@@ -171,13 +184,17 @@ export function AssetDialog({ asset, canDelete, open, onOpenChange, onChanged }:
                     <dd className="font-mono tabular-nums">{Math.round(asset.duration)}s</dd>
                   </>
                 )}
-                <dt className="text-muted-foreground">File size</dt>
+                <dt className="text-muted-foreground">Size</dt>
                 <dd className="font-mono tabular-nums">{humanBytes(asset.bytes)}</dd>
                 <dt className="text-muted-foreground">Type</dt>
-                <dd className="truncate">{asset.mime}</dd>
+                <dd className="truncate font-mono text-xs">{asset.mime}</dd>
                 <dt className="text-muted-foreground">Used in</dt>
                 <dd>
-                  {usageLoading ? "…" : `${inUse} place${inUse === 1 ? "" : "s"}`}
+                  {usageLoading ? (
+                    <span className="text-muted-foreground">…</span>
+                  ) : (
+                    `${inUse} place${inUse === 1 ? "" : "s"}`
+                  )}
                 </dd>
               </dl>
 
@@ -199,8 +216,13 @@ export function AssetDialog({ asset, canDelete, open, onOpenChange, onChanged }:
               </div>
 
               {/* Alt text */}
-              <div className="flex flex-col gap-2 border-t border-border pt-3">
-                <p className="text-sm font-medium text-foreground">Alt text</p>
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-sm font-medium text-foreground">Alt text</p>
+                  <p className="text-xs text-muted-foreground">
+                    Describes the image for screen readers and search engines.
+                  </p>
+                </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="alt-en" className="text-xs text-muted-foreground">
                     English
@@ -238,14 +260,14 @@ export function AssetDialog({ asset, canDelete, open, onOpenChange, onChanged }:
                 </div>
               </div>
 
-              {/* Delete */}
+              {/* Delete — pinned to the bottom of the rail */}
               {canDelete && (
-                <div className="mt-auto border-t border-border pt-3">
+                <div className="mt-auto flex flex-col gap-1 border-t border-border pt-4">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="w-fit text-destructive hover:bg-destructive/10 hover:text-destructive"
                     disabled={usageLoading || (inUse ?? 0) > 0}
                     onClick={() => setConfirmDel(true)}
                   >
@@ -253,7 +275,7 @@ export function AssetDialog({ asset, canDelete, open, onOpenChange, onChanged }:
                     Delete asset
                   </Button>
                   {inUse != null && inUse > 0 && (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       In use in {inUse} place{inUse === 1 ? "" : "s"} — remove it there before
                       deleting.
                     </p>
