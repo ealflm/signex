@@ -21,10 +21,11 @@
 //   features.eyebrow, features.title.lead, features.title.accent, features.cta.label
 //   about.eyebrow, about.title.lead, about.title.accent, about.body
 //   productsHeader.eyebrow, productsHeader.title.lead, productsHeader.title.accent, productsHeader.body
+//   contactPage.eyebrow (home contact section), contactPage.cardLabels.email/phone/address (NAP card titles)
 //   contactPage.hero.title.lead, contactPage.hero.title.accent, contactPage.hero.subtitle
 //   aboutPage.hero.*, aboutPage.testimonial (eyebrow/title trio), aboutPage.intro/capability/process/timeline (per-section eyebrow+title trio+body)
 //   nav.links.<i>.label, nav.cta.label
-//   footer.contactHeading, footer.quickHeading, footer.links.<i>.label
+//   footer.contactHeading, footer.quickHeading, footer.links.<i>.label, footer.brandSuffix (brand-line tail only)
 //   notFound.title.lead, notFound.title.accent, notFound.body, notFound.cta.label
 //
 // EXCLUDE (panel-only — do NOT stamp):
@@ -32,7 +33,8 @@
 //   about.mission/vision/values.*, aboutPage.testimonial.body[], aboutPage.intro arrays,
 //   capability.groups[], closing[], process.steps[], timeline.milestones[]).
 //   Inside parallax/sliders (product-category cards, testimonial slider body, image_cover zones).
-//   Derived/template-string leaves (footer.brand, footer contact tuples, contact-card lines).
+//   Derived/template-string leaves (footer.brand PREFIX + the whole template, footer contact tuples,
+//     contact-card lines — only the editable footer.brandSuffix tail is stamped, not the prefix).
 //   [count-up]/[stagger-text] targets (confirmed absent from markup; still excluded by policy).
 //   Any leaf whose span fails the 3-layer markup-delta gate (CSS-grep + computed-style + screenshot).
 

@@ -44,6 +44,9 @@ const CONTACT_ICONS = [
   </svg>,
 ];
 
+// Card title leaf keys, index-aligned with contactPage.cards (Email / Phone / Address).
+const CARD_KEYS = ["email", "phone", "address"] as const;
+
 async function PreviewContact({
   params,
   searchParams,
@@ -96,7 +99,7 @@ async function PreviewContact({
                     </div>
                     <div className="text_contact-c-card">
                       <div className="text-size-large text_body-bold">
-                        {c.title}
+                        <span {...editText(true, `contactPage.cardLabels.${CARD_KEYS[i]}`, { maxLength: 40 })}>{c.title}</span>
                       </div>
                       <div className="tone-medium contact-card_lines">
                         {c.lines && c.lines.map((line, j) => (
@@ -131,6 +134,7 @@ async function PreviewContact({
           gridWid="9ee4e313-28b4-9f47-35ac-12e943420a2d"
           formWid="a7c263a0-bae9-4cd0-4784-0bc0e59ff63b"
           showCards={false}
+          editable
         />
         <section className="section_faq">
           <div className="padding-global">

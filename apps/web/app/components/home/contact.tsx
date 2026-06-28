@@ -1,6 +1,11 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { StaticWebflowForm } from "@/app/components/static-webflow-form";
 import { STANDARD_VALUES } from "@/app/lib/standard-options";
+import { editText } from "@/app/lib/edit-attrs";
+
+// Card title leaf keys, index-aligned with dict.contact.cards (Email / Phone / Address). Used to
+// stamp each card title with `contactPage.cardLabels.<key>` for the visual editor.
+const CARD_KEYS = ["email", "phone", "address"] as const;
 
 // Info-card icons (lucide) + per-card chip tone, index-aligned with dict.contact.cards
 // (Email / Phone / Address). Icons aren't translated, so they live here, not in the dict.
@@ -50,6 +55,7 @@ export function Contact({
   gridWid = "b3ac1ddc-636d-f345-c58d-b372a067ce8d",
   formWid = "0f29df12-8c38-da6f-794d-3989ac10d663",
   showCards = true,
+  editable = false,
 }: {
   dict: Dictionary;
   headlineWid?: string;
@@ -58,6 +64,8 @@ export function Contact({
   // The Email/Phone/Address info cards. Default on (home page); /contact passes false because
   // those cards already appear in its contact-c hero above this section (avoid duplicates).
   showCards?: boolean;
+  // Visual-editor mode: stamps the eyebrow + card-title leaves. Public render leaves them inert.
+  editable?: boolean;
 }) {
   // Reveal ids default to the home-page a-124 triggers; overridable so this section can be reused
   // on a page with a different data-wf-page (e.g. /contact uses the contact-c page id — see
@@ -74,7 +82,7 @@ export function Contact({
               <div className="heading_contact-b">
                 <div className="master_label" data-wf--tag--variant="base">
                   <div className="label-small">
-                    {c.eyebrow}
+                    <span {...editText(editable, "contactPage.eyebrow", { maxLength: 80 })}>{c.eyebrow}</span>
                   </div>
                 </div>
                 {/* Ref uses <h1> (contact-b is that page's hero); rendered as <h2> so the
@@ -107,7 +115,7 @@ export function Contact({
                   </div>
                   <div>
                     <div className="text_body-bold">
-                      {card.title}
+                      <span {...editText(editable, `contactPage.cardLabels.${CARD_KEYS[i]}`, { maxLength: 40 })}>{card.title}</span>
                     </div>
                     <div className="contact_info-lines tone-medium">
                       {card.lines.map((line) => (

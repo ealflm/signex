@@ -191,24 +191,27 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       })),
     },
     contact: {
-      eyebrow: lang === "vi" ? "Liên Hệ" : "Reach Out",
+      // contactPage.eyebrow is OPTIONAL in the snapshot → fall back to the original literal so the
+      // live site is byte-identical until someone edits it.
+      eyebrow: t(b.contactPage.eyebrow, lang) || (lang === "vi" ? "Liên Hệ" : "Reach Out"),
       title: t(b.contactPage.hero.title.lead, lang),
       titleAccent: t(b.contactPage.hero.title.accent, lang),
       subtitle: t(b.contactPage.hero.subtitle, lang),
       cards: [
         {
-          title: "Email",
+          // contactPage.cardLabels.* are OPTIONAL → fall back to the original literal titles.
+          title: t(b.contactPage.cardLabels?.email, lang) || "Email",
           lines: bc.emails,
         },
         {
-          title: "Phone",
+          title: t(b.contactPage.cardLabels?.phone, lang) || "Phone",
           lines: [
             ...(tel ? [`${t(tel.label, lang)}: ${tel.value}`] : []),
             ...(zalo ? [`${t(zalo.label, lang)}: ${zalo.value}`] : []),
           ],
         },
         {
-          title: "Address",
+          title: t(b.contactPage.cardLabels?.address, lang) || "Address",
           lines: [
             ...(office ? [t(office.address, lang)] : []),
             ...(factory ? [t(factory.address, lang)] : []),
@@ -217,7 +220,11 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       ],
     },
     footer: {
-      brand: `${t(bc.brand, lang)} – Manufacturing Brand Identity`,
+      // The brand line is "<brand> – <suffix>". footer.brandSuffix is OPTIONAL → fall back to the
+      // original literal so the live site is byte-identical until edited. Split into prefix + suffix
+      // so the component can stamp ONLY the editable suffix span (the "<brand> – " prefix is derived).
+      brandPrefix: `${t(bc.brand, lang)} – `,
+      brandSuffix: t(b.footer.brandSuffix, lang) || "Manufacturing Brand Identity",
       tagline: ta(b.footer.tagline, lang),
       contactHeading: t(b.footer.contactHeading, lang),
       company: t(bc.legalName, lang),
@@ -337,18 +344,19 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       },
       cards: [
         {
-          title: "Email",
+          // Shared with the home contact cards: contactPage.cardLabels.* OPTIONAL → literal fallback.
+          title: t(b.contactPage.cardLabels?.email, lang) || "Email",
           lines: bc.emails,
         },
         {
-          title: "Phone",
+          title: t(b.contactPage.cardLabels?.phone, lang) || "Phone",
           lines: [
             ...(tel ? [`${t(tel.label, lang)}: ${tel.value}`] : []),
             ...(zalo ? [`${t(zalo.label, lang)}: ${zalo.value}`] : []),
           ],
         },
         {
-          title: "Address",
+          title: t(b.contactPage.cardLabels?.address, lang) || "Address",
           company: t(bc.legalName, lang),
           details: [
             ...(office

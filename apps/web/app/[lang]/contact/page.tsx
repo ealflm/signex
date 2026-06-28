@@ -47,6 +47,9 @@ const CONTACT_ICONS = [
   </svg>,
 ];
 
+// Card title leaf keys, index-aligned with contactPage.cards (Email / Phone / Address).
+const CARD_KEYS = ["email", "phone", "address"] as const;
+
 export default async function ContactPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   if (!hasLocale(lang)) notFound(); // narrows lang to Locale; rejects unknown locales with a 404
@@ -86,7 +89,7 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
                   </div>
                   <div className="text_contact-c-card">
                     <div className="text-size-large text_body-bold">
-                      {c.title}
+                      <span {...editText(false, `contactPage.cardLabels.${CARD_KEYS[i]}`, { maxLength: 40 })}>{c.title}</span>
                     </div>
                     <div className="tone-medium contact-card_lines">
                       {c.lines && c.lines.map((line, j) => (

@@ -56,7 +56,9 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                 <img alt="Signex" className="footer-signex_logo" loading="lazy" src={t.logoUrl || "/assets/images/signex-logo.svg"} {...editAttrs(editable, "footer.logo", "image")} />
                 <div className="footer-signex_brand">
                   <div className="text-size-regular text_body-bold">
-                    {t.brand}
+                    {/* Brand line "<brand> – <suffix>": only the suffix is editable, rendered as its
+                        own (unconditional, inert-on-public) span; the "<brand> – " prefix stays plain. */}
+                    {t.brandPrefix}<span {...editText(editable, "footer.brandSuffix", { maxLength: 80 })}>{t.brandSuffix}</span>
                   </div>
                   <div className="footer-signex_tagline text-size-small tone-medium">
                     {t.tagline.map((line) => (

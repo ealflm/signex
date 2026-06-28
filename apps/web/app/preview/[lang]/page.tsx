@@ -50,7 +50,7 @@ async function PreviewHome({
           <Features dict={dict.features} editable />
           <ProductCategories dict={dict.products} editable />
           <HomeAbout dict={dict.about} editable />
-          <Contact dict={dict} />
+          <Contact dict={dict} editable />
         </div>
         <Footer dict={dict.footer} editable />
       </main>
