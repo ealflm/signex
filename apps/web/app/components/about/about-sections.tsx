@@ -178,7 +178,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
                       <div className="testimonial-signex_body">
                         {dict.aboutPage.testimonial.body.map((para, i) => (
                           <p key={i} className="text-size-regular margin-0">
-                            {para}
+                            <span {...editText(editable, `aboutPage.testimonial.body.${i}`, { maxLength: 400 })}>{para}</span>
                           </p>
                         ))}
                       </div>
@@ -233,11 +233,11 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
                     {APPROACH_ICONS[i]}
                   </div>
                   <h3 className="about-values_title">
-                    {c.title}
+                    <span {...editText(editable, `aboutPage.approach.${i}.title`, { maxLength: 80 })}>{c.title}</span>
                   </h3>
                   {c.body.map((para, j) => (
                     <p className="tone-medium about-values_body" key={j}>
-                      {para}
+                      <span {...editText(editable, `aboutPage.approach.${i}.body.${j}`, { maxLength: 400 })}>{para}</span>
                     </p>
                   ))}
                 </div>
@@ -273,15 +273,15 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
               </div>
             </div>
             <div className="about-values_grid">
-              {dict.aboutPage.capability.groups.map((g) => (
-                <div className="about-values_card" key={g.title}>
+              {dict.aboutPage.capability.groups.map((g, i) => (
+                <div className="about-values_card" key={i}>
                   <h3 className="about-values_title">
-                    {g.title}
+                    <span {...editText(editable, `aboutPage.capability.groups.${i}.title`, { maxLength: 80 })}>{g.title}</span>
                   </h3>
                   <ul className="about-cap_list" role="list">
-                    {g.items.map((item) => (
-                      <li className="about-cap_item tone-medium" key={item}>
-                        {item}
+                    {g.items.map((item, j) => (
+                      <li className="about-cap_item tone-medium" key={j}>
+                        <span {...editText(editable, `aboutPage.capability.groups.${i}.items.${j}`, { maxLength: 200 })}>{item}</span>
                       </li>
                     ))}
                   </ul>
@@ -289,9 +289,9 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
               ))}
             </div>
             <div className="about-cap_closing">
-              {dict.aboutPage.capability.closing.map((line) => (
-                <p className="tone-medium" key={line}>
-                  {line}
+              {dict.aboutPage.capability.closing.map((line, i) => (
+                <p className="tone-medium" key={i}>
+                  <span {...editText(editable, `aboutPage.capability.closing.${i}`, { maxLength: 400 })}>{line}</span>
                 </p>
               ))}
             </div>
@@ -331,10 +331,10 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
                     {i + 1}
                   </div>
                   <h3 className="about-steps_title">
-                    {s.title}
+                    <span {...editText(editable, `aboutPage.process.steps.${i}.title`, { maxLength: 80 })}>{s.title}</span>
                   </h3>
                   <p className="about-steps_body tone-medium">
-                    {s.body}
+                    <span {...editText(editable, `aboutPage.process.steps.${i}.body`, { maxLength: 300 })}>{s.body}</span>
                   </p>
                 </div>
               ))}
@@ -373,7 +373,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="about-process_intro">
               {dict.aboutPage.timeline.intro.map((line, i) => (
                 <p className="tone-medium" key={i}>
-                  {line}
+                  <span {...editText(editable, `aboutPage.timeline.intro.${i}`, { maxLength: 400 })}>{line}</span>
                 </p>
               ))}
             </div>
@@ -391,27 +391,27 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
                       <div className="item_timeline">
                         <div className="title_timeline-card">
                           <h3 className="heading-style-h4 margin-0">
-                            {m.title}
+                            <span {...editText(editable, `aboutPage.timeline.milestones.${i}.title`, { maxLength: 120 })}>{m.title}</span>
                           </h3>
                           <div className="label-large">
-                            {m.num}
+                            <span {...editText(editable, `aboutPage.timeline.milestones.${i}.num`, { maxLength: 40 })}>{m.num}</span>
                           </div>
                         </div>
                         <p className="tone-medium">
-                          {m.body}
+                          <span {...editText(editable, `aboutPage.timeline.milestones.${i}.body`, { maxLength: 400 })}>{m.body}</span>
                         </p>
                         {m.items && (
                           <ul className="about-cap_list" role="list">
-                            {m.items.map((it) => (
-                              <li className="about-cap_item tone-medium" key={it}>
-                                {it}
+                            {m.items.map((it, j) => (
+                              <li className="about-cap_item tone-medium" key={j}>
+                                <span {...editText(editable, `aboutPage.timeline.milestones.${i}.items.${j}`, { maxLength: 200 })}>{it}</span>
                               </li>
                             ))}
                           </ul>
                         )}
                         {m.note && (
                           <p className="tone-medium">
-                            {m.note}
+                            <span {...editText(editable, `aboutPage.timeline.milestones.${i}.note`, { maxLength: 400 })}>{m.note}</span>
                           </p>
                         )}
                       </div>

@@ -958,6 +958,10 @@ export const INITIAL_SNAPSHOT = {
         "JCB",
         "Napas"
       ],
+      "shipping": [
+        "Lalamove",
+        "Grab"
+      ],
       "quickHeading": {
         "en": "Quick links",
         "vi": "Truy cập nhanh"
@@ -1133,6 +1137,10 @@ export const INITIAL_SNAPSHOT = {
       "submit": {
         "en": "Send Message",
         "vi": "Gửi Thông Tin"
+      },
+      "submitting": {
+        "en": "Please wait...",
+        "vi": "Vui lòng đợi..."
       },
       "success": {
         "en": "Thank you — we've received your request and will get back to you within 24 hours.",

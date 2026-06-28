@@ -97,6 +97,8 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       message: t(fFields.message.label, lang),
       messagePlaceholder: t(fFields.message.placeholder, lang),
       submit: t(fc.submit, lang),
+      // formConfig.submitting OPTIONAL → fall back to the literal Webflow wait-label per locale.
+      submitting: t(fc.submitting, lang, lang === "vi" ? "Vui lòng đợi..." : "Please wait..."),
       success: t(fc.success, lang),
       fail: t(fc.fail, lang),
     },
@@ -247,8 +249,17 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
         href: l.href,
       })),
       shipLabel: t(b.footer.shipLabel, lang),
+      // footer.shipping is OPTIONAL → fall back to the original literal badges so the live site
+      // is byte-identical until edited. Locale-invariant brand names, like payments.
+      shipping: b.footer.shipping ?? ["Lalamove", "Grab"],
       payLabel: t(b.footer.payLabel, lang),
       payments: b.footer.payments,
+      // Social hrefs come from the unified businessContact.social (edited under "Business contact").
+      // The footer renders Facebook/YouTube; fall back to "#" when a network has no URL yet.
+      social: {
+        facebook: bc.social.find((s) => s.kind === "facebook")?.href ?? "#",
+        youtube: bc.social.find((s) => s.kind === "youtube")?.href ?? "#",
+      },
     },
     nav: {
       skip: t(b.nav.skip, lang),

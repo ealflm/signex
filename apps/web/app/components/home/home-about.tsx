@@ -69,11 +69,11 @@ export function HomeAbout({
                 <span {...editText(editable, "about.mission.title", { maxLength: 80 })}>{t.mission.title}</span>
               </h3>
               <p className="tone-medium about-mvv_body">
-                {t.mission.body}
+                <span {...editText(editable, "about.mission.body", { maxLength: 200 })}>{t.mission.body}</span>
               </p>
               <ul className="about-mvv_list" role="list">
-                {t.mission.items.map((item) => (
-                  <li className="about-mvv_item" key={item}>
+                {t.mission.items.map((item, i) => (
+                  <li className="about-mvv_item" key={i}>
                     <div className="about-mvv_check w-embed">
                       <svg className="lucide lucide-circle-check-icon lucide-circle-check" fill="none" height="24" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="12" cy="12" r="10" />
@@ -81,7 +81,7 @@ export function HomeAbout({
                       </svg>
                     </div>
                     <div>
-                      {item}
+                      <span {...editText(editable, `about.mission.items.${i}`, { maxLength: 160 })}>{item}</span>
                     </div>
                   </li>
                 ))}

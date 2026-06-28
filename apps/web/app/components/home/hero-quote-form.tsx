@@ -65,7 +65,7 @@ export function HeroQuoteForm({
     <div button="" className={`button_submit-static ${extraClass}`}>
       <input
         className="button_submit w-button"
-        data-wait="Please wait..."
+        data-wait={dict.submitting}
         tabIndex={tabIndex}
         type="submit"
         value={dict.submit}

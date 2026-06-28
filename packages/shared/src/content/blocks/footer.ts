@@ -24,6 +24,10 @@ export const footerBlock = z.object({
   quickHeading: LocalizedText,
   links: z.array(z.object({ label: LocalizedText, href: Href })).min(1),
   shipLabel: LocalizedText,
+  // shipping OPTIONAL: courier-partner badges (Lalamove/Grab — brand names, locale-invariant).
+  // The web falls back to ["Lalamove","Grab"] when absent, so the published v1 snapshot (which
+  // predates this field) stays valid — no re-publish required. Editable as `footer.shipping`.
+  shipping: z.array(z.string()).min(1).optional(),
   payLabel: LocalizedText,
   payments: z.array(z.string()).min(1), // brand codes: VISA/JCB/Napas/COD (locale-invariant)
 });

@@ -109,6 +109,37 @@ function getPath(obj: Record<string, unknown>, path: string): unknown {
   }, obj);
 }
 
+// Inline text edits arrive as a locale-agnostic path + a raw string for the CURRENT locale. The
+// target leaf has one of three shapes, resolved from the existing value so the write lands correctly:
+//   • plain locale-invariant string (e.g. timeline milestone `num`)      → write <path> as-is
+//   • LocalizedText scalar  {en,vi}                                       → write <path>.<locale>
+//   • item in a LocalizedTextArray {en:[],vi:[]} (path ends in an index)  → write <parent>.<locale>.<index>
+// Without this, a plain-string leaf would be clobbered into {vi:"…"} (save 4xx) and a localized-array
+// item would be written as a stray numeric key that the block schema strips (edit silently lost).
+function resolveTextEditPath(
+  blockData: Record<string, unknown>,
+  rest: string[],
+  locale: Locale,
+): string {
+  const pathNoLocale = rest.join(".");
+  const leaf = getPath(blockData, pathNoLocale);
+  if (typeof leaf === "string") return pathNoLocale; // plain locale-invariant string
+  const last = rest[rest.length - 1];
+  if (/^\d+$/.test(last)) {
+    const parentPath = rest.slice(0, -1).join(".");
+    const parent = parentPath ? getPath(blockData, parentPath) : blockData;
+    if (
+      parent &&
+      typeof parent === "object" &&
+      Array.isArray((parent as Record<string, unknown>).en) &&
+      Array.isArray((parent as Record<string, unknown>).vi)
+    ) {
+      return `${parentPath}.${locale}.${last}`; // LocalizedTextArray item
+    }
+  }
+  return `${pathNoLocale}.${locale}`; // LocalizedText scalar (default)
+}
+
 // Live-swap descriptor mirrored to the preview overlay (keyed by full "blockKey.path" field).
 interface MediaPreview {
   field: string;
@@ -206,6 +237,10 @@ export function EditorShell(props: EditorShellProps) {
   mediaPreviewRef.current = mediaPreview;
   const textPreviewRef = useRef(textPreview);
   textPreviewRef.current = textPreview;
+  // Read the live pending map inside the once-subscribed message listener (to shape-resolve inline
+  // text edits against the working block data) without re-subscribing on every edit.
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
   // Live locale for the once-subscribed listener (inbound textEdit appends `.${langRef.current}`;
   // `ready` re-posts only this locale's pending text). Same pattern as mediaPreviewRef.
   const langRef = useRef(lang);
@@ -597,7 +632,13 @@ export function EditorShell(props: EditorShellProps) {
         const value = String(data.value ?? "");
         const locale = langRef.current;
         const [blockKey, ...rest] = field.split(".") as [BlockKey, ...string[]];
-        applyFieldEdit(blockKey, `${rest.join(".")}.${locale}`, value);
+        const blockData =
+          pendingRef.current.get(blockKey) ??
+          ((baseRef.current.blocks as unknown as Record<string, Record<string, unknown>>)[
+            blockKey
+          ] ??
+            {});
+        applyFieldEdit(blockKey, resolveTextEditPath(blockData, rest, locale), value);
         // Mirror it so `ready` can re-apply it to the canvas after a refresh / locale remount.
         setTextPreview((prev) => {
           const n = new Map(prev);

@@ -37,6 +37,12 @@ const YOUTUBE_ICON = (
 // Payment-badge text tone (white badge, coloured label): VISA/Napas blue, JCB/COD red.
 const PAY_TONE: Record<string, string> = { JCB: "is-red", COD: "is-red" };
 
+// Courier-badge modifier from the brand name: "Lalamove" → "is-lalamove", "Grab" → "is-grab"
+// (so the scoped brand-colour rules in globals.css still apply). A renamed/new courier just
+// gets a slug with no special colour — it falls back to the default badge surface.
+const badgeSlug = (name: string): string =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
 export function Footer({ dict, editable = false }: { dict: Dictionary["footer"]; editable?: boolean }) {
   const t = dict;
 
@@ -61,17 +67,17 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                     {t.brandPrefix}<span {...editText(editable, "footer.brandSuffix", { maxLength: 80 })}>{t.brandSuffix}</span>
                   </div>
                   <div className="footer-signex_tagline text-size-small tone-medium">
-                    {t.tagline.map((line) => (
-                      <div key={line}>
-                        {line}
+                    {t.tagline.map((line, i) => (
+                      <div key={i}>
+                        <span {...editText(editable, `footer.tagline.${i}`, { maxLength: 120 })}>{line}</span>
                       </div>
                     ))}
                   </div>
                   <div className="footer-signex_socials">
-                    <a className="footer-signex_social is-facebook" href="#" aria-label="Facebook">
+                    <a className="footer-signex_social is-facebook" href={t.social.facebook} aria-label="Facebook">
                       {FACEBOOK_ICON}
                     </a>
-                    <a className="footer-signex_social is-youtube" href="#" aria-label="YouTube">
+                    <a className="footer-signex_social is-youtube" href={t.social.youtube} aria-label="YouTube">
                       {YOUTUBE_ICON}
                     </a>
                   </div>
@@ -148,19 +154,18 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                 <span className="text-size-small tone-medium">
                   <span {...editText(editable, "footer.shipLabel", { maxLength: 80 })}>{t.shipLabel}</span>
                 </span>
-                <span className="footer-signex_badge is-lalamove">
-                  Lalamove
-                </span>
-                <span className="footer-signex_badge is-grab">
-                  Grab
-                </span>
+                {t.shipping.map((name, i) => (
+                  <span className={`footer-signex_badge is-${badgeSlug(name)}`} key={i}>
+                    {name}
+                  </span>
+                ))}
               </div>
               <div className="footer-signex_badges">
                 <span className="text-size-small tone-medium">
                   <span {...editText(editable, "footer.payLabel", { maxLength: 80 })}>{t.payLabel}</span>
                 </span>
-                {t.payments.map((p) => (
-                  <span className={`footer-signex_badge footer-signex_pay ${PAY_TONE[p] ?? "is-blue"}`} key={p}>
+                {t.payments.map((p, i) => (
+                  <span className={`footer-signex_badge footer-signex_pay ${PAY_TONE[p] ?? "is-blue"}`} key={i}>
                     {p}
                   </span>
                 ))}
