@@ -63,19 +63,27 @@ describe("deriveFields", () => {
     expect(byName("video")).toBe("videoRef");
   });
 
-  it("does NOT recurse a SECOND level — nested-nested objects fall back to json (conservative scope)", () => {
+  it("recurses plain objects up to MAX_OBJECT_DEPTH (3); deeper nesting falls back to json", () => {
     const plan = deriveFields(
       z.object({
-        outer: z.object({
-          inner: z.object({ a: z.string(), b: z.string() }), // depth 2 → json
-          leaf: assetRef, // depth 1 leaf → assetRef
+        l0: z.object({
+          l1: z.object({
+            l2: z.object({
+              l3: z.object({ a: z.string(), b: z.string() }), // depth 3 → json (too deep)
+              leaf: assetRef, // depth 3 leaf → assetRef (special kinds resolve at any depth)
+            }),
+          }),
         }),
       })
     );
-    const outer = plan.find((f) => f.name === "outer");
-    expect(outer?.kind).toBe("object");
-    expect(outer?.children?.find((c) => c.name === "inner")?.kind).toBe("json");
-    expect(outer?.children?.find((c) => c.name === "leaf")?.kind).toBe("assetRef");
+    const l0 = plan.find((f) => f.name === "l0");
+    expect(l0?.kind).toBe("object"); // depth 0
+    const l1 = l0?.children?.find((c) => c.name === "l1");
+    expect(l1?.kind).toBe("object"); // depth 1
+    const l2 = l1?.children?.find((c) => c.name === "l2");
+    expect(l2?.kind).toBe("object"); // depth 2
+    expect(l2?.children?.find((c) => c.name === "l3")?.kind).toBe("json"); // depth 3 → too deep
+    expect(l2?.children?.find((c) => c.name === "leaf")?.kind).toBe("assetRef");
   });
 
   it("treats localized/localizedArray/assetRef/videoRef as leaves, NOT as recurse-able objects", () => {

@@ -108,9 +108,10 @@ function isPlainObject(s: z.ZodTypeAny): boolean {
   );
 }
 
-// depth 0 = top-level block field; depth 1 = one level into a nested object.
-// We recurse AT MOST one level (depth 1): nested-nested objects fall back to JSON so the
-// editor never produces an unbounded tree and array/union shapes stay JSON-editable.
+// depth 0 = top-level block field; each nested object adds one. We recurse plain objects up to
+// MAX_OBJECT_DEPTH so nested leaves (two-tone {lead,accent} titles, formConfig.fields.*) get proper
+// editors; objects nested deeper than that fall back to JSON so the tree can't explode and
+// array/union shapes stay JSON-editable.
 function classify(name: string, raw: z.ZodTypeAny, depth = 0): FieldPlan {
   const s = unwrap(raw);
   if (isStringSchema(s)) return { name, kind: "string", label: name };
