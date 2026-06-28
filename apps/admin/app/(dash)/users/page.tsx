@@ -1,15 +1,16 @@
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
 import type { RoleName } from "@signex/shared";
-import { createUser } from "./actions";
-import { UpdateRoleForm, DeactivateForm } from "./user-forms";
+import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/app/lib/format";
+import { InviteUserDialog } from "./user-invite-dialog";
+import { UserRowMenu } from "./user-controls";
 import { PageHeader } from "@/components/admin/page-header";
 import { SectionCard } from "@/components/admin/section-card";
 import { EmptyState } from "@/components/admin/empty-state";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { Field } from "@/components/admin/field";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableHeader,
@@ -29,13 +30,32 @@ interface UserRow {
   lastLoginAt: string | null;
 }
 
-const ROLES: RoleName[] = ["EDITOR", "PUBLISHER", "ADMIN"];
+const ROLE_LABEL: Record<RoleName, string> = {
+  EDITOR: "Editor",
+  PUBLISHER: "Publisher",
+  ADMIN: "Admin",
+};
+
+// Signature: the avatar is tinted by access level, so the roster reads at a glance — more access,
+// more colour (Editor neutral → Publisher tinted → Admin filled). Semantic tokens only.
+const ROLE_AVATAR: Record<RoleName, string> = {
+  ADMIN: "bg-primary text-primary-foreground",
+  PUBLISHER: "bg-primary/10 text-primary",
+  EDITOR: "bg-muted text-muted-foreground",
+};
+
+function initials(name: string, email: string): string {
+  const base = (name || email).trim();
+  const parts = base.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0]! + parts[1][0]!).toUpperCase();
+  return base.slice(0, 2).toUpperCase();
+}
+
+const TH = "h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground";
 
 export default async function UsersPage() {
   await requireRole("ADMIN");
 
-  // GET /api/users — may be absent (endpoint not yet implemented in the API);
-  // handle gracefully so the page still renders the Create form.
   const res = await apiServer<UserRow[]>("/api/users");
   const users = res.ok ? res.data : [];
   const listUnavailable = !res.ok;
@@ -44,64 +64,35 @@ export default async function UsersPage() {
     <section className="flex flex-col gap-6">
       <PageHeader
         title="Users"
-        subtitle="Manage admin panel users. Only admins can access this page."
+        subtitle="People who can sign in to this admin and what they're allowed to do."
+        actions={<InviteUserDialog />}
       />
 
-      {/*
-        FLAG: GET /api/users is NOT implemented in the API.
-        apps/api/src/users/users.controller.ts only has @Post(), @Patch(':id'),
-        and @Delete(':id'). A @Get() list route + UsersService.findAll() must be
-        added before this table can render live data.
-      */}
       {listUnavailable && (
         <p
           role="alert"
-          className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
+          className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
         >
-          User list unavailable —{" "}
-          <code className="font-mono">GET /api/users</code> is not yet
-          implemented in the API. Add a{" "}
-          <code className="font-mono">@Get()</code> list route to{" "}
-          <code className="font-mono">UsersController</code> to enable the
-          table.
+          Couldn&apos;t load the user list — the API may be unavailable. You can still add a user.
         </p>
       )}
 
-      {/* User list table */}
       {users.length > 0 ? (
         <SectionCard bodyClassName="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead
-                  scope="col"
-                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                >
-                  Email
+                <TableHead scope="col" className={TH}>
+                  Member
                 </TableHead>
-                <TableHead
-                  scope="col"
-                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                >
-                  Name
-                </TableHead>
-                <TableHead
-                  scope="col"
-                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                >
+                <TableHead scope="col" className={TH}>
                   Role
                 </TableHead>
-                <TableHead
-                  scope="col"
-                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                >
-                  Active
+                <TableHead scope="col" className={TH}>
+                  Status
                 </TableHead>
-                <TableHead
-                  scope="col"
-                  className="h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                >
-                  Last login
+                <TableHead scope="col" className={TH}>
+                  Last seen
                 </TableHead>
                 <TableHead scope="col" className="h-10 px-4">
                   <span className="sr-only">Actions</span>
@@ -112,21 +103,38 @@ export default async function UsersPage() {
               {users.map((u) => (
                 <TableRow
                   key={u.id}
-                  className="border-b border-border last:border-0 transition-colors duration-150 hover:bg-muted/50"
+                  className={cn(
+                    "border-b border-border transition-colors duration-150 last:border-0 hover:bg-muted/50",
+                    !u.isActive && "opacity-60",
+                  )}
                 >
-                  <TableCell className="px-4 py-3 font-medium text-foreground">
-                    {u.email}
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-muted-foreground">
-                    {u.name}
-                  </TableCell>
-
-                  {/* Role selector — client component for pending/confirm UX */}
+                  {/* Member — avatar (role-tinted) + name + email */}
                   <TableCell className="px-4 py-3">
-                    <UpdateRoleForm userId={u.id} currentRole={u.role} />
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar>
+                        <AvatarFallback className={cn("font-medium", ROLE_AVATAR[u.role])}>
+                          {initials(u.name, u.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate text-sm font-medium text-foreground">
+                          {u.name || "—"}
+                        </span>
+                        <span className="truncate font-mono text-xs text-muted-foreground">
+                          {u.email}
+                        </span>
+                      </div>
+                    </div>
                   </TableCell>
 
-                  {/* Active status badge */}
+                  {/* Role label (changed via the ⋯ menu) */}
+                  <TableCell className="px-4 py-3">
+                    <Badge variant="outline" className="font-normal">
+                      {ROLE_LABEL[u.role]}
+                    </Badge>
+                  </TableCell>
+
+                  {/* Status */}
                   <TableCell className="px-4 py-3">
                     {u.isActive ? (
                       <StatusBadge tone="success">
@@ -141,22 +149,25 @@ export default async function UsersPage() {
                     )}
                   </TableCell>
 
-                  {/* Last login */}
-                  <TableCell className="px-4 py-3">
+                  {/* Last seen — relative, full date on hover */}
+                  <TableCell className="px-4 py-3 text-sm text-muted-foreground">
                     {u.lastLoginAt ? (
-                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                        {new Date(u.lastLoginAt).toLocaleString()}
+                      <span title={new Date(u.lastLoginAt).toLocaleString()}>
+                        {formatRelativeTime(u.lastLoginAt)}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      "Never"
                     )}
                   </TableCell>
 
-                  {/* Deactivate — client component for window.confirm */}
-                  <TableCell className="px-4 py-3">
-                    {u.isActive && (
-                      <DeactivateForm userId={u.id} email={u.email} />
-                    )}
+                  {/* Row actions */}
+                  <TableCell className="px-4 py-3 text-right">
+                    <UserRowMenu
+                      userId={u.id}
+                      email={u.email}
+                      role={u.role}
+                      isActive={u.isActive}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -168,75 +179,12 @@ export default async function UsersPage() {
           <SectionCard bodyClassName="p-0">
             <EmptyState
               icon={Users}
-              title="No users found."
-              description="Add a user below to get started."
+              title="No users yet"
+              description="Add someone with the “Add user” button to get started."
             />
           </SectionCard>
         )
       )}
-
-      {/* Create user form — server action, pure server component */}
-      <SectionCard title="Add new user">
-        <form
-          action={createUser}
-          className="grid gap-4 sm:grid-cols-[1fr_1fr_auto_auto_auto]"
-        >
-          <Field label="Email" htmlFor="new-email" required>
-            <Input
-              id="new-email"
-              name="email"
-              type="email"
-              placeholder="user@example.com"
-              required
-            />
-          </Field>
-
-          <Field label="Name" htmlFor="new-name" required>
-            <Input
-              id="new-name"
-              name="name"
-              type="text"
-              placeholder="Full name"
-              required
-            />
-          </Field>
-
-          <Field label="Role" htmlFor="new-role">
-            <select
-              id="new-role"
-              name="role"
-              defaultValue="EDITOR"
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field
-            label="Password"
-            htmlFor="new-password"
-            hint="Min 8 characters"
-            required
-          >
-            <Input
-              id="new-password"
-              name="password"
-              type="password"
-              placeholder="Min 8 characters"
-              required
-              minLength={8}
-            />
-          </Field>
-
-          <div className="flex items-end">
-            <Button type="submit">Add user</Button>
-          </div>
-        </form>
-      </SectionCard>
     </section>
   );
 }
