@@ -792,6 +792,10 @@ export const INITIAL_SNAPSHOT = {
     },
     "contactPage": {
       "hero": {
+        "eyebrow": {
+          "en": "Contact",
+          "vi": "Contact"
+        },
         "image": {
           "alt": {
             "en": "Signex contact",

@@ -377,6 +377,9 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
     },
     contactPage: {
       hero: {
+        // hero.eyebrow OPTIONAL → fall back to the original literal "Contact" so the live site is
+        // byte-identical until edited. Same label in both locales' mockups (locale-invariant default).
+        eyebrow: t(b.contactPage.hero.eyebrow, lang) || "Contact",
         title: t(b.contactPage.hero.title.lead, lang),
         titleAccent: t(b.contactPage.hero.title.accent, lang),
         subtitle: t(b.contactPage.hero.subtitle, lang),

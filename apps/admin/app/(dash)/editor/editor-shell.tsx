@@ -111,19 +111,23 @@ function getPath(obj: Record<string, unknown>, path: string): unknown {
 
 // Inline text edits arrive as a locale-agnostic path + a raw string for the CURRENT locale. The
 // target leaf has one of three shapes, resolved from the existing value so the write lands correctly:
-//   • plain locale-invariant string (e.g. timeline milestone `num`)      → write <path> as-is
-//   • LocalizedText scalar  {en,vi}                                       → write <path>.<locale>
-//   • item in a LocalizedTextArray {en:[],vi:[]} (path ends in an index)  → write <parent>.<locale>.<index>
-// Without this, a plain-string leaf would be clobbered into {vi:"…"} (save 4xx) and a localized-array
-// item would be written as a stray numeric key that the block schema strips (edit silently lost).
-function resolveTextEditPath(
+//   • plain locale-invariant string (e.g. timeline milestone `num`)      → write the string at <path>
+//   • item in a LocalizedTextArray {en:[],vi:[]} (path ends in an index)  → write the string at <parent>.<locale>.<index>
+//   • LocalizedText scalar  {en,vi}                                       → write the WHOLE {en,vi} at <path>
+// The scalar case writes the merged object (not just <path>.<locale>) so an absent/partial OPTIONAL
+// leaf — present in the published schema but not yet in this draft — stays schema-valid (LocalizedText
+// requires BOTH locales). The other locale is preserved from the existing value, or seeded with the new
+// text when missing. Without this, a plain-string leaf would be clobbered into {vi:"…"} (save 4xx) and a
+// localized-array item would be written as a stray numeric key the block schema strips (edit lost).
+function resolveTextEdit(
   blockData: Record<string, unknown>,
   rest: string[],
   locale: Locale,
-): string {
+  value: string,
+): { path: string; value: unknown } {
   const pathNoLocale = rest.join(".");
   const leaf = getPath(blockData, pathNoLocale);
-  if (typeof leaf === "string") return pathNoLocale; // plain locale-invariant string
+  if (typeof leaf === "string") return { path: pathNoLocale, value }; // plain locale-invariant string
   const last = rest[rest.length - 1];
   if (/^\d+$/.test(last)) {
     const parentPath = rest.slice(0, -1).join(".");
@@ -134,10 +138,17 @@ function resolveTextEditPath(
       Array.isArray((parent as Record<string, unknown>).en) &&
       Array.isArray((parent as Record<string, unknown>).vi)
     ) {
-      return `${parentPath}.${locale}.${last}`; // LocalizedTextArray item
+      return { path: `${parentPath}.${locale}.${last}`, value }; // LocalizedTextArray item
     }
   }
-  return `${pathNoLocale}.${locale}`; // LocalizedText scalar (default)
+  // LocalizedText scalar: write the whole {en,vi}, preserving the other locale (or seeding it).
+  const cur = leaf && typeof leaf === "object" ? (leaf as Record<string, unknown>) : {};
+  const merged: Record<string, string> = {
+    en: typeof cur.en === "string" ? cur.en : value,
+    vi: typeof cur.vi === "string" ? cur.vi : value,
+    [locale]: value,
+  };
+  return { path: pathNoLocale, value: merged };
 }
 
 // Live-swap descriptor mirrored to the preview overlay (keyed by full "blockKey.path" field).
@@ -638,7 +649,8 @@ export function EditorShell(props: EditorShellProps) {
             blockKey
           ] ??
             {});
-        applyFieldEdit(blockKey, resolveTextEditPath(blockData, rest, locale), value);
+        const edit = resolveTextEdit(blockData, rest, locale, value);
+        applyFieldEdit(blockKey, edit.path, edit.value);
         // Mirror it so `ready` can re-apply it to the canvas after a refresh / locale remount.
         setTextPreview((prev) => {
           const n = new Map(prev);

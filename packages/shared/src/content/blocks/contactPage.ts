@@ -20,7 +20,10 @@ export const contactPageBlock = z.object({
   // hero.image OPTIONAL: the web falls back to the literal sara-dubler still when absent, so the
   // published v1 snapshot (which predates this field) stays valid — no re-publish required. This is
   // the contact-c hero's parallax image; the visual editor edits it as `contactPage.hero.image`.
-  hero: z.object({ title: TwoToneTitle, subtitle: LocalizedText, image: AssetRef.optional() }),
+  // hero.eyebrow OPTIONAL: the contact-c hero's small label (was a hardcoded "Contact"). The web falls
+  // back to "Contact" when absent, so the published v1 snapshot stays valid. Editable as
+  // `contactPage.hero.eyebrow`.
+  hero: z.object({ eyebrow: LocalizedText.optional(), title: TwoToneTitle, subtitle: LocalizedText, image: AssetRef.optional() }),
   map: z.object({ eyebrow: LocalizedText, title: TwoToneTitle }),
 });
 export type ContactPageBlock = z.infer<typeof contactPageBlock>;

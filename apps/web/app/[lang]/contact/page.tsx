@@ -63,7 +63,7 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
               <div className="heading_contact-c">
                 <div className="master_label" data-wf--tag--variant="base">
                   <div className="label-small">
-                    Contact
+                    <span {...editText(false, "contactPage.hero.eyebrow", { maxLength: 40 })}>{dict.contactPage.hero.eyebrow}</span>
                   </div>
                 </div>
                 <h1>
