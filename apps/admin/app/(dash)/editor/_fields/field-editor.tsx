@@ -9,16 +9,20 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // A sensible empty value for a newly-added array item / list line, by field kind.
 function defaultForField(plan: FieldPlan): unknown {
   switch (plan.kind) {
     case "string":
       return "";
+    case "boolean":
+      return false;
     case "localized":
       return { en: "", vi: "" };
     case "localizedArray":
       return { en: [], vi: [] };
+    case "stringArray":
     case "array":
       return [];
     case "assetRef":
@@ -90,6 +94,30 @@ function StringField({
         onChange={(e) => onChange(e.target.value)}
       />
     </Field>
+  );
+}
+
+function BooleanField({
+  field,
+  value,
+  onChange,
+}: {
+  field: FieldPlan;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  return (
+    <label
+      htmlFor={`field-${field.name}`}
+      className="flex cursor-pointer items-center gap-2 py-1"
+    >
+      <Checkbox
+        id={`field-${field.name}`}
+        checked={Boolean(value)}
+        onCheckedChange={(c) => onChange(c === true)}
+      />
+      <span className="text-sm text-foreground">{field.label}</span>
+    </label>
   );
 }
 
@@ -366,6 +394,57 @@ function LocalizedArrayField({
   );
 }
 
+// Flat list of plain strings (kind:"stringArray", e.g. emails / payment labels) — one input per item.
+function StringArrayField({
+  field,
+  value,
+  onChange,
+}: {
+  field: FieldPlan;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const arr = (Array.isArray(value) ? value : []) as string[];
+  const setAt = (i: number, text: string) =>
+    onChange(arr.map((x, j) => (j === i ? text : x)));
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-lg border border-border p-4">
+      <legend className="px-1 text-sm font-medium text-foreground">
+        {field.label}{" "}
+        <span className="text-xs font-normal text-muted-foreground">
+          ({arr.length} item{arr.length === 1 ? "" : "s"})
+        </span>
+      </legend>
+      {arr.map((s, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <Input value={s} onChange={(e) => setAt(i, e.target.value)} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+            aria-label={`Remove item ${i + 1}`}
+            onClick={() => onChange(arr.filter((_, j) => j !== i))}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange([...arr, ""])}
+        >
+          <Plus className="h-4 w-4" />
+          Add
+        </Button>
+      </div>
+    </fieldset>
+  );
+}
+
 // Repeater of object items (kind:"array" with children = the item shape). Each item is a card with
 // its child fields rendered by the same FieldEditor; supports add / remove / reorder.
 function ArrayField({
@@ -566,6 +645,8 @@ export function FieldEditor({
   let inner: ReactElement;
   if (field.kind === "string") {
     inner = <StringField field={field} value={value} onChange={onChange} />;
+  } else if (field.kind === "boolean") {
+    inner = <BooleanField field={field} value={value} onChange={onChange} />;
   } else if (field.kind === "localized") {
     inner = <LocalizedField field={field} value={value} onChange={onChange} />;
   } else if (field.kind === "assetRef") {
@@ -604,6 +685,8 @@ export function FieldEditor({
     );
   } else if (field.kind === "localizedArray") {
     inner = <LocalizedArrayField field={field} value={value} onChange={onChange} />;
+  } else if (field.kind === "stringArray") {
+    inner = <StringArrayField field={field} value={value} onChange={onChange} />;
   } else if (field.kind === "array") {
     inner = (
       <ArrayField
