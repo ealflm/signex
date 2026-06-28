@@ -13,6 +13,7 @@ import {
   contactPageBlock,
   notFoundBlock,
   resolveBusinessContact,
+  siteConfigSchema,
 } from "./index";
 
 // ---------------------------------------------------------------------------
@@ -291,28 +292,39 @@ describe("metaBlock", () => {
     expect(metaBlock.safeParse(d).success).toBe(false);
   });
 
-  // analytics is OPTIONAL — published v1/v2 snapshots have no `analytics` and must stay valid.
-  it("parses WITHOUT analytics (optional)", () => {
+  // GA4/analytics moved OUT of meta to the global SiteConfig (see siteConfigSchema below). meta is
+  // non-strict, so a v1/v2 snapshot that still carries `meta.analytics` parses (the key is stripped).
+  it("parses WITHOUT analytics (analytics no longer lives in meta)", () => {
     const r = metaBlock.safeParse(valid);
     expect(r.success).toBe(true);
     expect(r.success && (r.data as { analytics?: unknown }).analytics).toBeUndefined();
   });
 
-  it("parses WITH a valid GA4 id", () => {
-    const d = { ...valid, analytics: { ga4Id: "G-ABC1234XYZ" } };
-    expect(metaBlock.safeParse(d).success).toBe(true);
+  it("strips a legacy analytics key from an old snapshot (non-strict)", () => {
+    const r = metaBlock.safeParse({ ...valid, analytics: { ga4Id: "G-ABC1234XYZ" } });
+    expect(r.success).toBe(true);
+    expect(r.success && (r.data as { analytics?: unknown }).analytics).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7b. siteConfigSchema (global SiteConfig — GA4 lives here now, not in meta)
+// ---------------------------------------------------------------------------
+describe("siteConfigSchema", () => {
+  it("parses a valid GA4 id", () => {
+    expect(siteConfigSchema.safeParse({ ga4Id: "G-ABC1234XYZ" }).success).toBe(true);
   });
 
-  it("parses with an EMPTY ga4Id (treated as unset)", () => {
-    expect(metaBlock.safeParse({ ...valid, analytics: { ga4Id: "" } }).success).toBe(true);
+  it("parses an empty ga4Id (treated as unset)", () => {
+    expect(siteConfigSchema.safeParse({ ga4Id: "" }).success).toBe(true);
   });
 
-  it("parses with an absent ga4Id inside analytics", () => {
-    expect(metaBlock.safeParse({ ...valid, analytics: {} }).success).toBe(true);
+  it("parses an absent ga4Id (optional)", () => {
+    expect(siteConfigSchema.safeParse({}).success).toBe(true);
   });
 
   it("rejects a malformed GA4 id", () => {
-    expect(metaBlock.safeParse({ ...valid, analytics: { ga4Id: "UA-12345" } }).success).toBe(false);
+    expect(siteConfigSchema.safeParse({ ga4Id: "UA-12345" }).success).toBe(false);
   });
 });
 

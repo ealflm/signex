@@ -197,6 +197,15 @@ model Release {
   @@index([themeId])
 }
 
+// Singleton: site-wide infrastructure config that is INDEPENDENT of the published theme
+// (so GA4 doesn't change when a different theme goes live). Edited on the admin Settings page,
+// NOT in the theme editor. Mirrors the PublishedPointer singleton style (id = "singleton").
+model SiteConfig {
+  id        String   @id @default("singleton")
+  ga4Id     String? // GA4 measurement id, e.g. G-XXXXXXXXXX; empty/null → no analytics injected
+  updatedAt DateTime @updatedAt
+}
+
 // Singleton: which release is LIVE. Repoint = one-row update (atomic, cheap).
 model PublishedPointer {
   id               String   @id @default("singleton")
