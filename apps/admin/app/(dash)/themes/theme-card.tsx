@@ -39,7 +39,24 @@ export function ThemeCard({ theme, activeThemeId, canPublish }: ThemeCardProps) 
 
   return (
     <>
-      <Card className="flex flex-col">
+      <Card className="flex flex-col overflow-hidden pt-0">
+        {/* Hero-image thumbnail (from the theme's draftSnapshot) */}
+        <div className="aspect-[16/9] w-full overflow-hidden border-b border-border bg-muted">
+          {theme.heroImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- external R2/MinIO host; thumbnail
+            <img
+              src={theme.heroImageUrl}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10 text-3xl font-semibold text-muted-foreground/40">
+              {theme.name.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+        </div>
+
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             <CardTitle className="text-base leading-snug">{theme.name}</CardTitle>

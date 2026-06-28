@@ -272,6 +272,31 @@ describe('ThemeService.list', () => {
     expect(beta.isLive).toBe(false);
   });
 
+  it('resolves heroImageUrl from the draftSnapshot hero image + MEDIA_PUBLIC_BASE', async () => {
+    process.env.MEDIA_PUBLIC_BASE = 'https://media.test';
+    prisma.client.theme.findMany.mockResolvedValueOnce([
+      {
+        id: 'ct',
+        name: 'X',
+        draftRevision: 1,
+        lastPublishedRevision: 1,
+        updatedAt: new Date('2026-01-01'),
+        draftSnapshot: {
+          blocks: { hero: { image: { assetId: 'a1' } } },
+          assets: { a1: { r2Key: 'originals/x/hero.avif' } },
+        },
+      },
+    ]);
+    const list = await service.list();
+    expect(list[0].heroImageUrl).toBe('https://media.test/originals/x/hero.avif');
+    delete process.env.MEDIA_PUBLIC_BASE;
+  });
+
+  it('heroImageUrl is undefined when the theme has no hero image', async () => {
+    const list = await service.list();
+    expect(list[0].heroImageUrl).toBeUndefined();
+  });
+
   it('derives dirty = draftRevision !== lastPublishedRevision', async () => {
     const list = await service.list();
     const alpha = list.find((t) => t.id === 'ctheme-1')!;

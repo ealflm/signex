@@ -25,6 +25,29 @@ export interface ThemeListItem {
   dirty: boolean;
   isLive: boolean;
   updatedAt: Date;
+  /** Public URL of this theme's hero image (from draftSnapshot), for the /themes card thumbnail. */
+  heroImageUrl?: string;
+}
+
+/**
+ * Resolve a theme's hero-image public URL from its draftSnapshot:
+ * blocks.hero.image.assetId → assets[assetId].r2Key → `${MEDIA_PUBLIC_BASE}/${r2Key}`
+ * (same URL the web read-path builds). Returns undefined when absent/unresolvable.
+ */
+function heroImageUrlFromSnapshot(snapshot: unknown): string | undefined {
+  try {
+    const snap = snapshot as {
+      blocks?: { hero?: { image?: { assetId?: string } } };
+      assets?: Record<string, { r2Key?: string } | undefined>;
+    };
+    const assetId = snap.blocks?.hero?.image?.assetId;
+    const r2Key = assetId ? snap.assets?.[assetId]?.r2Key : undefined;
+    if (!r2Key) return undefined;
+    const base = (process.env.MEDIA_PUBLIC_BASE ?? '').replace(/\/+$/, '');
+    return base ? `${base}/${r2Key}` : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Shape passed to applyDraftMutation to record the audit entry. */
@@ -173,6 +196,7 @@ export class ThemeService {
           draftRevision: true,
           lastPublishedRevision: true,
           updatedAt: true,
+          draftSnapshot: true,
         },
         orderBy: { updatedAt: 'desc' },
       }),
@@ -184,10 +208,11 @@ export class ThemeService {
 
     const liveThemeId = pointer?.release?.themeId ?? null;
 
-    return themes.map((t) => ({
+    return themes.map(({ draftSnapshot, ...t }) => ({
       ...t,
       dirty: t.draftRevision !== t.lastPublishedRevision,
       isLive: t.id === liveThemeId,
+      heroImageUrl: heroImageUrlFromSnapshot(draftSnapshot),
     }));
   }
 

@@ -15,6 +15,8 @@ export interface ThemeListItem {
   dirty: boolean;
   isLive: boolean;
   updatedAt: string;
+  /** Public URL of the theme's hero image (for the card thumbnail); absent if none. */
+  heroImageUrl?: string;
 }
 
 /** Fetch all themes from the API. Returns [] on error. */
