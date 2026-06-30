@@ -1,0 +1,73 @@
+// app/api/forms/[formKey]/submit/route.ts
+// Same-origin forwarder for public lead submissions (the public BFF, mirroring
+// the admin's /admin-api). The browser never needs the API origin or CORS — it
+// posts here, and we forward server-side to the API over the internal network.
+//
+// It also adapts the cloned-from-Webflow form fields to the API's lead schema:
+// the markup keeps Webflow's capitalised names (`Name`, `Email`, …) and a
+// `Sample` file input, while the API expects lowercase keys and the file under
+// `upload`. We lowercase every text key, route the file to `upload`, and drop
+// blank optionals so the stored payload is clean.
+
+const API_URL = process.env.API_URL ?? "http://api:3060";
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ formKey: string }> },
+) {
+  const { formKey } = await params;
+
+  let incoming: FormData;
+  try {
+    incoming = await req.formData();
+  } catch {
+    return Response.json(
+      { ok: false, error: "Expected form data" },
+      { status: 400 },
+    );
+  }
+
+  const body = new FormData();
+  for (const [key, value] of incoming.entries()) {
+    if (value instanceof File) {
+      // The Webflow markup names the file input `Sample`; the API reads `upload`.
+      if (value.size > 0) body.append("upload", value, value.name);
+      continue;
+    }
+    const trimmed = value.trim();
+    if (trimmed !== "") body.append(key.toLowerCase(), trimmed);
+  }
+
+  // Preserve the real client for the lead's ip/userAgent record.
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  const userAgent = req.headers.get("user-agent");
+
+  let apiRes: Response;
+  try {
+    apiRes = await fetch(
+      `${API_URL}/api/forms/${encodeURIComponent(formKey)}/submit`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
+          ...(userAgent ? { "user-agent": userAgent } : {}),
+        },
+      },
+    );
+  } catch {
+    return Response.json(
+      { ok: false, error: "Could not reach the submission service" },
+      { status: 502 },
+    );
+  }
+
+  const text = await apiRes.text();
+  return new Response(text, {
+    status: apiRes.status,
+    headers: {
+      "content-type":
+        apiRes.headers.get("content-type") ?? "application/json",
+    },
+  });
+}

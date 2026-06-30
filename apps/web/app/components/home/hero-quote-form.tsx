@@ -18,8 +18,6 @@ import { editText } from "@/app/lib/edit-attrs";
  * .text_input-label.label-large, .button_submit-static, .cta_primary) — design unchanged.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 export function HeroQuoteForm({
   dict,
   editable = false,
@@ -105,7 +103,7 @@ export function HeroQuoteForm({
             setState("sending");
             try {
               const body = new FormData(e.currentTarget);
-              const res = await fetch(`${API_BASE}/api/forms/contact/submit`, {
+              const res = await fetch("/api/forms/contact/submit", {
                 method: "POST",
                 body,
               });

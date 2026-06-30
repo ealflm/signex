@@ -17,8 +17,6 @@ type Props = {
   style?: React.CSSProperties;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 export function StaticWebflowForm({
   id, name, className, formKey, children, successMarkup, failMarkup, ...rest
 }: Props) {
@@ -31,7 +29,7 @@ export function StaticWebflowForm({
     setState("sending");
     try {
       const body = new FormData(e.currentTarget); // includes the file upload field
-      const res = await fetch(`${API_BASE}/api/forms/${formKey}/submit`, {
+      const res = await fetch(`/api/forms/${formKey}/submit`, {
         method: "POST",
         body,
       });
