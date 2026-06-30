@@ -75,7 +75,7 @@ export default async function FormsPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Leads"
-        subtitle="Form submissions from the public site"
+        subtitle="Quote and contact requests sent from your website."
       />
 
       <LeadsKpiStrip summary={summary} />
