@@ -38,6 +38,8 @@ export interface SubmissionSummary {
   new: number;
   read: number;
   archived: number;
+  /** Flagged spam/duplicate count (excluded from the figures above). */
+  spam: number;
   series: Array<{ date: string; count: number }>;
 }
 
@@ -46,12 +48,15 @@ export async function fetchSubmissions(params: {
   take?: number;
   skip?: number;
   status?: SubmissionStatus;
+  /** `true` = the flagged-spam view; otherwise the inbox excludes spam. */
+  spam?: boolean;
   order?: "asc" | "desc";
 } = {}): Promise<SubmissionListResponse> {
   const qs = new URLSearchParams();
   if (params.take != null) qs.set("take", String(params.take));
   if (params.skip != null) qs.set("skip", String(params.skip));
   if (params.status) qs.set("status", params.status);
+  if (params.spam) qs.set("spam", "1");
   if (params.order) qs.set("order", params.order);
   const q = qs.toString();
   const res = await apiServer<SubmissionListResponse>(
@@ -65,5 +70,5 @@ export async function fetchSummary(): Promise<SubmissionSummary> {
   const res = await apiServer<SubmissionSummary>("/api/forms/summary");
   return res.ok
     ? res.data
-    : { total: 0, new: 0, read: 0, archived: 0, series: [] };
+    : { total: 0, new: 0, read: 0, archived: 0, spam: 0, series: [] };
 }

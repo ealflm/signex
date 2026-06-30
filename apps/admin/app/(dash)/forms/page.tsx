@@ -35,13 +35,16 @@ export default async function FormsPage({
   await requireRole("EDITOR");
 
   const sp = await searchParams;
-  const status = parseStatus(first(sp.status));
+  const spam = first(sp.spam) === "1";
+  // In the spam view the status filter doesn't apply (spam is a separate dimension).
+  const status = spam ? "ALL" : parseStatus(first(sp.status));
   const order: "asc" | "desc" = first(sp.order) === "asc" ? "asc" : "desc";
   const pageRaw = parseInt(first(sp.page) ?? "1", 10);
   const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
   const filters = {
     status: status === "ALL" ? undefined : status,
+    spam,
     order,
   };
 
@@ -79,6 +82,8 @@ export default async function FormsPage({
         page={effectivePage}
         pageSize={PAGE_SIZE}
         status={status}
+        spam={spam}
+        spamCount={summary.spam}
         order={order}
       />
     </div>

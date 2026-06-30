@@ -12,6 +12,7 @@ describe('FormsController', () => {
     submit: jest.Mock;
     list: jest.Mock;
     summary: jest.Mock;
+    clearSpam: jest.Mock;
     get: jest.Mock;
     setStatus: jest.Mock;
   };
@@ -25,8 +26,10 @@ describe('FormsController', () => {
         new: 0,
         read: 0,
         archived: 0,
+        spam: 0,
         series: [],
       }),
+      clearSpam: jest.fn().mockResolvedValue({ deleted: 0 }),
       get: jest
         .fn()
         .mockResolvedValue({ id: 'sub_1', status: 'NEW', upload: null }),
@@ -108,9 +111,10 @@ describe('FormsController', () => {
   });
 
   it('list() delegates to FormsService.list with parsed query params', async () => {
-    const result = await controller.list('NEW', '10', '0', 'asc');
+    const result = await controller.list('NEW', undefined, '10', '0', 'asc');
     expect(service.list).toHaveBeenCalledWith({
       status: 'NEW',
+      spam: false,
       take: 10,
       skip: 0,
       order: 'asc',
@@ -118,14 +122,28 @@ describe('FormsController', () => {
     expect(result).toEqual({ items: [], total: 0 });
   });
 
+  it('list() maps ?spam=1 to the spam view', async () => {
+    await controller.list(undefined, '1', undefined, undefined, undefined);
+    expect(service.list).toHaveBeenCalledWith(
+      expect.objectContaining({ spam: true }),
+    );
+  });
+
   it('list() passes undefined take/skip/order when query params absent', async () => {
-    await controller.list(undefined, undefined, undefined, undefined);
+    await controller.list(undefined, undefined, undefined, undefined, undefined);
     expect(service.list).toHaveBeenCalledWith({
       status: undefined,
+      spam: false,
       take: undefined, // controller guards: take !== undefined before parseInt
       skip: undefined,
       order: undefined,
     });
+  });
+
+  it('clearSpam() delegates to FormsService.clearSpam', async () => {
+    const result = await controller.clearSpam();
+    expect(service.clearSpam).toHaveBeenCalled();
+    expect(result).toEqual({ deleted: 0 });
   });
 
   it('summary() returns service.summary result', async () => {

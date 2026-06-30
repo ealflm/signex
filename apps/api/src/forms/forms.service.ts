@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssetsService } from '../assets/assets.service';
 import { MIME_ALLOWLIST } from '../assets/dto/assets.dto';
@@ -16,6 +17,31 @@ import {
 /** File upload size cap for form attachments (10 MB). Exported so the multer
  *  interceptor can share the same constant and they can never drift. */
 export const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+
+/** Anti-spam window: a submission is treated as a repeat (and flagged) when an
+ *  identical payload, or a burst from the same IP, lands inside this window. */
+const DEDUPE_WINDOW_MS = 10 * 60 * 1000;
+/** Max submissions from one IP inside the window before the rest are flagged. */
+const IP_BURST_LIMIT = 6;
+
+/** Stable JSON (sorted keys) so the same content hashes identically. */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const obj = value as Record<string, unknown>;
+  const body = Object.keys(obj)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`)
+    .join(',');
+  return `{${body}}`;
+}
+
+/** Content fingerprint for a submission — form + normalized payload. */
+function fingerprint(formKey: string, payload: unknown): string {
+  return createHash('sha256')
+    .update(`${formKey}|${stableStringify(payload)}`)
+    .digest('hex');
+}
 
 /** MIME types accepted on the forms upload field (images / SVG only).
  *  Video types in MIME_ALLOWLIST are NOT accepted here. */
@@ -46,6 +72,8 @@ export interface PublicSubmission {
 
 export interface ListOptions {
   status?: 'NEW' | 'READ' | 'ARCHIVED';
+  /** `true` = only flagged spam; otherwise the inbox excludes flagged rows. */
+  spam?: boolean;
   take?: number;
   skip?: number;
   /** createdAt sort direction. Defaults to 'desc' (newest first). */
@@ -62,6 +90,8 @@ export interface SummaryResult {
   new: number;
   read: number;
   archived: number;
+  /** Flagged spam/duplicate count (excluded from the figures above). */
+  spam: number;
   series: Array<{ date: string; count: number }>;
 }
 
@@ -113,7 +143,12 @@ export class FormsService {
       uploadAssetId = assetDto.id;
     }
 
-    // 3. Persist the submission
+    // 3. Anti-spam: flag (don't reject) a repeat — identical content, or a burst
+    //    from the same IP, inside the window. Flagged rows stay out of the inbox
+    //    and are bulk-clearable; the submitter still gets a normal success.
+    const flagged = await this.isSpam(formKey, payload, ip);
+
+    // 4. Persist the submission
     await this.prisma.client.formSubmission.create({
       data: {
         formKey: formKey as FormKey,
@@ -121,10 +156,36 @@ export class FormsService {
         uploadAssetId,
         ip,
         userAgent,
+        flagged,
       },
     });
 
     return { ok: true };
+  }
+
+  /** True when this submission repeats recent content or floods from one IP. */
+  private async isSpam(
+    formKey: string,
+    payload: SubmitInput,
+    ip: string | null,
+  ): Promise<boolean> {
+    const since = new Date(Date.now() - DEDUPE_WINDOW_MS);
+    const recent = await this.prisma.client.formSubmission.findMany({
+      where: { formKey, createdAt: { gte: since } },
+      select: { payload: true, ip: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const fp = fingerprint(formKey, payload);
+    const duplicate = recent.some((r) => fingerprint(formKey, r.payload) === fp);
+    if (duplicate) return true;
+
+    if (ip) {
+      const fromIp = recent.filter((r) => r.ip === ip).length;
+      if (fromIp >= IP_BURST_LIMIT) return true;
+    }
+    return false;
   }
 
   /**
@@ -189,7 +250,9 @@ export class FormsService {
 
     const order = opts.order === 'asc' ? 'asc' : 'desc';
 
-    const where: Record<string, unknown> = {};
+    // Spam is segregated: the inbox excludes flagged rows; the Spam view shows
+    // only them.
+    const where: Record<string, unknown> = { flagged: opts.spam === true };
     if (opts.status) where.status = opts.status;
 
     const [rows, total] = await Promise.all([
@@ -226,16 +289,23 @@ export class FormsService {
     // Fetch all submissions from last 90 days for series + counts
     const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-    const [total, newCount, readCount, archivedCount, recent] =
+    // The headline figures count real leads only — flagged spam is excluded and
+    // reported separately.
+    const [total, newCount, readCount, archivedCount, spamCount, recent] =
       await Promise.all([
-        this.prisma.client.formSubmission.count(),
-        this.prisma.client.formSubmission.count({ where: { status: 'NEW' } }),
-        this.prisma.client.formSubmission.count({ where: { status: 'READ' } }),
+        this.prisma.client.formSubmission.count({ where: { flagged: false } }),
         this.prisma.client.formSubmission.count({
-          where: { status: 'ARCHIVED' },
+          where: { flagged: false, status: 'NEW' },
         }),
+        this.prisma.client.formSubmission.count({
+          where: { flagged: false, status: 'READ' },
+        }),
+        this.prisma.client.formSubmission.count({
+          where: { flagged: false, status: 'ARCHIVED' },
+        }),
+        this.prisma.client.formSubmission.count({ where: { flagged: true } }),
         this.prisma.client.formSubmission.findMany({
-          where: { createdAt: { gte: since } },
+          where: { flagged: false, createdAt: { gte: since } },
           select: { createdAt: true },
           orderBy: { createdAt: 'asc' },
         }),
@@ -265,8 +335,17 @@ export class FormsService {
       new: newCount,
       read: readCount,
       archived: archivedCount,
+      spam: spamCount,
       series,
     };
+  }
+
+  /** Hard-delete all flagged spam. Returns how many rows were removed. */
+  async clearSpam(): Promise<{ deleted: number }> {
+    const { count } = await this.prisma.client.formSubmission.deleteMany({
+      where: { flagged: true },
+    });
+    return { deleted: count };
   }
 
   async setStatus(

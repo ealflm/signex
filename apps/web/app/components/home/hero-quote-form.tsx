@@ -1,10 +1,11 @@
 // app/components/home/hero-quote-form.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { STANDARD_VALUES } from "@/app/lib/standard-options";
 import { editText } from "@/app/lib/edit-attrs";
+import { LeadFormToast } from "@/app/components/lead-form-toast";
 
 /**
  * Hero quote form — progressive disclosure, full-width. Text comes from the server-loaded
@@ -30,12 +31,8 @@ export function HeroQuoteForm({
   style?: React.CSSProperties;
 }) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
-  const done = state === "done";
   const [expanded, setExpanded] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const doneRef = useRef<HTMLDivElement>(null);
-  // On submit the success message replaces the form — announce it (role=status) + move focus to it.
-  useEffect(() => { if (done) doneRef.current?.focus(); }, [done]);
 
   const handleFocus = () => setExpanded(true);
 
@@ -87,8 +84,8 @@ export function HeroQuoteForm({
 
   return (
     <div className="form-block w-form">
-      {!done && (
-        <form
+      {/* The form stays in place; the outcome is announced by the toast below. */}
+      <form
           ref={formRef}
           id="quote-form"
           name="quote-form"
@@ -107,7 +104,13 @@ export function HeroQuoteForm({
                 method: "POST",
                 body,
               });
-              setState(res.ok ? "done" : "error");
+              if (res.ok) {
+                formRef.current?.reset();
+                setExpanded(false);
+                setState("done");
+              } else {
+                setState("error");
+              }
             } catch {
               setState("error");
             }
@@ -294,17 +297,13 @@ export function HeroQuoteForm({
           </div>
           </fieldset>
         </form>
-      )}
-      {done && (
-        <div ref={doneRef} tabIndex={-1} role="status" className="success-message w-form-done" style={{ display: "block" }}>
-          <div>{dict.success}</div>
-        </div>
-      )}
-      {state === "error" && (
-        <div className="error-message w-form-fail" style={{ display: "block" }}>
-          <div>{dict.fail}</div>
-        </div>
-      )}
+
+      <LeadFormToast
+        open={state === "done" || state === "error"}
+        variant={state === "error" ? "error" : "success"}
+        message={state === "error" ? dict.fail : dict.success}
+        onClose={() => setState("idle")}
+      />
     </div>
   );
 }

@@ -307,12 +307,26 @@ describe('FormsService', () => {
 
       await svc.list({ status: 'READ' });
 
+      // Inbox excludes flagged spam (flagged: false) alongside the status filter.
       expect(prisma.client.formSubmission.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { status: 'READ' } }),
+        expect.objectContaining({ where: { flagged: false, status: 'READ' } }),
       );
       expect(prisma.client.formSubmission.count).toHaveBeenCalledWith({
-        where: { status: 'READ' },
+        where: { flagged: false, status: 'READ' },
       });
+    });
+
+    it('shows only flagged rows in the spam view', async () => {
+      const prisma = buildPrisma();
+      prisma.client.formSubmission.findMany.mockResolvedValue([]);
+      prisma.client.formSubmission.count.mockResolvedValue(0);
+      const svc = new FormsService(prisma, buildAssets());
+
+      await svc.list({ spam: true });
+
+      expect(prisma.client.formSubmission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { flagged: true } }),
+      );
     });
 
     it('caps take at 200', async () => {
@@ -334,7 +348,7 @@ describe('FormsService', () => {
   describe('summary', () => {
     it('returns 90 entries in series (one per day, zero-filled)', async () => {
       const prisma = buildPrisma();
-      // count calls: total, new, read, archived — all return 0
+      // count calls: total, new, read, archived, spam — all return 0
       prisma.client.formSubmission.count.mockResolvedValue(0);
       // findMany for series returns empty → all zeros
       prisma.client.formSubmission.findMany.mockResolvedValue([]);
@@ -352,10 +366,11 @@ describe('FormsService', () => {
     it('accumulates recent row into the series by date', async () => {
       const prisma = buildPrisma();
       prisma.client.formSubmission.count
-        .mockResolvedValueOnce(5) // total
+        .mockResolvedValueOnce(5) // total (non-spam)
         .mockResolvedValueOnce(3) // new
         .mockResolvedValueOnce(3) // read
-        .mockResolvedValueOnce(2); // archived
+        .mockResolvedValueOnce(2) // archived
+        .mockResolvedValueOnce(4); // spam
       // Simulate 2 submissions today
       const today = new Date();
       today.setUTCHours(10, 0, 0, 0);
@@ -371,6 +386,7 @@ describe('FormsService', () => {
       expect(result.new).toBe(3);
       expect(result.read).toBe(3);
       expect(result.archived).toBe(2);
+      expect(result.spam).toBe(4);
       // Today's entry should have count 2
       const todayStr = today.toISOString().slice(0, 10);
       const todayEntry = result.series.find((s) => s.date === todayStr);

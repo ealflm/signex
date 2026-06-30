@@ -1,7 +1,8 @@
 // app/components/static-webflow-form.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { LeadFormToast } from "./lead-form-toast";
 
 type Props = {
   id: string;
@@ -9,8 +10,8 @@ type Props = {
   className: string;
   formKey: "quote" | "contact";       // selects the api submit endpoint + zod schema
   children: React.ReactNode;
-  successMarkup: string;
-  failMarkup?: string;
+  successText: string;
+  failText?: string;
   "data-wf-element-id"?: string;
   "data-wf-page-id"?: string;
   "data-w-id"?: string;
@@ -18,11 +19,10 @@ type Props = {
 };
 
 export function StaticWebflowForm({
-  id, name, className, formKey, children, successMarkup, failMarkup, ...rest
+  id, name, className, formKey, children, successText, failText, ...rest
 }: Props) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
-  const doneRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (state === "done") doneRef.current?.focus(); }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,7 +33,12 @@ export function StaticWebflowForm({
         method: "POST",
         body,
       });
-      setState(res.ok ? "done" : "error");
+      if (res.ok) {
+        formRef.current?.reset(); // clear the fields but keep the form in place
+        setState("done");
+      } else {
+        setState("error");
+      }
     } catch {
       setState("error");
     }
@@ -41,32 +46,31 @@ export function StaticWebflowForm({
 
   return (
     <div className="w-form">
-      {state !== "done" && (
-        <form
-          id={id}
-          name={name}
-          className={className}
-          onSubmit={onSubmit}
-          {...rest}
-        >
-          <fieldset disabled={state === "sending"} style={{ border: 0, padding: 0, margin: 0 }}>
-            {children}
-          </fieldset>
-        </form>
-      )}
-      {state === "done" && (
-        <div
-          ref={doneRef}
-          tabIndex={-1}
-          role="status"
-          className="success-message w-form-done"
-          style={{ display: "block" }}
-          dangerouslySetInnerHTML={{ __html: successMarkup }}
-        />
-      )}
-      {state === "error" && failMarkup && (
-        <div className="error-message w-form-fail" style={{ display: "block" }} dangerouslySetInnerHTML={{ __html: failMarkup }} />
-      )}
+      {/* The form stays put through the whole flow — success/failure is announced
+          by the toast, not by replacing the form. */}
+      <form
+        ref={formRef}
+        id={id}
+        name={name}
+        className={className}
+        onSubmit={onSubmit}
+        {...rest}
+      >
+        <fieldset disabled={state === "sending"} style={{ border: 0, padding: 0, margin: 0 }}>
+          {children}
+        </fieldset>
+      </form>
+
+      <LeadFormToast
+        open={state === "done" || state === "error"}
+        variant={state === "error" ? "error" : "success"}
+        message={
+          state === "error"
+            ? failText ?? "Chưa gửi được — vui lòng thử lại."
+            : successText
+        }
+        onClose={() => setState("idle")}
+      />
     </div>
   );
 }

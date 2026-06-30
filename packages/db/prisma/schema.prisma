@@ -154,12 +154,14 @@ model FormSubmission {
   payload       Json // zod-validated against the form's submit schema
   uploadAssetId String? // the form's "upload" field -> R2 Asset
   status        SubmissionStatus @default(NEW)
+  flagged       Boolean          @default(false) // spam/duplicate marker — hidden from the inbox, bulk-clearable
   ip            String?
   userAgent     String?
   createdAt     DateTime         @default(now())
 
   @@index([formKey, status])
   @@index([createdAt])
+  @@index([flagged, createdAt])
 }
 
 // ===== VERSIONING =====

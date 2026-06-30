@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -39,16 +40,26 @@ export class FormsController {
   @Roles('EDITOR')
   list(
     @Query('status') status?: string,
+    @Query('spam') spam?: string,
     @Query('take') take?: string,
     @Query('skip') skip?: string,
     @Query('order') order?: string,
   ): Promise<ListResult> {
     return this.forms.list({
       status: status as 'NEW' | 'READ' | 'ARCHIVED' | undefined,
+      spam: spam === '1' || spam === 'true',
       take: take !== undefined ? parseInt(take, 10) : undefined,
       skip: skip !== undefined ? parseInt(skip, 10) : undefined,
       order: order === 'asc' ? 'asc' : order === 'desc' ? 'desc' : undefined,
     });
+  }
+
+  /** DELETE /api/forms/spam — bulk-delete all flagged spam (EDITOR+). Declared
+   *  before :id so the literal route wins the match. */
+  @Delete('spam')
+  @Roles('EDITOR')
+  clearSpam(): Promise<{ deleted: number }> {
+    return this.forms.clearSpam();
   }
 
   /** GET /api/forms/summary — dashboard metrics (EDITOR+). */

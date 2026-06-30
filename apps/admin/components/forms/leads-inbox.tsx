@@ -15,6 +15,8 @@ import {
   ChevronRight,
   Inbox,
   Paperclip,
+  ShieldX,
+  Trash2,
 } from "lucide-react";
 import type { SubmissionDto } from "@/app/lib/forms";
 import { formatIsoDay, formatRelativeDate } from "@/app/lib/format";
@@ -31,10 +33,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { StatusBadge } from "./lead-badges";
 import { LeadDetailDialog } from "./lead-detail-dialog";
 
 type StatusFilter = "ALL" | "NEW" | "READ" | "ARCHIVED";
+type TabValue = StatusFilter | "SPAM";
 type Order = "asc" | "desc";
 
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
@@ -51,6 +65,10 @@ export interface LeadsInboxProps {
   page: number;
   pageSize: number;
   status: StatusFilter;
+  /** Whether the flagged-spam view is active. */
+  spam: boolean;
+  /** Count of flagged spam (for the tab badge + clear action). */
+  spamCount: number;
   order: Order;
 }
 
@@ -60,6 +78,8 @@ export function LeadsInbox({
   page,
   pageSize,
   status,
+  spam,
+  spamCount,
   order,
 }: LeadsInboxProps) {
   const router = useRouter();
@@ -88,6 +108,37 @@ export function LeadsInbox({
     setSelected(lead);
     setOpen(true);
   }, []);
+
+  // Switch tabs: the Spam tab is a separate dimension from status.
+  const selectTab = React.useCallback(
+    (value: TabValue) => {
+      if (value === "SPAM") setQuery({ spam: "1", status: null });
+      else setQuery({ status: value === "ALL" ? null : value, spam: null });
+    },
+    [setQuery],
+  );
+
+  const [clearing, setClearing] = React.useState(false);
+  const [clearError, setClearError] = React.useState<string | null>(null);
+  async function clearSpam() {
+    setClearing(true);
+    setClearError(null);
+    try {
+      const res = await fetch("/admin-api/forms/spam", { method: "DELETE" });
+      if (!res.ok) {
+        setClearError(`Could not clear spam (${res.status}).`);
+        setClearing(false);
+        return;
+      }
+      // Spam is gone — return to the inbox and re-fetch.
+      setClearing(false);
+      router.push(pathname, { scroll: false });
+      router.refresh();
+    } catch {
+      setClearError("Network error while clearing spam.");
+      setClearing(false);
+    }
+  }
 
   const columns = React.useMemo<ColumnDef<SubmissionDto>[]>(
     () => [
@@ -140,19 +191,21 @@ export function LeadsInbox({
     <section className="rounded-xl border border-border bg-card">
       <header className="flex flex-col gap-3 border-b border-border p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <h2 className="text-sm font-semibold text-foreground">Inbox</h2>
+          <h2 className="text-sm font-semibold text-foreground">
+            {spam ? "Spam" : "Inbox"}
+          </h2>
           <p className="text-xs tabular-nums text-muted-foreground">
             {total === 0
-              ? "No submissions"
+              ? spam
+                ? "No spam"
+                : "No submissions"
               : `Showing ${from}–${to} of ${total}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Tabs
-            value={status}
-            onValueChange={(v) =>
-              setQuery({ status: v === "ALL" ? null : v })
-            }
+            value={spam ? "SPAM" : status}
+            onValueChange={(v) => selectTab(v as TabValue)}
           >
             <TabsList className="h-8 bg-muted/60">
               {STATUS_TABS.map((t) => (
@@ -164,19 +217,76 @@ export function LeadsInbox({
                   {t.label}
                 </TabsTrigger>
               ))}
+              <TabsTrigger
+                value="SPAM"
+                className="ml-1 gap-1.5 px-2.5 text-xs data-[state=active]:text-destructive"
+              >
+                <ShieldX className="size-3.5" aria-hidden />
+                Spam
+                {spamCount > 0 && (
+                  <span className="rounded-full bg-destructive/15 px-1.5 font-mono text-[10px] tabular-nums text-destructive">
+                    {spamCount}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
+
+          {spam && spamCount > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  Clear spam
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear all spam?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently deletes {spamCount} flagged{" "}
+                    {spamCount === 1 ? "submission" : "submissions"}. This can&apos;t
+                    be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {clearError && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {clearError}
+                  </p>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={clearing}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={clearing}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void clearSpam();
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {clearing ? "Clearing…" : `Delete ${spamCount}`}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </header>
 
       {items.length === 0 ? (
         <EmptyState
-          icon={Inbox}
-          title="No submissions"
+          icon={spam ? ShieldX : Inbox}
+          title={spam ? "No spam" : "No submissions"}
           description={
-            status !== "ALL"
-              ? "No leads match the current filter. Try clearing it."
-              : "Submissions from your website forms will show up here."
+            spam
+              ? "Flagged duplicates and bursts land here, out of the main inbox."
+              : status !== "ALL"
+                ? "No leads match the current filter. Try clearing it."
+                : "Submissions from your website forms will show up here."
           }
         />
       ) : (
