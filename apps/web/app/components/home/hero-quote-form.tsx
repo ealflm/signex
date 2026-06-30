@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { STANDARD_VALUES } from "@/app/lib/standard-options";
 import { editText } from "@/app/lib/edit-attrs";
-import { LeadFormToast } from "@/app/components/lead-form-toast";
+import { LeadFormNotice } from "@/app/components/lead-form-notice";
 
 /**
  * Hero quote form — progressive disclosure, full-width. Text comes from the server-loaded
@@ -116,6 +116,12 @@ export function HeroQuoteForm({
             }
           }}
         >
+          <LeadFormNotice
+            open={state === "done" || state === "error"}
+            variant={state === "error" ? "error" : "success"}
+            message={state === "error" ? dict.fail : dict.success}
+            onClose={() => setState("idle")}
+          />
           <fieldset disabled={state === "sending"} style={{ border: 0, padding: 0, margin: 0 }}>
           <div className="hero-quote_inner">
             {/* ---- Contact info — horizontal bar (always visible) ---- */}
@@ -297,13 +303,6 @@ export function HeroQuoteForm({
           </div>
           </fieldset>
         </form>
-
-      <LeadFormToast
-        open={state === "done" || state === "error"}
-        variant={state === "error" ? "error" : "success"}
-        message={state === "error" ? dict.fail : dict.success}
-        onClose={() => setState("idle")}
-      />
     </div>
   );
 }

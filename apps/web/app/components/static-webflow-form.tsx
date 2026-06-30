@@ -2,7 +2,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { LeadFormToast } from "./lead-form-toast";
+import { LeadFormNotice } from "./lead-form-notice";
 
 type Props = {
   id: string;
@@ -47,7 +47,7 @@ export function StaticWebflowForm({
   return (
     <div className="w-form">
       {/* The form stays put through the whole flow — success/failure is announced
-          by the toast, not by replacing the form. */}
+          by the notice at the top of the form, not by replacing the form. */}
       <form
         ref={formRef}
         id={id}
@@ -56,21 +56,20 @@ export function StaticWebflowForm({
         onSubmit={onSubmit}
         {...rest}
       >
+        <LeadFormNotice
+          open={state === "done" || state === "error"}
+          variant={state === "error" ? "error" : "success"}
+          message={
+            state === "error"
+              ? failText ?? "Chưa gửi được — vui lòng thử lại."
+              : successText
+          }
+          onClose={() => setState("idle")}
+        />
         <fieldset disabled={state === "sending"} style={{ border: 0, padding: 0, margin: 0 }}>
           {children}
         </fieldset>
       </form>
-
-      <LeadFormToast
-        open={state === "done" || state === "error"}
-        variant={state === "error" ? "error" : "success"}
-        message={
-          state === "error"
-            ? failText ?? "Chưa gửi được — vui lòng thử lại."
-            : successText
-        }
-        onClose={() => setState("idle")}
-      />
     </div>
   );
 }
