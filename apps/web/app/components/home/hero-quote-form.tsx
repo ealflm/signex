@@ -6,6 +6,7 @@ import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { STANDARD_VALUES } from "@/app/lib/standard-options";
 import { editText } from "@/app/lib/edit-attrs";
 import { LeadFormNotice } from "@/app/components/lead-form-notice";
+import { LeadUploadField } from "@/app/components/lead-upload-field";
 
 /**
  * Hero quote form — progressive disclosure, full-width. Text comes from the server-loaded
@@ -261,28 +262,17 @@ export function HeroQuoteForm({
                   </div>
                   <div className="input_wrap">
                     <div className="text_input-label label-large"><span {...editText(editable, "formConfig.fields.upload.label", { maxLength: 80 })}>{dict.upload}</span></div>
-                    {/* Custom dashed dropzone (dark-panel variant of the contact form's
-                        upload): the <label> wraps the visually-hidden file input, which keeps
-                        its tabIndex (progressive-disclosure tab gating) and is still counted
-                        by handleBlur's file-value check. */}
-                    <label className="hero-quote_upload">
-                      <input
-                        accept=".jpg,.jpeg,.png,.pdf"
-                        className="hero-quote_upload-input"
-                        data-name="Sample"
-                        name="Sample"
-                        tabIndex={detailTab}
-                        type="file"
-                      />
-                      <span className="hero-quote_upload-icon w-embed" aria-hidden="true">
-                        <svg fill="none" height="100%" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="17 8 12 3 7 8" />
-                          <line x1="12" x2="12" y1="3" y2="15" />
-                        </svg>
-                      </span>
-                      <span className="hero-quote_upload-text">{dict.uploadHelp}</span>
-                    </label>
+                    {/* Dashed dropzone when empty; thumbnail/file chip + change/remove
+                        once a file is picked. Keeps tabIndex for the progressive-
+                        disclosure tab gating. */}
+                    <LeadUploadField
+                      variant="hero"
+                      id="quote-sample"
+                      name="Sample"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      hint={dict.uploadHelp}
+                      tabIndex={detailTab}
+                    />
                   </div>
                 </div>
                 <div className="input_wrap">

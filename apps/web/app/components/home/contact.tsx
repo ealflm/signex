@@ -1,5 +1,6 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { StaticWebflowForm } from "@/app/components/static-webflow-form";
+import { LeadUploadField } from "@/app/components/lead-upload-field";
 import { STANDARD_VALUES } from "@/app/lib/standard-options";
 import { editText } from "@/app/lib/edit-attrs";
 
@@ -197,22 +198,16 @@ export function Contact({
                       <label className="text_input-label label-large" htmlFor="contact-sample">
                         <span {...editText(editable, "formConfig.fields.upload.label", { maxLength: 80 })}>{t.upload}</span>
                       </label>
-                      {/* Custom upload dropzone: a <label> wraps the (visually hidden but
-                          functional) file input, so the dashed box + icon + format text
-                          IS the clickable control. Pure CSS — no JS/filename feedback. */}
-                      <label className="contact-upload">
-                        <input accept=".jpg,.jpeg,.png,.pdf" className="contact-upload_input" data-name="Sample" id="contact-sample" name="Sample" type="file" />
-                        <span className="contact-upload_icon w-embed" aria-hidden="true">
-                          <svg fill="none" height="100%" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" x2="12" y1="3" y2="15" />
-                          </svg>
-                        </span>
-                        <span className="contact-upload_text">
-                          <span {...editText(editable, "formConfig.uploadHelp", { maxLength: 80 })}>{t.uploadHelp}</span>
-                        </span>
-                      </label>
+                      {/* Dashed dropzone when empty; a thumbnail/file chip with
+                          change + remove once a file is picked. */}
+                      <LeadUploadField
+                        variant="contact"
+                        id="contact-sample"
+                        name="Sample"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        hint={t.uploadHelp}
+                        hintEditAttrs={editText(editable, "formConfig.uploadHelp", { maxLength: 80 })}
+                      />
                     </div>
                     <div className="contact-form_dims">
                       <div className="input_wrap">
