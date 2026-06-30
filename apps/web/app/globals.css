@@ -1244,111 +1244,90 @@ body .w-webflow-badge {
 .skip-link:focus { transform: translateY(0); outline: 2px solid var(--_🎨-color--tokens---tone--strong, #0b1f33); }
 
 /* ===== Lead-form notification (inline, top of the form) =====
-   Signature: a wax seal stamped onto an emblem (SIGNEX makes emblems/badges).
-   The seal presses in on appear; everything else stays quiet. */
+   Reads as a success *state of the form itself*, not a card dropped on top:
+   the form's own input radius, a soft success wash, navy ink, and flat (no
+   floating shadow) so it sits flush with the fields below it. */
 .sx-notice {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.875rem;
+  gap: 0.7rem;
   width: 100%;
-  margin-bottom: 1rem; /* sits above the form's fields */
-  padding: 0.95rem 1.05rem;
-  overflow: hidden;
-  border-radius: var(--_🔘-radius---general--large, 1rem);
-  background-color: var(--_🎨-color--tokens---ink--base, #ffffff);
+  margin-bottom: 1.25rem; /* the gap before the first field row */
+  padding: 0.8rem 0.9rem;
+  border-radius: var(--_🔘-radius---ui--input, 0.75rem);
+  font-family: var(--_🔠-typography---font--body, inherit);
   color: var(--_🎨-color--tokens---tone--strong, #0b1f33);
-  border: 1px solid rgba(7, 21, 34, 0.08);
-  box-shadow:
-    0 1px 2px rgba(7, 21, 34, 0.06),
-    0 12px 32px rgba(7, 21, 34, 0.12);
-  animation: sx-notice-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: sx-notice-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.sx-notice[data-leaving] {
-  animation: sx-notice-out 0.3s ease forwards;
+.sx-notice--success {
+  background-color: rgba(42, 216, 127, 0.1);
+  border: 1px solid rgba(42, 216, 127, 0.3);
 }
+.sx-notice--error {
+  background-color: rgba(229, 72, 77, 0.08);
+  border: 1px solid rgba(229, 72, 77, 0.28);
+}
+.sx-notice[data-leaving] { animation: sx-notice-out 0.28s ease forwards; }
 
-/* The seal — a solid disc the check stamps into */
+/* A soft, low-key check — tinted disc, not a loud solid one */
 .sx-notice__seal {
   flex: none;
   display: grid;
   place-items: center;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 1.6rem;
+  height: 1.6rem;
   border-radius: 999px;
-  color: #fff;
-  animation: sx-seal-stamp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.06s both;
+  animation: sx-seal-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both;
 }
-.sx-notice--success .sx-notice__seal {
-  background-color: var(--_🎨-color--base---ui--success, #2ad87f);
-  box-shadow: 0 4px 14px rgba(42, 216, 127, 0.4);
-}
-.sx-notice--error .sx-notice__seal {
-  background-color: #e5484d;
-  box-shadow: 0 4px 14px rgba(229, 72, 77, 0.36);
-}
-.sx-notice__mark { width: 1.25rem; height: 1.25rem; }
+.sx-notice--success .sx-notice__seal { background-color: rgba(42, 216, 127, 0.22); color: #0a7a4a; }
+.sx-notice--error .sx-notice__seal { background-color: rgba(229, 72, 77, 0.18); color: #b4282d; }
+.sx-notice__mark { width: 0.95rem; height: 0.95rem; }
 .sx-notice--success .sx-notice__mark path {
   stroke-dasharray: 26;
   stroke-dashoffset: 26;
-  animation: sx-mark-draw 0.4s ease 0.34s forwards;
+  animation: sx-mark-draw 0.4s ease 0.3s forwards;
 }
 
 .sx-notice__msg {
   flex: 1 1 auto;
   margin: 0;
-  font-family: var(--_🔠-typography---font--body, inherit);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   line-height: 1.45;
-  color: var(--_🎨-color--tokens---tone--strong, #0b1f33);
 }
 
 .sx-notice__close {
   flex: none;
   display: grid;
   place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  margin: -0.25rem -0.2rem -0.25rem 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0 -0.15rem 0 0;
   padding: 0;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: rgba(7, 21, 34, 0.45);
+  color: var(--_🎨-color--tokens---tone--subtle, rgba(7, 21, 34, 0.45));
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
-.sx-notice__close svg { width: 1rem; height: 1rem; }
+.sx-notice__close svg { width: 0.9rem; height: 0.9rem; }
 .sx-notice__close:hover { background-color: rgba(7, 21, 34, 0.06); color: var(--_🎨-color--tokens---tone--strong, #0b1f33); }
 .sx-notice__close:focus-visible { outline: 2px solid var(--_🎨-color--base---accent--ocean, #0f4c81); outline-offset: 2px; }
 
-/* Auto-dismiss countdown */
-.sx-notice__bar {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 2px;
-  width: 100%;
-  transform-origin: left;
-  animation: sx-notice-bar linear forwards;
-}
-.sx-notice--success .sx-notice__bar { background-color: var(--_🎨-color--base---ui--success, #2ad87f); }
-.sx-notice--error .sx-notice__bar { background-color: #e5484d; }
-
 @keyframes sx-notice-in {
-  from { opacity: 0; transform: translateY(-10px); }
+  from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes sx-notice-out {
-  to { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 0; transform: translateY(-5px); }
 }
-@keyframes sx-seal-stamp {
-  0% { transform: scale(1.45); opacity: 0; }
-  55% { transform: scale(0.92); opacity: 1; }
+@keyframes sx-seal-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
   100% { transform: scale(1); }
 }
 @keyframes sx-mark-draw { to { stroke-dashoffset: 0; } }
-@keyframes sx-notice-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 @media (prefers-reduced-motion: reduce) {
   .sx-notice,

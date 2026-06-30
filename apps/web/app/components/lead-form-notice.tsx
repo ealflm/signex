@@ -119,11 +119,6 @@ export function LeadFormNotice({
           />
         </svg>
       </button>
-      <span
-        className="sx-notice__bar"
-        style={{ animationDuration: `${duration}ms` }}
-        aria-hidden="true"
-      />
     </div>
   );
 }
