@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FormBadge, StatusBadge } from "./lead-badges";
+import { StatusBadge } from "./lead-badges";
 
 /** A titled block within the detail body. */
 function Section({
@@ -155,7 +155,6 @@ function LeadDetailBody({
     <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-xl">
       <DialogHeader className="space-y-0 border-b border-border p-5 text-left">
         <div className="flex items-center gap-2">
-          <FormBadge formKey={lead.formKey} />
           <StatusBadge status={lead.status} />
         </div>
         <DialogTitle className="mt-3 text-lg">

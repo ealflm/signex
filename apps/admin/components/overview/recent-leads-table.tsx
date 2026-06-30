@@ -61,22 +61,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function FormBadge({ formKey }: { formKey: string }) {
-  const isQuote = formKey === "quote";
-  return (
-    <Badge
-      variant="outline"
-      className={
-        isQuote
-          ? "border-chart-2/30 text-foreground/80"
-          : "border-border text-muted-foreground"
-      }
-    >
-      {isQuote ? "Quote" : "Contact"}
-    </Badge>
-  );
-}
-
 function SortHeader({
   label,
   active,
@@ -118,17 +102,6 @@ export function RecentLeadsTable({ items }: { items: RecentLead[] }) {
 
   const columns = React.useMemo<ColumnDef<RecentLead>[]>(
     () => [
-      {
-        id: "form",
-        accessorKey: "formKey",
-        header: () => (
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Form
-          </span>
-        ),
-        cell: ({ row }) => <FormBadge formKey={row.original.formKey} />,
-        enableSorting: false,
-      },
       {
         id: "contact",
         header: () => (
@@ -332,7 +305,7 @@ function EmptyState() {
       </span>
       <p className="text-sm font-medium text-foreground">No leads yet</p>
       <p className="max-w-xs text-xs text-muted-foreground">
-        Submissions from your contact and quote forms will show up here.
+        Submissions from your website forms will show up here.
       </p>
       <Button asChild variant="outline" size="sm" className="mt-1">
         <Link href="/releases">View site status</Link>

@@ -1,6 +1,9 @@
 import { z } from '@signex/shared';
 
-export const VALID_FORM_KEYS = ['quote', 'contact'] as const;
+// Single unified lead form. (Historically split into 'quote' / 'contact'; the
+// public site now posts every submission as 'contact'.) Existing rows with the
+// old 'quote' key stay readable — the column is a free string, not an enum.
+export const VALID_FORM_KEYS = ['contact'] as const;
 export type FormKey = (typeof VALID_FORM_KEYS)[number];
 
 /** Permissive submit schema — requires name + email (contactable), rest optional */

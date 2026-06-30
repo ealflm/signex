@@ -7,7 +7,6 @@
 import { apiServer } from "./api";
 
 export type SubmissionStatus = "NEW" | "READ" | "ARCHIVED";
-export type FormKey = "quote" | "contact";
 
 /** Resolved attachment — `null` when the submission has no upload. */
 export interface SubmissionUpload {
@@ -37,7 +36,8 @@ export interface SubmissionListResponse {
 export interface SubmissionSummary {
   total: number;
   new: number;
-  byKey: { quote: number; contact: number };
+  read: number;
+  archived: number;
   series: Array<{ date: string; count: number }>;
 }
 
@@ -46,14 +46,12 @@ export async function fetchSubmissions(params: {
   take?: number;
   skip?: number;
   status?: SubmissionStatus;
-  formKey?: FormKey;
   order?: "asc" | "desc";
 } = {}): Promise<SubmissionListResponse> {
   const qs = new URLSearchParams();
   if (params.take != null) qs.set("take", String(params.take));
   if (params.skip != null) qs.set("skip", String(params.skip));
   if (params.status) qs.set("status", params.status);
-  if (params.formKey) qs.set("formKey", params.formKey);
   if (params.order) qs.set("order", params.order);
   const q = qs.toString();
   const res = await apiServer<SubmissionListResponse>(
@@ -67,5 +65,5 @@ export async function fetchSummary(): Promise<SubmissionSummary> {
   const res = await apiServer<SubmissionSummary>("/api/forms/summary");
   return res.ok
     ? res.data
-    : { total: 0, new: 0, byKey: { quote: 0, contact: 0 }, series: [] };
+    : { total: 0, new: 0, read: 0, archived: 0, series: [] };
 }

@@ -105,7 +105,7 @@ export function HeroQuoteForm({
             setState("sending");
             try {
               const body = new FormData(e.currentTarget);
-              const res = await fetch(`${API_BASE}/api/forms/quote/submit`, {
+              const res = await fetch(`${API_BASE}/api/forms/contact/submit`, {
                 method: "POST",
                 body,
               });

@@ -12,10 +12,10 @@ interface Stat {
 }
 
 /**
- * One instrument, four readings: total / new / quote / contact. A single bar
- * with hairline dividers (the 1px grid gap over a border-coloured backplate),
- * not four floating cards — so the strip reads as one gauge. "New" is the hero:
- * it's the only number anyone acts on.
+ * One instrument, four readings — the triage pipeline: total / new / read /
+ * archived. A single bar with hairline dividers (the 1px grid gap over a
+ * border-coloured backplate), not four floating cards, so the strip reads as
+ * one gauge. "New" is the hero: it's the only number anyone acts on.
  */
 export function LeadsKpiStrip({ summary }: { summary: SubmissionSummary }) {
   const stats: Stat[] = [
@@ -26,8 +26,8 @@ export function LeadsKpiStrip({ summary }: { summary: SubmissionSummary }) {
       hero: true,
       hint: summary.new > 0 ? "awaiting reply" : "all caught up",
     },
-    { label: "Quote", value: summary.byKey.quote },
-    { label: "Contact", value: summary.byKey.contact },
+    { label: "Read", value: summary.read },
+    { label: "Archived", value: summary.archived },
   ];
 
   return (

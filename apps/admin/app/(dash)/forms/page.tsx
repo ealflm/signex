@@ -2,7 +2,6 @@ import { requireRole } from "@/app/lib/session";
 import {
   fetchSubmissions,
   fetchSummary,
-  type FormKey,
   type SubmissionStatus,
 } from "@/app/lib/forms";
 import { PageHeader } from "@/components/admin/page-header";
@@ -12,7 +11,6 @@ import { LeadsInbox } from "@/components/forms/leads-inbox";
 const PAGE_SIZE = 20;
 
 type StatusFilter = "ALL" | SubmissionStatus;
-type FormFilter = "ALL" | FormKey;
 
 /** Read the first string value of a (possibly array) searchParam. */
 function first(v: string | string[] | undefined): string | undefined {
@@ -22,15 +20,12 @@ function first(v: string | string[] | undefined): string | undefined {
 function parseStatus(v: string | undefined): StatusFilter {
   return v === "NEW" || v === "READ" || v === "ARCHIVED" ? v : "ALL";
 }
-function parseFormKey(v: string | undefined): FormFilter {
-  return v === "quote" || v === "contact" ? v : "ALL";
-}
 
 /**
  * Leads inbox — form submissions management (RSC, EDITOR+).
- * Server-fetches the active page + summary; filters/sort/pagination are all
- * server-driven via the URL query (?status,?formKey,?page,?order). The client
- * inbox component only handles interaction (navigation, the detail dialog).
+ * Server-fetches the active page + summary; filter/sort/pagination are all
+ * server-driven via the URL query (?status,?page,?order). The client inbox
+ * component only handles interaction (navigation, the detail dialog).
  */
 export default async function FormsPage({
   searchParams,
@@ -41,14 +36,12 @@ export default async function FormsPage({
 
   const sp = await searchParams;
   const status = parseStatus(first(sp.status));
-  const formKey = parseFormKey(first(sp.formKey));
   const order: "asc" | "desc" = first(sp.order) === "asc" ? "asc" : "desc";
   const pageRaw = parseInt(first(sp.page) ?? "1", 10);
   const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
   const filters = {
     status: status === "ALL" ? undefined : status,
-    formKey: formKey === "ALL" ? undefined : formKey,
     order,
   };
 
@@ -86,7 +79,6 @@ export default async function FormsPage({
         page={effectivePage}
         pageSize={PAGE_SIZE}
         status={status}
-        formKey={formKey}
         order={order}
       />
     </div>

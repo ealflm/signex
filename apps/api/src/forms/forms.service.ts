@@ -46,7 +46,6 @@ export interface PublicSubmission {
 
 export interface ListOptions {
   status?: 'NEW' | 'READ' | 'ARCHIVED';
-  formKey?: 'quote' | 'contact';
   take?: number;
   skip?: number;
   /** createdAt sort direction. Defaults to 'desc' (newest first). */
@@ -61,7 +60,8 @@ export interface ListResult {
 export interface SummaryResult {
   total: number;
   new: number;
-  byKey: { quote: number; contact: number };
+  read: number;
+  archived: number;
   series: Array<{ date: string; count: number }>;
 }
 
@@ -191,7 +191,6 @@ export class FormsService {
 
     const where: Record<string, unknown> = {};
     if (opts.status) where.status = opts.status;
-    if (opts.formKey) where.formKey = opts.formKey;
 
     const [rows, total] = await Promise.all([
       this.prisma.client.formSubmission.findMany({
@@ -227,15 +226,13 @@ export class FormsService {
     // Fetch all submissions from last 90 days for series + counts
     const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-    const [total, newCount, quoteCount, contactCount, recent] =
+    const [total, newCount, readCount, archivedCount, recent] =
       await Promise.all([
         this.prisma.client.formSubmission.count(),
         this.prisma.client.formSubmission.count({ where: { status: 'NEW' } }),
+        this.prisma.client.formSubmission.count({ where: { status: 'READ' } }),
         this.prisma.client.formSubmission.count({
-          where: { formKey: 'quote' },
-        }),
-        this.prisma.client.formSubmission.count({
-          where: { formKey: 'contact' },
+          where: { status: 'ARCHIVED' },
         }),
         this.prisma.client.formSubmission.findMany({
           where: { createdAt: { gte: since } },
@@ -266,7 +263,8 @@ export class FormsService {
     return {
       total,
       new: newCount,
-      byKey: { quote: quoteCount, contact: contactCount },
+      read: readCount,
+      archived: archivedCount,
       series,
     };
   }

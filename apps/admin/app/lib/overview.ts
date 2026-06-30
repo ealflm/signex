@@ -15,7 +15,6 @@ import type { SubmissionDto, SubmissionUpload } from "./forms";
 interface FormsSummaryResponse {
   total: number;
   new: number;
-  byKey: { quote: number; contact: number };
   series: Array<{ date: string; count: number }>;
 }
 

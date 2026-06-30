@@ -404,9 +404,11 @@ async function main(): Promise<void> {
   }[] = [];
 
   for (let i = 0; i < TARGET_COUNT; i++) {
-    const isQuote = rng() < 0.6; // 60% quote, 40% contact
-    const formKey = isQuote ? 'quote' : 'contact';
-    const payload = isQuote ? pick(quotePayloads) : pick(contactPayloads);
+    // Single unified lead form — every submission is 'contact'. The two payload
+    // pools are kept only to vary the sample shapes (some carry a company, some
+    // a subject).
+    const formKey = 'contact';
+    const payload = rng() < 0.6 ? pick(quotePayloads) : pick(contactPayloads);
     const status: string = pick(STATUSES);
     const offsetMs = randomOffsetMs(90);
     const createdAt = new Date(now - offsetMs);

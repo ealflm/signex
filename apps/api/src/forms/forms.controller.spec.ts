@@ -23,7 +23,8 @@ describe('FormsController', () => {
       summary: jest.fn().mockResolvedValue({
         total: 0,
         new: 0,
-        byKey: { quote: 0, contact: 0 },
+        read: 0,
+        archived: 0,
         series: [],
       }),
       get: jest
@@ -96,9 +97,9 @@ describe('FormsController', () => {
       originalname: 'photo.png',
     } as any;
     const body = { name: 'Alice', email: 'a@example.com' };
-    await controller.submit('quote', body as any, file, makeReq());
+    await controller.submit('contact', body as any, file, makeReq());
     expect(service.submit).toHaveBeenCalledWith(
-      'quote',
+      'contact',
       body,
       file,
       '127.0.0.1',
@@ -107,10 +108,9 @@ describe('FormsController', () => {
   });
 
   it('list() delegates to FormsService.list with parsed query params', async () => {
-    const result = await controller.list('NEW', 'quote', '10', '0', 'asc');
+    const result = await controller.list('NEW', '10', '0', 'asc');
     expect(service.list).toHaveBeenCalledWith({
       status: 'NEW',
-      formKey: 'quote',
       take: 10,
       skip: 0,
       order: 'asc',
@@ -119,16 +119,9 @@ describe('FormsController', () => {
   });
 
   it('list() passes undefined take/skip/order when query params absent', async () => {
-    await controller.list(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-    );
+    await controller.list(undefined, undefined, undefined, undefined);
     expect(service.list).toHaveBeenCalledWith({
       status: undefined,
-      formKey: undefined,
       take: undefined, // controller guards: take !== undefined before parseInt
       skip: undefined,
       order: undefined,

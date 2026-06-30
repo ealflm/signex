@@ -31,11 +31,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FormBadge, StatusBadge } from "./lead-badges";
+import { StatusBadge } from "./lead-badges";
 import { LeadDetailDialog } from "./lead-detail-dialog";
 
 type StatusFilter = "ALL" | "NEW" | "READ" | "ARCHIVED";
-type FormFilter = "ALL" | "quote" | "contact";
 type Order = "asc" | "desc";
 
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
@@ -45,12 +44,6 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
   { value: "ARCHIVED", label: "Archived" },
 ];
 
-const FORM_TABS: { value: FormFilter; label: string }[] = [
-  { value: "ALL", label: "All forms" },
-  { value: "quote", label: "Quote" },
-  { value: "contact", label: "Contact" },
-];
-
 export interface LeadsInboxProps {
   items: SubmissionDto[];
   total: number;
@@ -58,7 +51,6 @@ export interface LeadsInboxProps {
   page: number;
   pageSize: number;
   status: StatusFilter;
-  formKey: FormFilter;
   order: Order;
 }
 
@@ -68,7 +60,6 @@ export function LeadsInbox({
   page,
   pageSize,
   status,
-  formKey,
   order,
 }: LeadsInboxProps) {
   const router = useRouter();
@@ -158,24 +149,6 @@ export function LeadsInbox({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Tabs
-            value={formKey}
-            onValueChange={(v) =>
-              setQuery({ formKey: v === "ALL" ? null : v })
-            }
-          >
-            <TabsList className="h-8 bg-muted/60">
-              {FORM_TABS.map((t) => (
-                <TabsTrigger
-                  key={t.value}
-                  value={t.value}
-                  className="px-2.5 text-xs data-[state=active]:text-primary"
-                >
-                  {t.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          <Tabs
             value={status}
             onValueChange={(v) =>
               setQuery({ status: v === "ALL" ? null : v })
@@ -201,9 +174,9 @@ export function LeadsInbox({
           icon={Inbox}
           title="No submissions"
           description={
-            status !== "ALL" || formKey !== "ALL"
-              ? "No leads match the current filters. Try clearing them."
-              : "Submissions from your contact and quote forms will show up here."
+            status !== "ALL"
+              ? "No leads match the current filter. Try clearing it."
+              : "Submissions from your website forms will show up here."
           }
         />
       ) : (
@@ -343,7 +316,6 @@ function LeadCell({ lead }: { lead: SubmissionDto }) {
         >
           {name || "Unknown sender"}
         </span>
-        <FormBadge formKey={lead.formKey} />
         {lead.upload && (
           <Paperclip
             className="size-3 shrink-0 text-muted-foreground"

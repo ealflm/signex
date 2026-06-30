@@ -77,7 +77,7 @@ describe('FormsService', () => {
       const file = mockFile('image/jpeg');
 
       const result = await svc.submit(
-        'quote',
+        'contact',
         validPayload,
         file,
         '10.0.0.1',
@@ -95,7 +95,7 @@ describe('FormsService', () => {
       );
       expect(prisma.client.formSubmission.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          formKey: 'quote',
+          formKey: 'contact',
           uploadAssetId: 'asset_abc',
         }),
       });
@@ -154,7 +154,7 @@ describe('FormsService', () => {
       const file = mockFile('video/webm');
 
       await expect(
-        svc.submit('quote', validPayload, file, null, null),
+        svc.submit('contact', validPayload, file, null, null),
       ).rejects.toBeInstanceOf(BadRequestException);
 
       expect(assets.register).not.toHaveBeenCalled();
@@ -315,19 +315,6 @@ describe('FormsService', () => {
       });
     });
 
-    it('applies formKey filter', async () => {
-      const prisma = buildPrisma();
-      prisma.client.formSubmission.findMany.mockResolvedValue([]);
-      prisma.client.formSubmission.count.mockResolvedValue(0);
-      const svc = new FormsService(prisma, buildAssets());
-
-      await svc.list({ formKey: 'contact' });
-
-      expect(prisma.client.formSubmission.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { formKey: 'contact' } }),
-      );
-    });
-
     it('caps take at 200', async () => {
       const prisma = buildPrisma();
       prisma.client.formSubmission.findMany.mockResolvedValue([]);
@@ -347,7 +334,7 @@ describe('FormsService', () => {
   describe('summary', () => {
     it('returns 90 entries in series (one per day, zero-filled)', async () => {
       const prisma = buildPrisma();
-      // count calls: total, new, quote, contact — all return 0
+      // count calls: total, new, read, archived — all return 0
       prisma.client.formSubmission.count.mockResolvedValue(0);
       // findMany for series returns empty → all zeros
       prisma.client.formSubmission.findMany.mockResolvedValue([]);
@@ -367,8 +354,8 @@ describe('FormsService', () => {
       prisma.client.formSubmission.count
         .mockResolvedValueOnce(5) // total
         .mockResolvedValueOnce(3) // new
-        .mockResolvedValueOnce(3) // quote
-        .mockResolvedValueOnce(2); // contact
+        .mockResolvedValueOnce(3) // read
+        .mockResolvedValueOnce(2); // archived
       // Simulate 2 submissions today
       const today = new Date();
       today.setUTCHours(10, 0, 0, 0);
@@ -382,8 +369,8 @@ describe('FormsService', () => {
 
       expect(result.total).toBe(5);
       expect(result.new).toBe(3);
-      expect(result.byKey.quote).toBe(3);
-      expect(result.byKey.contact).toBe(2);
+      expect(result.read).toBe(3);
+      expect(result.archived).toBe(2);
       // Today's entry should have count 2
       const todayStr = today.toISOString().slice(0, 10);
       const todayEntry = result.series.find((s) => s.date === todayStr);
