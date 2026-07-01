@@ -8,6 +8,7 @@ import {
   RotateCcw,
   Paperclip,
   Download,
+  ExternalLink,
 } from "lucide-react";
 import type { SubmissionDto } from "@/app/lib/forms";
 import { formatIsoDay, formatRelativeTime } from "@/app/lib/format";
@@ -206,20 +207,71 @@ function LeadDetailBody({
 
           <Section title="Attachment">
             {lead.upload ? (
-              <Button asChild variant="outline" size="sm" className="h-8 gap-1.5">
-                <a
-                  href={lead.upload.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  download={lead.upload.originalName}
-                >
-                  <Paperclip className="size-3.5" aria-hidden />
-                  <span className="max-w-[16rem] truncate">
-                    {lead.upload.originalName}
-                  </span>
-                  <Download className="size-3.5 shrink-0" aria-hidden />
-                </a>
-              </Button>
+              lead.upload.mime.startsWith("image/") ? (
+                // The uploaded sample is what the reader opened this for — frame it.
+                // Clicking the frame opens the original full-size in a new tab; the
+                // Download button below is the separate "save" action.
+                <figure className="space-y-2">
+                  <a
+                    href={lead.upload.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={`Open ${lead.upload.originalName} full size in a new tab`}
+                    className="group relative block overflow-hidden rounded-md border border-border bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- external asset URL, no next/image domain config */}
+                    <img
+                      src={lead.upload.url}
+                      alt={lead.upload.originalName}
+                      loading="lazy"
+                      className="mx-auto max-h-60 w-full object-contain"
+                    />
+                    <span className="pointer-events-none absolute right-2 top-2 flex items-center rounded-md bg-background/80 p-1.5 text-foreground opacity-0 shadow-sm backdrop-blur transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                      <ExternalLink className="size-3.5" aria-hidden />
+                    </span>
+                  </a>
+                  <figcaption className="flex items-center gap-2">
+                    <span
+                      className="min-w-0 flex-1 truncate text-sm text-foreground"
+                      title={lead.upload.originalName}
+                    >
+                      {lead.upload.originalName}
+                    </span>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="h-7 shrink-0 gap-1.5"
+                    >
+                      <a
+                        href={lead.upload.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        download={lead.upload.originalName}
+                      >
+                        <Download className="size-3.5" aria-hidden />
+                        Download
+                      </a>
+                    </Button>
+                  </figcaption>
+                </figure>
+              ) : (
+                // Non-image mime — keep the compact download chip.
+                <Button asChild variant="outline" size="sm" className="h-8 gap-1.5">
+                  <a
+                    href={lead.upload.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    download={lead.upload.originalName}
+                  >
+                    <Paperclip className="size-3.5" aria-hidden />
+                    <span className="max-w-[16rem] truncate">
+                      {lead.upload.originalName}
+                    </span>
+                    <Download className="size-3.5 shrink-0" aria-hidden />
+                  </a>
+                </Button>
+              )
             ) : (
               <p className="text-sm text-muted-foreground">No file attached.</p>
             )}
