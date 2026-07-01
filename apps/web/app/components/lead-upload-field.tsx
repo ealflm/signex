@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import type { EditAttrs } from "@/app/lib/edit-attrs";
+import { DEFAULT_LOCALE, hasLocale, type Locale } from "@/app/lib/i18n-config";
 
 /**
  * The public forms' "upload sample" dropzone, with a selected state. Empty, it's
@@ -26,6 +28,17 @@ const VARIANT = {
     text: "hero-quote_upload-text",
   },
 } as const;
+
+/**
+ * Change / Remove are icon-only buttons (no visible text — the form is
+ * multi-locale and these are chrome, like the contact info-card icons). The
+ * accessible name + tooltip still need words, so they come from here keyed by
+ * the URL locale rather than the CMS dictionary (which doesn't carry them).
+ */
+const LABELS: Record<Locale, { change: string; remove: string }> = {
+  vi: { change: "Đổi tệp", remove: "Xoá tệp" },
+  en: { change: "Change file", remove: "Remove file" },
+};
 
 function prettySize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -68,6 +81,40 @@ function FileIcon() {
   );
 }
 
+function EditIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
 export interface LeadUploadFieldProps {
   variant: "contact" | "hero";
   id: string;
@@ -90,6 +137,9 @@ export function LeadUploadField({
   tabIndex,
 }: LeadUploadFieldProps) {
   const c = VARIANT[variant];
+  const pathname = usePathname();
+  const locale: Locale = pathname?.split("/").find(hasLocale) ?? DEFAULT_LOCALE;
+  const L = LABELS[locale];
   const inputRef = React.useRef<HTMLInputElement>(null);
   const urlRef = React.useRef<string | null>(null);
   const [file, setFile] = React.useState<File | null>(null);
@@ -167,12 +217,20 @@ export function LeadUploadField({
             <button
               type="button"
               className="sx-upload__btn"
+              aria-label={L.change}
+              title={L.change}
               onClick={() => inputRef.current?.click()}
             >
-              Đổi
+              <EditIcon />
             </button>
-            <button type="button" className="sx-upload__btn" onClick={clear}>
-              Xoá
+            <button
+              type="button"
+              className="sx-upload__btn"
+              aria-label={L.remove}
+              title={L.remove}
+              onClick={clear}
+            >
+              <XIcon />
             </button>
           </span>
         </div>

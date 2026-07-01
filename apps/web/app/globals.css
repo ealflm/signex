@@ -526,15 +526,19 @@
 .sx-upload__size { font-size: 0.72rem; opacity: 0.65; line-height: 1.2; }
 .sx-upload__actions { display: flex; gap: 0.2rem; flex: none; }
 .sx-upload__btn {
+  display: grid;
+  place-items: center;
   border: 0;
   background: transparent;
   cursor: pointer;
-  font-size: 0.78rem;
-  padding: 0.3rem 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
   border-radius: var(--_🔘-radius---general--small, 0.5rem);
   color: inherit;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
+.sx-upload__btn svg { width: 1.05rem; height: 1.05rem; }
 .contact-upload--filled .sx-upload__btn { color: var(--_🎨-color--tokens---tone--medium, rgba(7, 21, 34, 0.6)); }
 .contact-upload--filled .sx-upload__btn:hover { background-color: rgba(7, 21, 34, 0.06); color: var(--_🎨-color--tokens---tone--strong, #0b1f33); }
 .hero-quote_upload--filled .sx-upload__btn { color: rgba(255, 255, 255, 0.7); }
