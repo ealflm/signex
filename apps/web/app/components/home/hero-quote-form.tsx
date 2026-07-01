@@ -269,7 +269,7 @@ export function HeroQuoteForm({
                       variant="hero"
                       id="quote-sample"
                       name="Sample"
-                      accept=".jpg,.jpeg,.png,.pdf"
+                      accept="image/*,application/pdf"
                       hint={dict.uploadHelp}
                       tabIndex={detailTab}
                     />

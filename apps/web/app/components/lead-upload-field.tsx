@@ -35,10 +35,25 @@ const VARIANT = {
  * accessible name + tooltip still need words, so they come from here keyed by
  * the URL locale rather than the CMS dictionary (which doesn't carry them).
  */
-const LABELS: Record<Locale, { change: string; remove: string }> = {
-  vi: { change: "Đổi tệp", remove: "Xoá tệp" },
-  en: { change: "Change file", remove: "Remove file" },
+const LABELS: Record<
+  Locale,
+  { change: string; remove: string; tooLarge: (mb: number) => string }
+> = {
+  vi: {
+    change: "Đổi tệp",
+    remove: "Xoá tệp",
+    tooLarge: (mb) => `Tệp quá lớn — tối đa ${mb}MB.`,
+  },
+  en: {
+    change: "Change file",
+    remove: "Remove file",
+    tooLarge: (mb) => `File is too large — ${mb}MB max.`,
+  },
 };
+
+const MB = 1024 * 1024;
+/** Client-side size ceiling; mirrors the API's UPLOAD_MAX_BYTES (50 MB). */
+const DEFAULT_MAX_BYTES = 50 * MB;
 
 function prettySize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -120,10 +135,12 @@ export interface LeadUploadFieldProps {
   id: string;
   name: string;
   accept?: string;
-  /** Format hint shown in the empty state, e.g. "JPG, PNG, hoặc PDF (tối đa 10MB)". */
+  /** Format hint shown in the empty state, e.g. "JPG, PNG, hoặc PDF (tối đa 50MB)". */
   hint: string;
   /** Inline-edit attributes from editText() for the hint (visual editor). */
   hintEditAttrs?: EditAttrs;
+  /** Reject files larger than this on the client (defaults to 50 MB). */
+  maxBytes?: number;
   tabIndex?: number;
 }
 
@@ -134,6 +151,7 @@ export function LeadUploadField({
   accept,
   hint,
   hintEditAttrs,
+  maxBytes = DEFAULT_MAX_BYTES,
   tabIndex,
 }: LeadUploadFieldProps) {
   const c = VARIANT[variant];
@@ -144,6 +162,7 @@ export function LeadUploadField({
   const urlRef = React.useRef<string | null>(null);
   const [file, setFile] = React.useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
   const apply = React.useCallback((next: File | null) => {
     if (urlRef.current) {
@@ -159,8 +178,25 @@ export function LeadUploadField({
     setFile(next);
   }, []);
 
+  // Reject oversized files on the client (the API enforces the same cap). On
+  // reject we empty the input so nothing rides along in the FormData.
+  const onPick = React.useCallback(
+    (next: File | null) => {
+      if (next && next.size > maxBytes) {
+        if (inputRef.current) inputRef.current.value = "";
+        apply(null);
+        setError(L.tooLarge(Math.round(maxBytes / MB)));
+        return;
+      }
+      setError(null);
+      apply(next);
+    },
+    [apply, maxBytes, L],
+  );
+
   const clear = React.useCallback(() => {
     if (inputRef.current) inputRef.current.value = "";
+    setError(null);
     apply(null);
   }, [apply]);
 
@@ -182,7 +218,7 @@ export function LeadUploadField({
   );
 
   return (
-    <div className="sx-upload">
+    <div className={`sx-upload sx-upload--${variant}`}>
       <input
         ref={inputRef}
         id={id}
@@ -190,7 +226,7 @@ export function LeadUploadField({
         accept={accept}
         type="file"
         tabIndex={tabIndex}
-        onChange={(e) => apply(e.target.files?.[0] ?? null)}
+        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
         className="sx-upload__input"
       />
 
@@ -243,6 +279,12 @@ export function LeadUploadField({
             <span {...hintEditAttrs}>{hint}</span>
           </span>
         </label>
+      )}
+
+      {error && (
+        <p className="sx-upload__error" role="alert">
+          {error}
+        </p>
       )}
     </div>
   );

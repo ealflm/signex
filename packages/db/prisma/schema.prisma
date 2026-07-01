@@ -90,6 +90,7 @@ enum AssetKind {
   IMAGE
   VIDEO
   SVG
+  DOCUMENT
 }
 
 model Asset {

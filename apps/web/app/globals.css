@@ -557,6 +557,11 @@
 .hero-quote_upload--filled .sx-upload__btn { color: rgba(255, 255, 255, 0.7); }
 .hero-quote_upload--filled .sx-upload__btn:hover { background-color: rgba(255, 255, 255, 0.12); color: #ffffff; }
 .sx-upload__btn:focus-visible { outline: 2px solid var(--_🎨-color--base---accent--ocean, #0f4c81); outline-offset: 1px; }
+/* Client-side reject message (e.g. file over the size cap). Variant-aware so it
+   reads on the light contact card and the dark hero glass panel alike. */
+.sx-upload__error { margin: 0.4rem 0 0; font-size: 0.8rem; line-height: 1.35; }
+.sx-upload--contact .sx-upload__error { color: #c62828; }
+.sx-upload--hero .sx-upload__error { color: #ff8a8a; }
 
 @media screen and (max-width: 767px) {
   .profile-form_inner.contact-form_grid,

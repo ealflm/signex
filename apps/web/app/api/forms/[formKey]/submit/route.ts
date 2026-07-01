@@ -11,6 +11,9 @@
 
 const API_URL = process.env.API_URL ?? "http://api:3060";
 
+/** Attachment size ceiling — mirrors the API's UPLOAD_MAX_BYTES (50 MB). */
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ formKey: string }> },
@@ -31,7 +34,15 @@ export async function POST(
   for (const [key, value] of incoming.entries()) {
     if (value instanceof File) {
       // The Webflow markup names the file input `Sample`; the API reads `upload`.
-      if (value.size > 0) body.append("upload", value, value.name);
+      if (value.size > 0) {
+        if (value.size > MAX_UPLOAD_BYTES) {
+          return Response.json(
+            { ok: false, error: "File too large (max 50MB)" },
+            { status: 413 },
+          );
+        }
+        body.append("upload", value, value.name);
+      }
       continue;
     }
     const trimmed = value.trim();

@@ -92,12 +92,38 @@ describe('FormsService', () => {
           mime: file.mimetype,
           originalName: file.originalname,
         },
+        { maxBytes: UPLOAD_MAX_BYTES },
       );
       expect(prisma.client.formSubmission.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           formKey: 'contact',
           uploadAssetId: 'asset_abc',
         }),
+      });
+    });
+
+    it('accepts a PDF upload', async () => {
+      const prisma = buildPrisma();
+      const assets = buildAssets({ id: 'asset_pdf' });
+      const svc = new FormsService(prisma, assets);
+      const file = mockFile('application/pdf');
+
+      const result = await svc.submit(
+        'contact',
+        validPayload,
+        file,
+        null,
+        null,
+      );
+
+      expect(result).toEqual({ ok: true });
+      expect(assets.register).toHaveBeenCalledWith(
+        { id: expect.any(String), role: 'ADMIN' },
+        expect.objectContaining({ mime: 'application/pdf' }),
+        { maxBytes: UPLOAD_MAX_BYTES },
+      );
+      expect(prisma.client.formSubmission.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ uploadAssetId: 'asset_pdf' }),
       });
     });
   });
@@ -132,7 +158,7 @@ describe('FormsService', () => {
     });
   });
 
-  describe('submit — video upload rejected (images only)', () => {
+  describe('submit — video upload rejected (images + PDF only)', () => {
     it('throws BadRequestException for video/mp4', async () => {
       const prisma = buildPrisma();
       const assets = buildAssets();

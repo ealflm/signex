@@ -204,7 +204,7 @@ export function Contact({
                         variant="contact"
                         id="contact-sample"
                         name="Sample"
-                        accept=".jpg,.jpeg,.png,.pdf"
+                        accept="image/*,application/pdf"
                         hint={t.uploadHelp}
                         hintEditAttrs={editText(editable, "formConfig.uploadHelp", { maxLength: 80 })}
                       />

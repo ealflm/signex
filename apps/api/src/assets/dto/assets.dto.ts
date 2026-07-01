@@ -15,6 +15,7 @@ export const MIME_ALLOWLIST: Record<
   'image/svg+xml': { kind: 'SVG', maxBytes: 2 * MB },
   'video/mp4': { kind: 'VIDEO', maxBytes: 200 * MB },
   'video/webm': { kind: 'VIDEO', maxBytes: 200 * MB },
+  'application/pdf': { kind: 'DOCUMENT', maxBytes: 50 * MB },
 };
 
 const EXT_BY_MIME: Record<string, string> = {
@@ -26,6 +27,7 @@ const EXT_BY_MIME: Record<string, string> = {
   'image/svg+xml': 'svg',
   'video/mp4': 'mp4',
   'video/webm': 'webm',
+  'application/pdf': 'pdf',
 };
 
 export function kindForMime(mime: string): AssetKind {

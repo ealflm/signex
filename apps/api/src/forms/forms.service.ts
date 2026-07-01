@@ -14,9 +14,9 @@ import {
   type SubmitInput,
 } from './dto/forms.dto';
 
-/** File upload size cap for form attachments (10 MB). Exported so the multer
+/** File upload size cap for form attachments (50 MB). Exported so the multer
  *  interceptor can share the same constant and they can never drift. */
-export const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+export const UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
 
 /** Anti-spam window: a submission is treated as a repeat (and flagged) when an
  *  identical payload, or a burst from the same IP, lands inside this window. */
@@ -43,11 +43,12 @@ function fingerprint(formKey: string, payload: unknown): string {
     .digest('hex');
 }
 
-/** MIME types accepted on the forms upload field (images / SVG only).
+/** MIME types accepted on the forms upload field: images (incl. SVG) + PDF.
  *  Video types in MIME_ALLOWLIST are NOT accepted here. */
-export const FORMS_IMAGE_MIMES = new Set(
-  Object.keys(MIME_ALLOWLIST).filter((m) => m.startsWith('image/')),
-);
+export const FORMS_ACCEPTED_MIMES = new Set([
+  ...Object.keys(MIME_ALLOWLIST).filter((m) => m.startsWith('image/')),
+  'application/pdf',
+]);
 
 /** Resolved attachment metadata — public URL + display name, never raw bytes. */
 export interface PublicUpload {
@@ -122,9 +123,9 @@ export class FormsService {
     // 2. Handle optional file upload
     let uploadAssetId: string | null = null;
     if (file) {
-      if (!FORMS_IMAGE_MIMES.has(file.mimetype)) {
+      if (!FORMS_ACCEPTED_MIMES.has(file.mimetype)) {
         throw new BadRequestException(
-          `File type ${file.mimetype} is not accepted; images only`,
+          `File type ${file.mimetype} is not accepted; images or PDF only`,
         );
       }
       if (file.buffer.length > UPLOAD_MAX_BYTES) {
@@ -139,6 +140,9 @@ export class FormsService {
           mime: file.mimetype,
           originalName: file.originalname,
         },
+        // Forms allow a larger attachment than the CMS media library's per-mime
+        // caps (e.g. 50 MB images/PDF), so lift the cap for this trusted path.
+        { maxBytes: UPLOAD_MAX_BYTES },
       );
       uploadAssetId = assetDto.id;
     }
@@ -178,7 +182,9 @@ export class FormsService {
     });
 
     const fp = fingerprint(formKey, payload);
-    const duplicate = recent.some((r) => fingerprint(formKey, r.payload) === fp);
+    const duplicate = recent.some(
+      (r) => fingerprint(formKey, r.payload) === fp,
+    );
     if (duplicate) return true;
 
     if (ip) {

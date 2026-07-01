@@ -216,11 +216,16 @@ export class AssetsService {
    * Pure (no DB, no R2) so register() and reuploadBytes() derive the SAME key/hash for the
    * same bytes — that identity is what lets the backfill repopulate existing rows by key.
    */
-  private processBytes(input: {
-    bytes: Buffer;
-    mime: string;
-    originalName: string;
-  }): {
+  private processBytes(
+    input: {
+      bytes: Buffer;
+      mime: string;
+      originalName: string;
+    },
+    // Callers may raise the per-mime cap for their own context (e.g. the public
+    // forms path allows a larger attachment than the CMS media library does).
+    opts?: { maxBytes?: number },
+  ): {
     body: Buffer;
     sha256: string;
     kind: AssetKind;
@@ -230,7 +235,7 @@ export class AssetsService {
     if (!(input.mime in MIME_ALLOWLIST)) {
       throw new BadRequestException(`mime ${input.mime} not in allowlist`);
     }
-    const cap = MIME_ALLOWLIST[input.mime].maxBytes;
+    const cap = opts?.maxBytes ?? MIME_ALLOWLIST[input.mime].maxBytes;
     if (input.bytes.length > cap) {
       throw new BadRequestException(
         `file size ${input.bytes.length} exceeds cap ${cap}`,
@@ -287,8 +292,9 @@ export class AssetsService {
       originalName: string;
       altDefault?: LocalizedText;
     },
+    opts?: { maxBytes?: number },
   ): Promise<AssetDto> {
-    const { body, sha256, kind, r2Key, dims } = this.processBytes(input);
+    const { body, sha256, kind, r2Key, dims } = this.processBytes(input, opts);
 
     const existing = await this.prisma.client.asset.findUnique({
       where: { sha256 },

@@ -1151,8 +1151,8 @@ export const INITIAL_SNAPSHOT = {
         "vi": "Cảm ơn bạn — chúng tôi đã nhận được yêu cầu và sẽ phản hồi trong vòng 24 giờ."
       },
       "uploadHelp": {
-        "en": "JPG, PNG, or PDF (max 10MB)",
-        "vi": "JPG, PNG, hoặc PDF (tối đa 10MB)"
+        "en": "JPG, PNG, or PDF (max 50MB)",
+        "vi": "JPG, PNG, hoặc PDF (tối đa 50MB)"
       }
     },
     "hero": {

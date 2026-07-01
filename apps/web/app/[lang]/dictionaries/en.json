@@ -24,7 +24,7 @@
     "thickness": "Thickness (mm)",
     "thicknessPlaceholder": "e.g., 2",
     "upload": "Upload Sample",
-    "uploadHelp": "JPG, PNG, or PDF (max 10MB)",
+    "uploadHelp": "JPG, PNG, or PDF (max 50MB)",
     "message": "Message",
     "messagePlaceholder": "Describe your product requirements...",
     "submit": "Send Message",
