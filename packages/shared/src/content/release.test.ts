@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { FrozenAsset } from "./catalog";
+import { FrozenAsset } from "./assets";
 import { ReleaseSnapshotSchema, SCHEMA_VERSION } from "./release";
 
 const CUID = "clr1abcd0000xyz1234567890";

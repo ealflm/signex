@@ -29,6 +29,7 @@ export type ContactMessage = z.infer<typeof contactMessageSchema>;
 
 // ===== Content + auth registry (build step 0) =====
 export * from "./content/primitives";
+export * from "./content/assets";
 export * from "./content/blocks";
 export * from "./content/registry";
 export * from "./content/catalog";

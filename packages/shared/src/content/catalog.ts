@@ -1,26 +1,11 @@
 import { z } from "zod";
 import { Id, LocalizedText } from "./primitives";
+import { FrozenAsset } from "./assets";
 
-/**
- * A frozen asset reference inside a Release snapshot. URL is NOT frozen — web
- * resolves MEDIA_PUBLIC_BASE + '/' + r2Key at read time (survives CDN/domain
- * migration). `variants` stays [] in the foundation (later responsive sub-project
- * backfills without a snapshot migration).
- */
-export const FrozenAsset = z.object({
-  assetId: Id,
-  r2Key: z.string(),
-  mime: z.string(),
-  width: z.number().optional(),
-  height: z.number().optional(),
-  alt: LocalizedText.optional(),
-  poster: z.object({ r2Key: z.string() }).optional(),
-  webm: z.object({ r2Key: z.string() }).optional(),
-  variants: z
-    .array(z.object({ label: z.string(), width: z.number(), r2Key: z.string() }))
-    .default([]),
-});
-export type FrozenAsset = z.infer<typeof FrozenAsset>;
+// FrozenAsset now lives in the neutral ./assets module (shared by the content
+// release snapshot and the standalone catalog snapshot). It is re-exported
+// through the @signex/shared barrel via ./content/assets, so consumers keep the
+// same import surface.
 
 /** A product inside a frozen category (catalog.categories[].items[]). */
 export const FrozenProduct = z.object({
@@ -53,6 +38,21 @@ export const FrozenCatalog = z.object({
   categories: z.array(FrozenCategory),
 });
 export type FrozenCatalog = z.infer<typeof FrozenCatalog>;
+
+/** Stamped on every CatalogRelease; the catalog schema evolves independently of the content SCHEMA_VERSION. */
+export const CATALOG_SCHEMA_VERSION = 1 as const;
+
+/**
+ * The standalone, global catalog snapshot — the unit the catalog domain
+ * publishes independently of the theme/content release. Category & product
+ * images are inline FrozenAssets (self-contained), so there is no separate
+ * assets map to resolve.
+ */
+export const CatalogSnapshotSchema = z.object({
+  catalogSchemaVersion: z.literal(CATALOG_SCHEMA_VERSION),
+  categories: z.array(FrozenCategory),
+});
+export type CatalogSnapshot = z.infer<typeof CatalogSnapshotSchema>;
 
 // ===== api RESPONSE DTOs (mirror Prisma rows; ids + timestamps present) =====
 
