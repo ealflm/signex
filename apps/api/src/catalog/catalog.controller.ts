@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Patch,
   Post,
@@ -51,21 +52,47 @@ type ProductBody = z.infer<typeof productBody>;
 type ReorderBody = z.infer<typeof reorderBody>;
 type DeleteBody = z.infer<typeof deleteBody>;
 
-@Controller('themes/:themeId/catalog')
+/**
+ * The GLOBAL catalog domain — one catalog for the whole site, edited
+ * independently of any theme and published on its own release track (M-E).
+ * Reads return the CatalogDraft; writes mutate it (optimistic-locked on the
+ * catalog's own draftRevision).
+ */
+@Controller('catalog')
 export class CatalogController {
   constructor(private readonly catalog: CatalogService) {}
+
+  // ── Reads ──────────────────────────────────────────────────────────────────
+
+  /** The full draft (categories + revisions + dirty) for the admin editor. */
+  @Get()
+  @Roles('EDITOR')
+  getDraft() {
+    return this.catalog.getDraft();
+  }
+
+  @Get('categories')
+  @Roles('EDITOR')
+  listCategories() {
+    return this.catalog.listCategories();
+  }
+
+  @Get('products')
+  @Roles('EDITOR')
+  listProducts() {
+    return this.catalog.listProducts();
+  }
 
   // ── Categories ─────────────────────────────────────────────────────────────
 
   @Post('categories')
   @Roles('EDITOR')
   createCategory(
-    @Param('themeId') themeId: string,
     @Body(new ZodValidationPipe(categoryBody)) body: CategoryBody,
     @CurrentUser() actor: AuthedUser,
   ) {
     const { expectedDraftRevision, ...input } = body;
-    return this.catalog.createCategory(actor, themeId, expectedDraftRevision, input);
+    return this.catalog.createCategory(actor, expectedDraftRevision, input);
   }
 
   // NOTE: /categories/reorder must be declared before /categories/:id so NestJS
@@ -73,13 +100,11 @@ export class CatalogController {
   @Patch('categories/reorder')
   @Roles('EDITOR')
   reorderCategories(
-    @Param('themeId') themeId: string,
     @Body(new ZodValidationPipe(reorderBody)) body: ReorderBody,
     @CurrentUser() actor: AuthedUser,
   ) {
     return this.catalog.reorderCategories(
       actor,
-      themeId,
       body.expectedDraftRevision,
       body.order,
     );
@@ -88,24 +113,22 @@ export class CatalogController {
   @Patch('categories/:id')
   @Roles('EDITOR')
   updateCategory(
-    @Param('themeId') themeId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(categoryBody)) body: CategoryBody,
     @CurrentUser() actor: AuthedUser,
   ) {
     const { expectedDraftRevision, ...input } = body;
-    return this.catalog.updateCategory(actor, themeId, id, expectedDraftRevision, input);
+    return this.catalog.updateCategory(actor, id, expectedDraftRevision, input);
   }
 
   @Delete('categories/:id')
   @Roles('EDITOR')
   deleteCategory(
-    @Param('themeId') themeId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(deleteBody)) body: DeleteBody,
     @CurrentUser() actor: AuthedUser,
   ) {
-    return this.catalog.deleteCategory(actor, themeId, id, body.expectedDraftRevision);
+    return this.catalog.deleteCategory(actor, id, body.expectedDraftRevision);
   }
 
   // ── Products ───────────────────────────────────────────────────────────────
@@ -113,27 +136,29 @@ export class CatalogController {
   @Post('categories/:categoryId/products')
   @Roles('EDITOR')
   createProduct(
-    @Param('themeId') themeId: string,
     @Param('categoryId') categoryId: string,
     @Body(new ZodValidationPipe(productBody)) body: ProductBody,
     @CurrentUser() actor: AuthedUser,
   ) {
     const { expectedDraftRevision, ...input } = body;
-    return this.catalog.createProduct(actor, themeId, categoryId, expectedDraftRevision, input);
+    return this.catalog.createProduct(
+      actor,
+      categoryId,
+      expectedDraftRevision,
+      input,
+    );
   }
 
   // NOTE: /products/reorder before /products/:pid for the same static-before-dynamic reason.
   @Patch('categories/:categoryId/products/reorder')
   @Roles('EDITOR')
   reorderProducts(
-    @Param('themeId') themeId: string,
     @Param('categoryId') categoryId: string,
     @Body(new ZodValidationPipe(reorderBody)) body: ReorderBody,
     @CurrentUser() actor: AuthedUser,
   ) {
     return this.catalog.reorderProducts(
       actor,
-      themeId,
       categoryId,
       body.expectedDraftRevision,
       body.order,
@@ -143,7 +168,6 @@ export class CatalogController {
   @Patch('categories/:categoryId/products/:pid')
   @Roles('EDITOR')
   updateProduct(
-    @Param('themeId') themeId: string,
     @Param('categoryId') categoryId: string,
     @Param('pid') pid: string,
     @Body(new ZodValidationPipe(productBody)) body: ProductBody,
@@ -152,7 +176,6 @@ export class CatalogController {
     const { expectedDraftRevision, ...input } = body;
     return this.catalog.updateProduct(
       actor,
-      themeId,
       categoryId,
       pid,
       expectedDraftRevision,
@@ -163,7 +186,6 @@ export class CatalogController {
   @Delete('categories/:categoryId/products/:pid')
   @Roles('EDITOR')
   deleteProduct(
-    @Param('themeId') themeId: string,
     @Param('categoryId') categoryId: string,
     @Param('pid') pid: string,
     @Body(new ZodValidationPipe(deleteBody)) body: DeleteBody,
@@ -171,7 +193,6 @@ export class CatalogController {
   ) {
     return this.catalog.deleteProduct(
       actor,
-      themeId,
       categoryId,
       pid,
       body.expectedDraftRevision,

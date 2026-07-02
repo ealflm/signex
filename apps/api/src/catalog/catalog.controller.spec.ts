@@ -1,10 +1,14 @@
 import { CatalogController } from './catalog.controller';
 
-describe('CatalogController', () => {
-  const THEME_ID = 'ctheme00000000000000001';
+describe('CatalogController (global catalog domain)', () => {
   const actor = { id: 'u1' } as any;
 
   const service = {
+    getDraft: jest
+      .fn()
+      .mockResolvedValue({ draftRevision: 1, lastPublishedRevision: 1, dirty: false, categories: [] }),
+    listCategories: jest.fn().mockResolvedValue([{ id: 'c1' }]),
+    listProducts: jest.fn().mockResolvedValue([{ id: 'p1', categorySlug: 'c' }]),
     createCategory: jest.fn().mockResolvedValue({ id: 'c1', draftRevision: 2 }),
     updateCategory: jest.fn().mockResolvedValue({ draftRevision: 3 }),
     deleteCategory: jest.fn().mockResolvedValue({ draftRevision: 4 }),
@@ -17,7 +21,18 @@ describe('CatalogController', () => {
 
   const ctrl = new CatalogController(service);
 
-  it('createCategory delegates with themeId + input + actor', async () => {
+  it('getDraft delegates to the service (no themeId)', async () => {
+    const result = await ctrl.getDraft();
+    expect(result).toMatchObject({ draftRevision: 1, dirty: false });
+    expect(service.getDraft).toHaveBeenCalledWith();
+  });
+
+  it('listCategories + listProducts delegate to the service', async () => {
+    expect(await ctrl.listCategories()).toEqual([{ id: 'c1' }]);
+    expect(await ctrl.listProducts()).toEqual([{ id: 'p1', categorySlug: 'c' }]);
+  });
+
+  it('createCategory delegates with actor + input (no themeId)', async () => {
     const body = {
       expectedDraftRevision: 1,
       slug: 'pvc',
@@ -27,24 +42,19 @@ describe('CatalogController', () => {
       productCount: 0,
       materialCount: 0,
     };
-    const result = await ctrl.createCategory(THEME_ID, body as any, actor);
+    const result = await ctrl.createCategory(body as any, actor);
     expect(result).toEqual({ id: 'c1', draftRevision: 2 });
-    expect(service.createCategory).toHaveBeenCalledWith(
-      actor,
-      THEME_ID,
-      1,
-      {
-        slug: 'pvc',
-        title: { en: 'PVC', vi: 'PVC' },
-        tag: { en: 'T', vi: 'T' },
-        intro: { en: 'I', vi: 'I' },
-        productCount: 0,
-        materialCount: 0,
-      },
-    );
+    expect(service.createCategory).toHaveBeenCalledWith(actor, 1, {
+      slug: 'pvc',
+      title: { en: 'PVC', vi: 'PVC' },
+      tag: { en: 'T', vi: 'T' },
+      intro: { en: 'I', vi: 'I' },
+      productCount: 0,
+      materialCount: 0,
+    });
   });
 
-  it('updateCategory passes themeId + id + input', async () => {
+  it('updateCategory passes id + input', async () => {
     const body = {
       expectedDraftRevision: 2,
       slug: 'pvc-v2',
@@ -54,31 +64,29 @@ describe('CatalogController', () => {
       productCount: 1,
       materialCount: 1,
     };
-    await ctrl.updateCategory(THEME_ID, 'c1', body as any, actor);
+    await ctrl.updateCategory('c1', body as any, actor);
     expect(service.updateCategory).toHaveBeenCalledWith(
       actor,
-      THEME_ID,
       'c1',
       2,
       expect.objectContaining({ slug: 'pvc-v2' }),
     );
   });
 
-  it('deleteCategory passes themeId + id + expectedDraftRevision', async () => {
-    await ctrl.deleteCategory(THEME_ID, 'c1', { expectedDraftRevision: 3 } as any, actor);
-    expect(service.deleteCategory).toHaveBeenCalledWith(actor, THEME_ID, 'c1', 3);
+  it('deleteCategory passes id + expectedDraftRevision', async () => {
+    await ctrl.deleteCategory('c1', { expectedDraftRevision: 3 } as any, actor);
+    expect(service.deleteCategory).toHaveBeenCalledWith(actor, 'c1', 3);
   });
 
-  it('reorderCategories passes themeId + order', async () => {
+  it('reorderCategories passes order', async () => {
     await ctrl.reorderCategories(
-      THEME_ID,
       { expectedDraftRevision: 2, order: ['c2', 'c1'] } as any,
       actor,
     );
-    expect(service.reorderCategories).toHaveBeenCalledWith(actor, THEME_ID, 2, ['c2', 'c1']);
+    expect(service.reorderCategories).toHaveBeenCalledWith(actor, 2, ['c2', 'c1']);
   });
 
-  it('createProduct delegates with themeId + categoryId + input', async () => {
+  it('createProduct delegates with categoryId + input', async () => {
     const body = {
       expectedDraftRevision: 1,
       slug: 'prod-a',
@@ -86,18 +94,17 @@ describe('CatalogController', () => {
       tag: { en: 'T', vi: 'T' },
       desc: { en: 'D', vi: 'D' },
     };
-    await ctrl.createProduct(THEME_ID, 'c1', body as any, actor);
+    await ctrl.createProduct('c1', body as any, actor);
     expect(service.createProduct).toHaveBeenCalledWith(
       actor,
-      THEME_ID,
       'c1',
       1,
       expect.objectContaining({ slug: 'prod-a' }),
     );
   });
 
-  it('deleteProduct passes themeId + categoryId + pid', async () => {
-    await ctrl.deleteProduct(THEME_ID, 'c1', 'p1', { expectedDraftRevision: 5 } as any, actor);
-    expect(service.deleteProduct).toHaveBeenCalledWith(actor, THEME_ID, 'c1', 'p1', 5);
+  it('deleteProduct passes categoryId + pid', async () => {
+    await ctrl.deleteProduct('c1', 'p1', { expectedDraftRevision: 5 } as any, actor);
+    expect(service.deleteProduct).toHaveBeenCalledWith(actor, 'c1', 'p1', 5);
   });
 });

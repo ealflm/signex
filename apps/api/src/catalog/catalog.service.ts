@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '@signex/db';
 import { freezeAsset } from '../release/snapshot-assets';
-import { ThemeService } from '../theme/theme.service';
+import { CatalogDraftService } from './catalog-draft.service';
 import type { AuthedUser } from '../auth/auth.types';
 
 /**
@@ -13,14 +13,10 @@ import type { AuthedUser } from '../auth/auth.types';
  * Starts with 'c', followed by base36 timestamp + random suffix.
  */
 function mintCuid(): string {
-  return (
-    'c' +
-    Date.now().toString(36) +
-    Math.random().toString(36).slice(2, 15)
-  );
+  return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 15);
 }
 
-/** Validate an asset reference inside an applyDraftMutation tx. */
+/** Validate an asset reference inside an applyCatalogMutation tx. */
 async function resolveAsset(
   tx: Prisma.TransactionClient,
   imageId: string,
@@ -70,26 +66,68 @@ export interface ProductInput {
   imageAlt?: unknown;
 }
 
+/** Flattened product row (for GET /catalog/products — overview + admin lists). */
+export interface CatalogProductRow {
+  id?: string;
+  categoryId?: string;
+  categorySlug: string;
+  slug: string;
+  sortOrder: number;
+  title: unknown;
+  tag: unknown;
+  desc: unknown;
+  image?: unknown;
+}
+
+/**
+ * CRUD over the GLOBAL catalog draft (CatalogDraft singleton). Every mutation
+ * runs through CatalogDraftService.applyCatalogMutation, which owns the
+ * optimistic lock, snapshot validation, persistence, and audit. Mutators mutate
+ * `snap.categories` (the top-level array of the CatalogSnapshot) in place.
+ */
 @Injectable()
 export class CatalogService {
-  constructor(private readonly themeService: ThemeService) {}
+  constructor(private readonly draft: CatalogDraftService) {}
+
+  // ── Reads ────────────────────────────────────────────────────────────────
+
+  /** The draft categories (with revisions/dirty) for the admin catalog editor. */
+  async getDraft() {
+    return this.draft.getDraft();
+  }
+
+  /** Flat categories list (CatalogItem[] for the overview stat). */
+  async listCategories(): Promise<any[]> {
+    const d = await this.draft.getDraft();
+    return d.categories;
+  }
+
+  /** Flat products list across all categories (CatalogItem[] for the overview stat). */
+  async listProducts(): Promise<CatalogProductRow[]> {
+    const d = await this.draft.getDraft();
+    const out: CatalogProductRow[] = [];
+    for (const cat of d.categories) {
+      for (const p of cat.items ?? []) {
+        out.push({ ...p, categoryId: cat.id, categorySlug: cat.slug });
+      }
+    }
+    return out;
+  }
 
   // ── Categories ─────────────────────────────────────────────────────────────
 
   async createCategory(
     actor: AuthedUser,
-    themeId: string,
     expectedDraftRevision: number,
     input: CategoryInput,
   ): Promise<{ id: string; draftRevision: number }> {
     let capturedId = '';
 
-    const result = await this.themeService.applyDraftMutation(
+    const result = await this.draft.applyCatalogMutation(
       actor,
-      themeId,
       expectedDraftRevision,
       async (snap, tx) => {
-        const categories: any[] = snap.catalog.categories;
+        const categories: any[] = snap.categories;
 
         // Slug uniqueness — category slugs are globally unique.
         if (categories.some((c: any) => c.slug === input.slug)) {
@@ -130,17 +168,15 @@ export class CatalogService {
 
   async updateCategory(
     actor: AuthedUser,
-    themeId: string,
     id: string,
     expectedDraftRevision: number,
     input: CategoryInput,
   ): Promise<{ draftRevision: number }> {
-    return this.themeService.applyDraftMutation(
+    return this.draft.applyCatalogMutation(
       actor,
-      themeId,
       expectedDraftRevision,
       async (snap, tx) => {
-        const categories: any[] = snap.catalog.categories;
+        const categories: any[] = snap.categories;
         const cat = categories.find((c: any) => c.id === id);
         if (!cat) throw new NotFoundException(`Category ${id} not found`);
 
@@ -176,16 +212,14 @@ export class CatalogService {
 
   async deleteCategory(
     actor: AuthedUser,
-    themeId: string,
     id: string,
     expectedDraftRevision: number,
   ): Promise<{ draftRevision: number }> {
-    return this.themeService.applyDraftMutation(
+    return this.draft.applyCatalogMutation(
       actor,
-      themeId,
       expectedDraftRevision,
       async (snap) => {
-        const categories: any[] = snap.catalog.categories;
+        const categories: any[] = snap.categories;
         const idx = categories.findIndex((c: any) => c.id === id);
         if (idx === -1) throw new NotFoundException(`Category ${id} not found`);
         categories.splice(idx, 1);
@@ -196,16 +230,14 @@ export class CatalogService {
 
   async reorderCategories(
     actor: AuthedUser,
-    themeId: string,
     expectedDraftRevision: number,
     order: string[],
   ): Promise<{ draftRevision: number }> {
-    return this.themeService.applyDraftMutation(
+    return this.draft.applyCatalogMutation(
       actor,
-      themeId,
       expectedDraftRevision,
       async (snap) => {
-        const categories: any[] = snap.catalog.categories;
+        const categories: any[] = snap.categories;
         order.forEach((catId, idx) => {
           const cat = categories.find((c: any) => c.id === catId);
           if (cat) cat.sortOrder = idx;
@@ -219,19 +251,17 @@ export class CatalogService {
 
   async createProduct(
     actor: AuthedUser,
-    themeId: string,
     categoryId: string,
     expectedDraftRevision: number,
     input: ProductInput,
   ): Promise<{ id: string; draftRevision: number }> {
     let capturedId = '';
 
-    const result = await this.themeService.applyDraftMutation(
+    const result = await this.draft.applyCatalogMutation(
       actor,
-      themeId,
       expectedDraftRevision,
       async (snap, tx) => {
-        const categories: any[] = snap.catalog.categories;
+        const categories: any[] = snap.categories;
         const cat = categories.find((c: any) => c.id === categoryId);
         if (!cat) throw new NotFoundException(`Category ${categoryId} not found`);
 
@@ -273,18 +303,16 @@ export class CatalogService {
 
   async updateProduct(
     actor: AuthedUser,
-    themeId: string,
     categoryId: string,
     pid: string,
     expectedDraftRevision: number,
     input: ProductInput,
   ): Promise<{ draftRevision: number }> {
-    return this.themeService.applyDraftMutation(
+    return this.draft.applyCatalogMutation(
       actor,
-      themeId,
       expectedDraftRevision,
       async (snap, tx) => {
-        const categories: any[] = snap.catalog.categories;
+        const categories: any[] = snap.categories;
         const cat = categories.find((c: any) => c.id === categoryId);
         if (!cat) throw new NotFoundException(`Category ${categoryId} not found`);
 
@@ -322,17 +350,15 @@ export class CatalogService {
 
   async deleteProduct(
     actor: AuthedUser,
-    themeId: string,
     categoryId: string,
     pid: string,
     expectedDraftRevision: number,
   ): Promise<{ draftRevision: number }> {
-    return this.themeService.applyDraftMutation(
+    return this.draft.applyCatalogMutation(
       actor,
-      themeId,
       expectedDraftRevision,
       async (snap) => {
-        const categories: any[] = snap.catalog.categories;
+        const categories: any[] = snap.categories;
         const cat = categories.find((c: any) => c.id === categoryId);
         if (!cat) throw new NotFoundException(`Category ${categoryId} not found`);
 
@@ -346,17 +372,15 @@ export class CatalogService {
 
   async reorderProducts(
     actor: AuthedUser,
-    themeId: string,
     categoryId: string,
     expectedDraftRevision: number,
     order: string[],
   ): Promise<{ draftRevision: number }> {
-    return this.themeService.applyDraftMutation(
+    return this.draft.applyCatalogMutation(
       actor,
-      themeId,
       expectedDraftRevision,
       async (snap) => {
-        const categories: any[] = snap.catalog.categories;
+        const categories: any[] = snap.categories;
         const cat = categories.find((c: any) => c.id === categoryId);
         if (!cat) throw new NotFoundException(`Category ${categoryId} not found`);
 
