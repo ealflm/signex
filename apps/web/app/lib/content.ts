@@ -9,9 +9,18 @@
 import "server-only";
 import { cacheTag } from "next/cache";
 import { prisma } from "@signex/db";
-import { ReleaseSnapshotSchema, type ReleaseSnapshot } from "@signex/shared";
+import {
+  ReleaseSnapshotSchema,
+  type ReleaseSnapshot,
+  type CatalogSnapshot,
+} from "@signex/shared";
 import type { Locale } from "@/app/lib/i18n-config";
 import { INITIAL_SNAPSHOT } from "@/app/lib/initial-snapshot";
+import { INITIAL_CATALOG } from "@/app/lib/initial-catalog";
+import { readPublishedCatalog } from "@/app/lib/catalog";
+
+/** The catalog slice the resolver consumes — the published catalog OR a preview draft catalog. */
+type CatalogLike = { categories: CatalogSnapshot["categories"] };
 
 // SiteContent is declared AFTER resolveForLang (below) via ReturnType<typeof resolveForLang>.
 // This decouples the web type from en.json — the transform's output IS the type.
@@ -33,7 +42,7 @@ function ta(node: { en: string[]; vi: string[] } | undefined, lang: Locale): str
 
 // Full structural transform: snapshot (ReleaseSnapshot) → SiteContent (Dictionary shape).
 // This is the inverse of the importer's buildBlocks. Every field is explicitly mapped.
-function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
+function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Locale) {
   const b = snap.blocks;
   const bc = b.businessContact;
 
@@ -196,11 +205,11 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
         back: t(b.productsHeader.product.back, lang),
         zoomHint: t(b.productsHeader.product.zoomHint, lang),
       },
-      // Catalog categories: images are FrozenAsset inline (r2Key present).
-      // Resolve r2Key → URL at read time so a CDN/domain migration never requires a
-      // snapshot re-publish (spec §3.1.3). Falls back to empty string when no image
-      // is attached yet (caller should guard or use a placeholder).
-      categories: (snap.catalog?.categories ?? []).map((cat) => ({
+      // Catalog categories come from the GLOBAL catalog domain (composed by the
+      // loader), NOT from the content snapshot — the catalog publishes on its own
+      // track. Images are inline FrozenAssets; resolve r2Key → URL at read time so
+      // a CDN/domain migration never requires a re-publish (spec §3.1.3).
+      categories: catalog.categories.map((cat) => ({
         tag: t(cat.tag, lang),
         title: t(cat.title, lang),
         slug: cat.slug,
@@ -453,18 +462,26 @@ export type SiteContent = ReturnType<typeof resolveForLang>;
 // PUBLISHED path — cached + tagged. Draft-mode-free.
 export async function getPublishedSnapshot(lang: Locale): Promise<SiteContent> {
   "use cache";
-  cacheTag("release"); // single site-wide invalidation handle (Publish -> revalidateTag('release'))
+  // The composed page depends on BOTH domains, so it carries both tags: content
+  // Publish → revalidateTag('release'); catalog Publish → revalidateTag('catalog').
+  cacheTag("release");
+  cacheTag("catalog");
   try {
-    const rel = await prisma.release.findFirst({
-      where: { status: "PUBLISHED" },
-      orderBy: { version: "desc" },
-      select: { snapshot: true },
-    });
-    if (!rel) return resolveForLang(INITIAL_SNAPSHOT, lang);
-    return resolveForLang(ReleaseSnapshotSchema.parse(rel.snapshot), lang);
+    const [rel, catalog] = await Promise.all([
+      prisma.release.findFirst({
+        where: { status: "PUBLISHED" },
+        orderBy: { version: "desc" },
+        select: { snapshot: true },
+      }),
+      readPublishedCatalog(),
+    ]);
+    const content = rel
+      ? ReleaseSnapshotSchema.parse(rel.snapshot)
+      : INITIAL_SNAPSHOT;
+    return resolveForLang(content, catalog, lang);
   } catch {
-    // ANY Prisma/parse error -> last-known-good build constant. Site never 500s on data.
-    return resolveForLang(INITIAL_SNAPSHOT, lang);
+    // ANY Prisma/parse error -> last-known-good build constants. Site never 500s on data.
+    return resolveForLang(INITIAL_SNAPSHOT, INITIAL_CATALOG, lang);
   }
 }
 
@@ -492,7 +509,12 @@ export async function getPreviewSnapshot(lang: Locale, themeId?: string): Promis
     if (!res.ok) return getPublishedSnapshot(lang);
     const result = ReleaseSnapshotSchema.safeParse(await res.json());
     if (!result.success) return getPublishedSnapshot(lang);
-    return resolveForLang(result.data, lang);
+    // The preview payload already overlays the GLOBAL catalog DRAFT (api
+    // preview.controller); fall back to the published catalog if it's absent.
+    const catalog = result.data.catalog?.categories
+      ? { categories: result.data.catalog.categories }
+      : await readPublishedCatalog();
+    return resolveForLang(result.data, catalog, lang);
   } catch {
     // Network throw or any other error -> fall back to published snapshot.
     return getPublishedSnapshot(lang);

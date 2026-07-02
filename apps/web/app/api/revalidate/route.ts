@@ -11,13 +11,25 @@ export async function POST(req: Request) {
     return Response.json({ ok: false }, { status: 401 });
   }
   let paths: string[] = [];
+  let tags: string[] = [];
   try {
-    const body = (await req.json()) as { paths?: string[] };
+    const body = (await req.json()) as { paths?: string[]; tags?: string[] };
     paths = body.paths ?? [];
+    tags = body.tags ?? [];
   } catch {
     paths = [];
+    tags = [];
   }
-  revalidateTag("release", "max"); // 16.2 REQUIRED 2nd arg; one tag covers every page
+  // No tags → legacy content-publish behavior: revalidate 'release' (covers every
+  // composed page). With tags → revalidate exactly those (catalog publish sends
+  // ['catalog']). The composed page loader tags itself with BOTH, so either works.
+  const toRevalidate = tags.length ? tags : ["release"];
+  for (const tag of toRevalidate) revalidateTag(tag, "max"); // 16.2 REQUIRED 2nd arg
   for (const p of paths) revalidatePath(p);
-  return Response.json({ ok: true, revalidated: paths.length, now: Date.now() });
+  return Response.json({
+    ok: true,
+    revalidated: paths.length,
+    tags: toRevalidate,
+    now: Date.now(),
+  });
 }
