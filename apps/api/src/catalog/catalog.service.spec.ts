@@ -1,9 +1,11 @@
 /**
- * CatalogService unit tests (global catalog domain).
+ * CatalogService unit tests (global LIVE catalog).
  *
- * CatalogDraftService.applyCatalogMutation is mocked to execute the mutate
- * callback synchronously against a cloned CatalogSnapshot so we can verify the
- * array mutations without wiring up the full CatalogDraft/Prisma machinery.
+ * The service is backed by an in-memory Prisma mock so the real write primitive
+ * runs: guardAndBump (optimistic lock), clone → mutate → validate the snapshot,
+ * persist, audit, and fire a 'catalog' cache revalidation. We assert on the
+ * PERSISTED snapshot (the arg to catalog.update) since applyMutation mutates a
+ * structuredClone of the stored snapshot, never the fixture in place.
  */
 
 import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
@@ -43,44 +45,62 @@ function makeSnapshot() {
 }
 
 /**
- * Build a mock CatalogDraftService whose applyCatalogMutation runs the mutate
- * callback against `snap` and a lightweight tx mock, then returns
- * { draftRevision: rev + 1 }. Signature mirrors the real one:
- * (actor, expectedDraftRevision, mutate, auditMeta).
+ * Build a CatalogService over an in-memory prisma mock. `catalog.update` captures
+ * the persisted snapshot into `persisted.snapshot`. `asset` is the tx asset mock
+ * (default: findUnique → null, i.e. missing asset). `revalidate` is the cache
+ * revalidation spy.
  */
-function makeDraftService(snap: ReturnType<typeof makeSnapshot>) {
-  const txMock = {
-    asset: {
-      findUnique: jest.fn(),
+function makeService(initial: any, assetRow?: any) {
+  const persisted: { snapshot?: any } = {};
+  const asset = { findUnique: jest.fn().mockResolvedValue(assetRow ?? null) };
+
+  const tx = {
+    asset,
+    catalog: {
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      findUnique: jest.fn().mockResolvedValue({ id: 'singleton' }),
+      findUniqueOrThrow: jest.fn().mockResolvedValue({ snapshot: initial }),
+      update: jest.fn(async ({ data }: any) => {
+        persisted.snapshot = data.snapshot;
+        return {};
+      }),
     },
   };
 
-  const applyCatalogMutation = jest.fn(
-    async (
-      _actor: any,
-      expectedRev: number,
-      mutate: (s: any, tx: any) => Promise<void>,
-    ) => {
-      await mutate(snap, txMock);
-      return { draftRevision: expectedRev + 1 };
+  const client = {
+    catalog: {
+      upsert: jest
+        .fn()
+        .mockResolvedValue({ id: 'singleton', revision: 0, snapshot: initial }),
     },
-  );
-
-  return {
-    draftService: { applyCatalogMutation } as any,
-    txMock,
-    applyCatalogMutation,
+    $transaction: jest.fn(async (fn: any) => fn(tx)),
   };
+
+  const prisma = { client } as any;
+  const audit = { record: jest.fn().mockResolvedValue(undefined) } as any;
+  const revalidate = jest.fn().mockResolvedValue({ ok: true });
+  const revalidation = { revalidate } as any;
+
+  const svc = new CatalogService(prisma, audit, revalidation);
+  return { svc, persisted, asset, revalidate, updateMany: tx.catalog.updateMany };
 }
+
+const READY_ASSET = {
+  id: 'casset0000000000000001',
+  r2Key: 'originals/ab/cat.jpg',
+  mime: 'image/jpeg',
+  width: 1200,
+  height: 800,
+  poster: null,
+  deletedAt: null,
+};
 
 // ---------------------------------------------------------------------------
 // createCategory
 // ---------------------------------------------------------------------------
 describe('CatalogService.createCategory', () => {
-  it('mints a cuid id + appends with contiguous sortOrder (max+1)', async () => {
-    const snap = makeSnapshot();
-    const { draftService, applyCatalogMutation } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+  it('mints a cuid id + appends with contiguous sortOrder (max+1) + revalidates', async () => {
+    const { svc, persisted, revalidate } = makeService(makeSnapshot());
 
     const result = await svc.createCategory(ACTOR, 5, {
       slug: 'new-cat',
@@ -91,23 +111,22 @@ describe('CatalogService.createCategory', () => {
       materialCount: 1,
     });
 
-    expect(result.draftRevision).toBe(6);
+    expect(result.revision).toBe(6);
     expect(result.id).toMatch(/^c/); // cuid-v1 format starts with 'c'
-    expect(applyCatalogMutation).toHaveBeenCalledTimes(1);
+    // live-on-save: every write revalidates the public catalog cache tag
+    expect(revalidate).toHaveBeenCalledWith({ tags: ['catalog'] });
 
-    const cats = snap.categories;
+    const cats = persisted.snapshot.categories;
     expect(cats).toHaveLength(2);
-    const newCat = cats[1] as any;
+    const newCat = cats[1];
     expect(newCat.id).toBeTruthy();
     expect(newCat.slug).toBe('new-cat');
     expect(newCat.sortOrder).toBe(1); // existing max = 0, so 0 + 1 = 1
     expect(newCat.items).toEqual([]);
   });
 
-  it('throws DUPLICATE_SLUG when slug already exists globally', async () => {
-    const snap = makeSnapshot();
-    const { draftService } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+  it('throws DUPLICATE_SLUG when slug already exists globally (no persist, no revalidate)', async () => {
+    const { svc, persisted, revalidate } = makeService(makeSnapshot());
 
     let err: any;
     await svc
@@ -125,15 +144,12 @@ describe('CatalogService.createCategory', () => {
 
     expect(err).toBeInstanceOf(UnprocessableEntityException);
     expect(err.getResponse()).toMatchObject({ code: 'DUPLICATE_SLUG' });
-    // snapshot must NOT have been modified
-    expect(snap.categories).toHaveLength(1);
+    expect(persisted.snapshot).toBeUndefined(); // nothing persisted
+    expect(revalidate).not.toHaveBeenCalled(); // no cache flush on failure
   });
 
   it('throws INVALID_ASSET when imageId is absent from the db', async () => {
-    const snap = makeSnapshot();
-    const { draftService, txMock } = makeDraftService(snap);
-    txMock.asset.findUnique.mockResolvedValue(null);
-    const svc = new CatalogService(draftService);
+    const { svc } = makeService(makeSnapshot()); // asset.findUnique → null
 
     let err: any;
     await svc
@@ -155,9 +171,7 @@ describe('CatalogService.createCategory', () => {
   });
 
   it('throws INVALID_ASSET when imageId points to a soft-deleted asset', async () => {
-    const snap = makeSnapshot();
-    const { draftService, txMock } = makeDraftService(snap);
-    txMock.asset.findUnique.mockResolvedValue({
+    const { svc } = makeService(makeSnapshot(), {
       id: 'asset-1',
       r2Key: 'x.jpg',
       mime: 'image/jpeg',
@@ -166,7 +180,6 @@ describe('CatalogService.createCategory', () => {
       poster: null,
       deletedAt: new Date(),
     });
-    const svc = new CatalogService(draftService);
 
     let err: any;
     await svc
@@ -188,18 +201,7 @@ describe('CatalogService.createCategory', () => {
   });
 
   it('freezes a valid image onto the new category', async () => {
-    const snap = makeSnapshot();
-    const { draftService, txMock } = makeDraftService(snap);
-    txMock.asset.findUnique.mockResolvedValue({
-      id: 'casset0000000000000001',
-      r2Key: 'originals/ab/cat.jpg',
-      mime: 'image/jpeg',
-      width: 1200,
-      height: 800,
-      poster: null,
-      deletedAt: null,
-    });
-    const svc = new CatalogService(draftService);
+    const { svc, persisted } = makeService(makeSnapshot(), READY_ASSET);
 
     await svc.createCategory(ACTOR, 5, {
       slug: 'with-image',
@@ -211,7 +213,7 @@ describe('CatalogService.createCategory', () => {
       imageId: 'casset0000000000000001',
     });
 
-    const newCat = snap.categories[1] as any;
+    const newCat = persisted.snapshot.categories[1];
     expect(newCat.image).toMatchObject({
       assetId: 'casset0000000000000001',
       r2Key: 'originals/ab/cat.jpg',
@@ -220,10 +222,8 @@ describe('CatalogService.createCategory', () => {
     });
   });
 
-  it('bumps draftRevision exactly once per op', async () => {
-    const snap = makeSnapshot();
-    const { draftService, applyCatalogMutation } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+  it('bumps revision exactly once per op', async () => {
+    const { svc, updateMany } = makeService(makeSnapshot());
 
     const result = await svc.createCategory(ACTOR, 10, {
       slug: 'another-cat',
@@ -234,8 +234,8 @@ describe('CatalogService.createCategory', () => {
       materialCount: 0,
     });
 
-    expect(applyCatalogMutation).toHaveBeenCalledTimes(1);
-    expect(result.draftRevision).toBe(11);
+    expect(updateMany).toHaveBeenCalledTimes(1); // one optimistic-lock bump
+    expect(result.revision).toBe(11);
   });
 });
 
@@ -251,8 +251,7 @@ describe('CatalogService.updateCategory', () => {
       mime: 'image/jpeg',
       variants: [],
     };
-    const { draftService } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+    const { svc, persisted } = makeService(snap);
 
     await svc.updateCategory(ACTOR, CAT_ID, 5, {
       slug: 'existing-cat',
@@ -264,7 +263,7 @@ describe('CatalogService.updateCategory', () => {
       // imageId omitted → image removed
     });
 
-    expect((snap.categories[0] as any).image).toBeUndefined();
+    expect(persisted.snapshot.categories[0].image).toBeUndefined();
   });
 });
 
@@ -273,11 +272,13 @@ describe('CatalogService.updateCategory', () => {
 // ---------------------------------------------------------------------------
 describe('CatalogService.reorderCategories', () => {
   it('reassigns sortOrder by the position in the order array', async () => {
+    const CAT_A = 'ccataaaaaaaaaaaaaaaaa01';
+    const CAT_B = 'ccatbbbbbbbbbbbbbbbbb02';
     const snap: any = {
       catalogSchemaVersion: 1,
       categories: [
         {
-          id: 'cat-a',
+          id: CAT_A,
           slug: 'a',
           sortOrder: 0,
           title: { en: 'A', vi: 'A' },
@@ -288,7 +289,7 @@ describe('CatalogService.reorderCategories', () => {
           items: [],
         },
         {
-          id: 'cat-b',
+          id: CAT_B,
           slug: 'b',
           sortOrder: 1,
           title: { en: 'B', vi: 'B' },
@@ -300,23 +301,14 @@ describe('CatalogService.reorderCategories', () => {
         },
       ],
     };
+    const { svc, persisted } = makeService(snap);
 
-    const txMock = { asset: { findUnique: jest.fn() } };
-    const applyCatalogMutation = jest.fn(
-      async (_a: any, rev: number, mutate: any) => {
-        await mutate(snap, txMock);
-        return { draftRevision: rev + 1 };
-      },
-    );
-    const svc = new CatalogService({ applyCatalogMutation } as any);
+    const result = await svc.reorderCategories(ACTOR, 5, [CAT_B, CAT_A]);
 
-    const result = await svc.reorderCategories(ACTOR, 5, ['cat-b', 'cat-a']);
-
-    expect(result).toEqual({ draftRevision: 6 });
-    const cats = snap.categories;
-    expect(cats.find((c: any) => c.id === 'cat-b').sortOrder).toBe(0);
-    expect(cats.find((c: any) => c.id === 'cat-a').sortOrder).toBe(1);
-    expect(applyCatalogMutation).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ revision: 6 });
+    const cats = persisted.snapshot.categories;
+    expect(cats.find((c: any) => c.id === CAT_B).sortOrder).toBe(0);
+    expect(cats.find((c: any) => c.id === CAT_A).sortOrder).toBe(1);
   });
 });
 
@@ -325,21 +317,16 @@ describe('CatalogService.reorderCategories', () => {
 // ---------------------------------------------------------------------------
 describe('CatalogService.deleteCategory', () => {
   it('splices the category node from the array', async () => {
-    const snap = makeSnapshot();
-    const { draftService, applyCatalogMutation } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+    const { svc, persisted } = makeService(makeSnapshot());
 
     const result = await svc.deleteCategory(ACTOR, CAT_ID, 5);
 
-    expect(result).toEqual({ draftRevision: 6 });
-    expect(applyCatalogMutation).toHaveBeenCalledTimes(1);
-    expect(snap.categories).toHaveLength(0);
+    expect(result).toEqual({ revision: 6 });
+    expect(persisted.snapshot.categories).toHaveLength(0);
   });
 
   it('throws NotFoundException for a non-existent category id', async () => {
-    const snap = makeSnapshot();
-    const { draftService } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+    const { svc, persisted } = makeService(makeSnapshot());
 
     let err: any;
     await svc.deleteCategory(ACTOR, 'nonexistent-id', 5).catch((e) => {
@@ -347,7 +334,7 @@ describe('CatalogService.deleteCategory', () => {
     });
 
     expect(err).toBeInstanceOf(NotFoundException);
-    expect(snap.categories).toHaveLength(1); // not modified
+    expect(persisted.snapshot).toBeUndefined(); // not modified
   });
 });
 
@@ -356,9 +343,7 @@ describe('CatalogService.deleteCategory', () => {
 // ---------------------------------------------------------------------------
 describe('CatalogService.createProduct', () => {
   it('mints a cuid id + appends with contiguous sortOrder within the category', async () => {
-    const snap = makeSnapshot();
-    const { draftService, applyCatalogMutation } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+    const { svc, persisted } = makeService(makeSnapshot());
 
     const result = await svc.createProduct(ACTOR, CAT_ID, 5, {
       slug: 'new-product',
@@ -367,11 +352,10 @@ describe('CatalogService.createProduct', () => {
       desc: { en: 'D', vi: 'D' },
     });
 
-    expect(result.draftRevision).toBe(6);
+    expect(result.revision).toBe(6);
     expect(result.id).toMatch(/^c/);
-    expect(applyCatalogMutation).toHaveBeenCalledTimes(1);
 
-    const cat = snap.categories[0] as any;
+    const cat = persisted.snapshot.categories[0];
     expect(cat.items).toHaveLength(2);
     const newProd = cat.items[1];
     expect(newProd.slug).toBe('new-product');
@@ -380,9 +364,7 @@ describe('CatalogService.createProduct', () => {
   });
 
   it('throws DUPLICATE_SLUG when slug already exists within the category', async () => {
-    const snap = makeSnapshot();
-    const { draftService } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+    const { svc, persisted } = makeService(makeSnapshot());
 
     let err: any;
     await svc
@@ -398,15 +380,11 @@ describe('CatalogService.createProduct', () => {
 
     expect(err).toBeInstanceOf(UnprocessableEntityException);
     expect(err.getResponse()).toMatchObject({ code: 'DUPLICATE_SLUG' });
-
-    const cat = snap.categories[0] as any;
-    expect(cat.items).toHaveLength(1); // not modified
+    expect(persisted.snapshot).toBeUndefined(); // not modified
   });
 
   it('throws NotFoundException when the category does not exist', async () => {
-    const snap = makeSnapshot();
-    const { draftService } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+    const { svc } = makeService(makeSnapshot());
 
     let err: any;
     await svc
@@ -424,10 +402,7 @@ describe('CatalogService.createProduct', () => {
   });
 
   it('throws INVALID_ASSET for a bad imageId', async () => {
-    const snap = makeSnapshot();
-    const { draftService, txMock } = makeDraftService(snap);
-    txMock.asset.findUnique.mockResolvedValue(null);
-    const svc = new CatalogService(draftService);
+    const { svc } = makeService(makeSnapshot()); // asset.findUnique → null
 
     let err: any;
     await svc
@@ -452,17 +427,12 @@ describe('CatalogService.createProduct', () => {
 // ---------------------------------------------------------------------------
 describe('CatalogService.deleteProduct', () => {
   it('splices the product node from the category items array', async () => {
-    const snap = makeSnapshot();
-    const { draftService, applyCatalogMutation } = makeDraftService(snap);
-    const svc = new CatalogService(draftService);
+    const { svc, persisted } = makeService(makeSnapshot());
 
     const result = await svc.deleteProduct(ACTOR, CAT_ID, PROD_ID, 5);
 
-    expect(result).toEqual({ draftRevision: 6 });
-    expect(applyCatalogMutation).toHaveBeenCalledTimes(1);
-
-    const cat = snap.categories[0] as any;
-    expect(cat.items).toHaveLength(0);
+    expect(result).toEqual({ revision: 6 });
+    expect(persisted.snapshot.categories[0].items).toHaveLength(0);
   });
 });
 
@@ -481,25 +451,16 @@ describe('CatalogService.reorderProducts', () => {
       tag: { en: 't', vi: 't' },
       desc: { en: 'd', vi: 'd' },
     });
-
-    const txMock = { asset: { findUnique: jest.fn() } };
-    const applyCatalogMutation = jest.fn(
-      async (_a: any, rev: number, mutate: any) => {
-        await mutate(snap, txMock);
-        return { draftRevision: rev + 1 };
-      },
-    );
-    const svc = new CatalogService({ applyCatalogMutation } as any);
+    const { svc, persisted } = makeService(snap);
 
     const result = await svc.reorderProducts(ACTOR, CAT_ID, 5, [
       'cprod00000000000000002',
       PROD_ID,
     ]);
 
-    expect(result).toEqual({ draftRevision: 6 });
-    const items = snap.categories[0].items;
+    expect(result).toEqual({ revision: 6 });
+    const items = persisted.snapshot.categories[0].items;
     expect(items.find((p: any) => p.id === 'cprod00000000000000002').sortOrder).toBe(0);
     expect(items.find((p: any) => p.id === PROD_ID).sortOrder).toBe(1);
-    expect(applyCatalogMutation).toHaveBeenCalledTimes(1);
   });
 });

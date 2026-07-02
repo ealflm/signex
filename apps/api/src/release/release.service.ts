@@ -56,10 +56,10 @@ export class ReleaseService {
       where: { id: input.themeId },
     });
     const parsed = ReleaseSnapshotSchema.parse(theme.draftSnapshot);
-    // The catalog is now its own global, independently-published domain. Strip it
-    // from the content release so the content checksum, asset pins, and frozen
-    // snapshot all EXCLUDE catalog (catalog images are pinned by
-    // CatalogReleaseAssetRef, and the web reads the catalog from its own pointer).
+    // The catalog is now its own global, live domain. Strip it from the content
+    // release so the content checksum, asset pins, and frozen snapshot all
+    // EXCLUDE catalog (the web reads the catalog live from the Catalog singleton;
+    // its images are pinned by that live snapshot as a working owner).
     const snapshot = { ...parsed };
     delete snapshot.catalog;
     const checksum = createHash('sha256')

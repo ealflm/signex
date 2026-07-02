@@ -1,15 +1,10 @@
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
-import { atLeast, type FrozenCategory } from "@signex/shared";
+import type { FrozenCategory } from "@signex/shared";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/admin/page-header";
-import { StatusBadge } from "@/components/admin/status-badge";
 import { CategoriesPanel, type CategoryCardData } from "./categories-panel";
 import { ProductsPanel, type ProductRowData } from "./products-panel";
-import {
-  PublishCatalogButton,
-  RollbackCatalogButton,
-} from "./catalog-release-controls";
 import type { CategoryOption } from "./product-dialog";
 import type { AssetOption } from "./catalog-fields";
 
@@ -22,31 +17,10 @@ interface AssetListItem {
   url: string;
 }
 
-// GET /api/catalog — the global catalog draft.
-interface CatalogDraftResponse {
-  draftRevision: number;
-  lastPublishedRevision: number;
-  dirty: boolean;
+// GET /api/catalog — the single live global catalog.
+interface CatalogResponse {
+  revision: number;
   categories: FrozenCategory[];
-}
-
-// GET /api/catalog/releases — catalog release history (version desc).
-interface CatalogReleaseRow {
-  id: string;
-  version: number;
-  status: "PUBLISHED" | "ARCHIVED";
-  note: string | null;
-  publishedAt: string | null;
-  rolledBackFromVersion: number | null;
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 // ── KPI stat cell (divided-bar strip, mirrors the leads KPI strip) ────────────
@@ -80,94 +54,15 @@ function Stat({
   );
 }
 
-// ── Release history (with rollback) ───────────────────────────────────────────
-
-function ReleaseHistory({
-  releases,
-  liveVersion,
-  canPublish,
-}: {
-  releases: CatalogReleaseRow[];
-  liveVersion: number | null;
-  canPublish: boolean;
-}) {
-  if (releases.length === 0) return null;
-
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-foreground">Release history</h2>
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="h-10 px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Version
-              </th>
-              <th className="h-10 px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Status
-              </th>
-              <th className="h-10 px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Published
-              </th>
-              <th className="h-10 px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Note
-              </th>
-              <th className="h-10 px-5" />
-            </tr>
-          </thead>
-          <tbody>
-            {releases.map((r) => {
-              const isLive = r.version === liveVersion;
-              return (
-                <tr
-                  key={r.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/50"
-                >
-                  <td className="px-5 py-3 font-mono tabular-nums text-foreground">
-                    v{r.version}
-                  </td>
-                  <td className="px-5 py-3">
-                    {isLive ? (
-                      <StatusBadge tone="success">Live</StatusBadge>
-                    ) : (
-                      <StatusBadge tone="neutral">Archived</StatusBadge>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-muted-foreground">
-                    {formatDate(r.publishedAt)}
-                  </td>
-                  <td className="px-5 py-3 text-muted-foreground">
-                    {r.note ??
-                      (r.rolledBackFromVersion
-                        ? `Rollback to v${r.rolledBackFromVersion}`
-                        : "—")}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    {canPublish && !isLive && (
-                      <RollbackCatalogButton toVersion={r.version} />
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function CatalogPage() {
-  // Hard role gate — redirects to / if under-ranked. Returns the session user.
-  const user = await requireRole("EDITOR");
-  const canPublish = atLeast(user.role, "PUBLISHER");
+  // Hard role gate — redirects to / if under-ranked.
+  await requireRole("EDITOR");
 
-  const [catalogRes, assetsRes, releasesRes] = await Promise.all([
-    apiServer<CatalogDraftResponse>("/api/catalog"),
+  const [catalogRes, assetsRes] = await Promise.all([
+    apiServer<CatalogResponse>("/api/catalog"),
     apiServer<AssetListItem[]>("/api/assets"),
-    apiServer<CatalogReleaseRow[]>("/api/catalog/releases"),
   ]);
 
   // assetId → public URL, keyed off the READY assets the API already resolved.
@@ -178,8 +73,7 @@ export default async function CatalogPage() {
   const thumbSrc = (imageId: string | null): string | null =>
     imageId ? (assetUrlById.get(imageId) ?? null) : null;
 
-  const draft = catalogRes.ok ? catalogRes.data : null;
-  const cats = (draft?.categories ?? []) as FrozenCategory[];
+  const cats = (catalogRes.ok ? catalogRes.data.categories : []) as FrozenCategory[];
 
   const categories: CategoryCardData[] = cats.map((c) => {
     const imageId = c.image?.assetId ?? null;
@@ -222,12 +116,6 @@ export default async function CatalogPage() {
     slug,
   }));
 
-  const dirty = draft?.dirty ?? false;
-  const draftRevision = draft?.draftRevision ?? 0;
-  const releases = releasesRes.ok ? releasesRes.data : [];
-  const liveVersion =
-    releases.find((r) => r.status === "PUBLISHED")?.version ?? null;
-
   // KPI numbers
   const totalItems = categories.length + products.length;
   const withImage =
@@ -243,24 +131,7 @@ export default async function CatalogPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Catalog"
-        subtitle="One global catalog for the whole site. Edit here, then publish it independently of themes."
-        actions={
-          <div className="flex items-center gap-2">
-            {dirty ? (
-              <StatusBadge tone="warning">Unpublished changes</StatusBadge>
-            ) : (
-              <StatusBadge tone="success">
-                {liveVersion ? `Published · v${liveVersion}` : "Published"}
-              </StatusBadge>
-            )}
-            {canPublish && (
-              <PublishCatalogButton
-                draftRevision={draftRevision}
-                dirty={dirty}
-              />
-            )}
-          </div>
-        }
+        subtitle="One global catalog for the whole site. Edits go live immediately — there's nothing to publish."
       />
 
       {apiError && (
@@ -304,12 +175,6 @@ export default async function CatalogPage() {
         products={products}
         categories={categoryOptions}
         assets={assetOptions}
-      />
-
-      <ReleaseHistory
-        releases={releases}
-        liveVersion={liveVersion}
-        canPublish={canPublish}
       />
     </div>
   );

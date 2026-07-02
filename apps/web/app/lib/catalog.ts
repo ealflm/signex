@@ -1,10 +1,10 @@
 // apps/web/app/lib/catalog.ts
-// PUBLIC catalog read-path. The catalog is its own GLOBAL domain, published
-// independently of the content release. It is read straight from Postgres via
-// @signex/db (CatalogPublishedPointer → CatalogRelease), validated by the SAME
-// zod schema the api wrote it with, and cached under cacheTag('catalog') so a
-// catalog Publish (api → /api/revalidate with tags:['catalog']) marks it stale.
-// Any Prisma/parse error → INITIAL_CATALOG, so the site never 500s on data.
+// PUBLIC catalog read-path. The catalog is its own GLOBAL, LIVE domain (no
+// draft/publish/release). It is read straight from Postgres via @signex/db (the
+// Catalog singleton), validated by the SAME zod schema the api wrote it with,
+// and cached under cacheTag('catalog') so any catalog edit (api → /api/revalidate
+// with tags:['catalog']) marks it stale. Any Prisma/parse error → INITIAL_CATALOG,
+// so the site never 500s on data.
 import "server-only";
 import { cacheTag } from "next/cache";
 import { prisma } from "@signex/db";
@@ -18,12 +18,12 @@ import { INITIAL_CATALOG } from "@/app/lib/initial-catalog";
  */
 export async function readPublishedCatalog(): Promise<CatalogSnapshot> {
   try {
-    const ptr = await prisma.catalogPublishedPointer.findUnique({
+    const row = await prisma.catalog.findUnique({
       where: { id: "singleton" },
-      select: { release: { select: { snapshot: true } } },
+      select: { snapshot: true },
     });
-    if (!ptr?.release?.snapshot) return INITIAL_CATALOG;
-    return CatalogSnapshotSchema.parse(ptr.release.snapshot);
+    if (!row?.snapshot) return INITIAL_CATALOG;
+    return CatalogSnapshotSchema.parse(row.snapshot);
   } catch {
     // ANY Prisma/parse error → last-known-good build constant.
     return INITIAL_CATALOG;

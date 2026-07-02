@@ -17,7 +17,7 @@ import type { AuthedUser } from '../auth/auth.types';
 const localizedText = z.object({ en: z.string(), vi: z.string() });
 
 const categoryBody = z.object({
-  expectedDraftRevision: z.number().int().min(0),
+  expectedRevision: z.number().int().min(0),
   slug: z.string().min(1),
   title: localizedText,
   tag: localizedText,
@@ -29,7 +29,7 @@ const categoryBody = z.object({
 });
 
 const productBody = z.object({
-  expectedDraftRevision: z.number().int().min(0),
+  expectedRevision: z.number().int().min(0),
   slug: z.string().min(1),
   title: localizedText,
   tag: localizedText,
@@ -39,12 +39,12 @@ const productBody = z.object({
 });
 
 const reorderBody = z.object({
-  expectedDraftRevision: z.number().int().min(0),
+  expectedRevision: z.number().int().min(0),
   order: z.array(z.string()),
 });
 
 const deleteBody = z.object({
-  expectedDraftRevision: z.number().int().min(0),
+  expectedRevision: z.number().int().min(0),
 });
 
 type CategoryBody = z.infer<typeof categoryBody>;
@@ -53,10 +53,10 @@ type ReorderBody = z.infer<typeof reorderBody>;
 type DeleteBody = z.infer<typeof deleteBody>;
 
 /**
- * The GLOBAL catalog domain — one catalog for the whole site, edited
- * independently of any theme and published on its own release track (M-E).
- * Reads return the CatalogDraft; writes mutate it (optimistic-locked on the
- * catalog's own draftRevision).
+ * The GLOBAL catalog — one live catalog for the whole site, edited independently
+ * of any theme. Every write is immediately live (no draft/publish/release), so
+ * reads return the live catalog and writes mutate it in place, optimistic-locked
+ * on the catalog's `revision`.
  */
 @Controller('catalog')
 export class CatalogController {
@@ -64,11 +64,11 @@ export class CatalogController {
 
   // ── Reads ──────────────────────────────────────────────────────────────────
 
-  /** The full draft (categories + revisions + dirty) for the admin editor. */
+  /** The live catalog (categories + revision) for the admin editor. */
   @Get()
   @Roles('EDITOR')
-  getDraft() {
-    return this.catalog.getDraft();
+  getCatalog() {
+    return this.catalog.getCatalog();
   }
 
   @Get('categories')
@@ -91,8 +91,8 @@ export class CatalogController {
     @Body(new ZodValidationPipe(categoryBody)) body: CategoryBody,
     @CurrentUser() actor: AuthedUser,
   ) {
-    const { expectedDraftRevision, ...input } = body;
-    return this.catalog.createCategory(actor, expectedDraftRevision, input);
+    const { expectedRevision, ...input } = body;
+    return this.catalog.createCategory(actor, expectedRevision, input);
   }
 
   // NOTE: /categories/reorder must be declared before /categories/:id so NestJS
@@ -105,7 +105,7 @@ export class CatalogController {
   ) {
     return this.catalog.reorderCategories(
       actor,
-      body.expectedDraftRevision,
+      body.expectedRevision,
       body.order,
     );
   }
@@ -117,8 +117,8 @@ export class CatalogController {
     @Body(new ZodValidationPipe(categoryBody)) body: CategoryBody,
     @CurrentUser() actor: AuthedUser,
   ) {
-    const { expectedDraftRevision, ...input } = body;
-    return this.catalog.updateCategory(actor, id, expectedDraftRevision, input);
+    const { expectedRevision, ...input } = body;
+    return this.catalog.updateCategory(actor, id, expectedRevision, input);
   }
 
   @Delete('categories/:id')
@@ -128,7 +128,7 @@ export class CatalogController {
     @Body(new ZodValidationPipe(deleteBody)) body: DeleteBody,
     @CurrentUser() actor: AuthedUser,
   ) {
-    return this.catalog.deleteCategory(actor, id, body.expectedDraftRevision);
+    return this.catalog.deleteCategory(actor, id, body.expectedRevision);
   }
 
   // ── Products ───────────────────────────────────────────────────────────────
@@ -140,11 +140,11 @@ export class CatalogController {
     @Body(new ZodValidationPipe(productBody)) body: ProductBody,
     @CurrentUser() actor: AuthedUser,
   ) {
-    const { expectedDraftRevision, ...input } = body;
+    const { expectedRevision, ...input } = body;
     return this.catalog.createProduct(
       actor,
       categoryId,
-      expectedDraftRevision,
+      expectedRevision,
       input,
     );
   }
@@ -160,7 +160,7 @@ export class CatalogController {
     return this.catalog.reorderProducts(
       actor,
       categoryId,
-      body.expectedDraftRevision,
+      body.expectedRevision,
       body.order,
     );
   }
@@ -173,12 +173,12 @@ export class CatalogController {
     @Body(new ZodValidationPipe(productBody)) body: ProductBody,
     @CurrentUser() actor: AuthedUser,
   ) {
-    const { expectedDraftRevision, ...input } = body;
+    const { expectedRevision, ...input } = body;
     return this.catalog.updateProduct(
       actor,
       categoryId,
       pid,
-      expectedDraftRevision,
+      expectedRevision,
       input,
     );
   }
@@ -195,7 +195,7 @@ export class CatalogController {
       actor,
       categoryId,
       pid,
-      body.expectedDraftRevision,
+      body.expectedRevision,
     );
   }
 }

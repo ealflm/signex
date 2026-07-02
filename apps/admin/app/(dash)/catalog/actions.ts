@@ -14,13 +14,14 @@ export interface CatalogActionState {
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Fetch the current GLOBAL catalog draftRevision (the optimistic lock). The
- * catalog is a single global entity now — no theme. On a failed read we return 0;
- * the API returns 409 STALE_DRAFT if that is stale, which is surfaced to the user.
+ * Fetch the current GLOBAL catalog `revision` (the optimistic lock). The catalog
+ * is a single live entity — every write is immediately live. On a failed read we
+ * return 0; the API returns 409 STALE_CATALOG if that is stale, surfaced to the
+ * user.
  */
 async function catalogRevision(): Promise<number> {
-  const res = await apiServer<{ draftRevision: number }>("/api/catalog");
-  return res.ok ? res.data.draftRevision : 0;
+  const res = await apiServer<{ revision: number }>("/api/catalog");
+  return res.ok ? res.data.revision : 0;
 }
 
 /** Build a LocalizedText pair from two formData keys: `base.en` / `base.vi`. */
@@ -55,7 +56,7 @@ export async function createCategory(
   const res = await apiServer(`/api/catalog/categories`, {
     method: "POST",
     body: {
-      expectedDraftRevision: await catalogRevision(),
+      expectedRevision: await catalogRevision(),
       slug: String(fd.get("slug") ?? ""),
       title: localized(fd, "title"),
       tag: localized(fd, "tag"),
@@ -83,7 +84,7 @@ export async function updateCategory(
   const res = await apiServer(`/api/catalog/categories/${id}`, {
     method: "PATCH",
     body: {
-      expectedDraftRevision: await catalogRevision(),
+      expectedRevision: await catalogRevision(),
       slug: String(fd.get("slug") ?? ""),
       title: localized(fd, "title"),
       tag: localized(fd, "tag"),
@@ -110,7 +111,7 @@ export async function deleteCategory(
 
   const res = await apiServer(`/api/catalog/categories/${id}`, {
     method: "DELETE",
-    body: { expectedDraftRevision: await catalogRevision() },
+    body: { expectedRevision: await catalogRevision() },
   });
 
   if (!res.ok) return { error: apiError(res.status, res.error) };
@@ -135,7 +136,7 @@ export async function createProduct(
     {
       method: "POST",
       body: {
-        expectedDraftRevision: await catalogRevision(),
+        expectedRevision: await catalogRevision(),
         slug: String(fd.get("slug") ?? ""),
         title: localized(fd, "title"),
         tag: localized(fd, "tag"),
@@ -166,7 +167,7 @@ export async function updateProduct(
     {
       method: "PATCH",
       body: {
-        expectedDraftRevision: await catalogRevision(),
+        expectedRevision: await catalogRevision(),
         slug: String(fd.get("slug") ?? ""),
         title: localized(fd, "title"),
         tag: localized(fd, "tag"),
@@ -196,71 +197,12 @@ export async function deleteProduct(
     `/api/catalog/categories/${categoryId}/products/${pid}`,
     {
       method: "DELETE",
-      body: { expectedDraftRevision: await catalogRevision() },
+      body: { expectedRevision: await catalogRevision() },
     },
   );
 
   if (!res.ok) return { error: apiError(res.status, res.error) };
 
   revalidatePath("/catalog");
-  return { success: true };
-}
-
-// ── Release actions (publish / rollback) ────────────────────────────────────────
-
-/**
- * Publish the global catalog draft as a new CatalogRelease.
- * Requires PUBLISHER+; POST /api/catalog/releases/publish {expectedDraftRevision, note?}.
- */
-export async function publishCatalog(
-  _prevState: CatalogActionState,
-  fd: FormData,
-): Promise<CatalogActionState> {
-  await requireRole("PUBLISHER");
-
-  const expectedDraftRevision = Number(fd.get("expectedDraftRevision") ?? 0);
-  const noteRaw = String(fd.get("note") ?? "").trim();
-  const note = noteRaw || undefined;
-
-  const res = await apiServer("/api/catalog/releases/publish", {
-    method: "POST",
-    body: { expectedDraftRevision, note },
-  });
-
-  if (!res.ok) {
-    const msg = res.error ?? `Error ${res.status}`;
-    if (res.status === 409 && msg.includes("STALE_DRAFT")) {
-      return { error: "Catalog changed since page loaded — refresh and retry." };
-    }
-    return { error: msg };
-  }
-
-  revalidatePath("/catalog");
-  revalidatePath("/");
-  return { success: true };
-}
-
-/**
- * Roll the live catalog back to an earlier version (mints a new release from it).
- * Requires PUBLISHER+; POST /api/catalog/releases/rollback {toVersion}.
- */
-export async function rollbackCatalog(
-  _prevState: CatalogActionState,
-  fd: FormData,
-): Promise<CatalogActionState> {
-  await requireRole("PUBLISHER");
-
-  const toVersion = Number(fd.get("toVersion") ?? 0);
-  if (!toVersion) return { error: "Missing target version." };
-
-  const res = await apiServer("/api/catalog/releases/rollback", {
-    method: "POST",
-    body: { toVersion },
-  });
-
-  if (!res.ok) return { error: res.error ?? `Error ${res.status}` };
-
-  revalidatePath("/catalog");
-  revalidatePath("/");
   return { success: true };
 }

@@ -366,35 +366,29 @@ export class AssetsService {
     releases: { releaseId: string }[];
   }> {
     // Working refs live inside each Theme's draftSnapshot/liveSnapshot AND in the
-    // GLOBAL catalog draft (CatalogDraft.draftSnapshot/liveSnapshot) — no
-    // relational AssetRef table. An owner "uses" the asset iff EITHER of its
-    // snapshots references the assetId anywhere (block AssetRef/VideoRef or an
-    // inline catalog image). Retained refs union the content release pins AND the
-    // catalog release pins, so an asset frozen into either release track is
-    // protected from deletion.
-    const [themes, catalogDraft, releaseRefs, catalogReleaseRefs] =
-      await Promise.all([
-        this.prisma.client.theme.findMany({
-          select: {
-            id: true,
-            name: true,
-            draftSnapshot: true,
-            liveSnapshot: true,
-          },
-        }),
-        this.prisma.client.catalogDraft.findUnique({
-          where: { id: 'singleton' },
-          select: { draftSnapshot: true, liveSnapshot: true },
-        }),
-        this.prisma.client.releaseAssetRef.findMany({
-          where: { assetId },
-          select: { releaseId: true },
-        }),
-        this.prisma.client.catalogReleaseAssetRef.findMany({
-          where: { assetId },
-          select: { releaseId: true },
-        }),
-      ]);
+    // GLOBAL live catalog (Catalog.snapshot) — no relational AssetRef table. An
+    // owner "uses" the asset iff its snapshot references the assetId anywhere
+    // (block AssetRef/VideoRef or an inline catalog image). Retained refs are the
+    // content release pins (the catalog is live-only now, so it has no release
+    // pins — the live Catalog is a working owner instead).
+    const [themes, catalog, releaseRefs] = await Promise.all([
+      this.prisma.client.theme.findMany({
+        select: {
+          id: true,
+          name: true,
+          draftSnapshot: true,
+          liveSnapshot: true,
+        },
+      }),
+      this.prisma.client.catalog.findUnique({
+        where: { id: 'singleton' },
+        select: { snapshot: true },
+      }),
+      this.prisma.client.releaseAssetRef.findMany({
+        where: { assetId },
+        select: { releaseId: true },
+      }),
+    ]);
 
     const working = themes
       .filter((t) => {
@@ -414,25 +408,17 @@ export class AssetsService {
         };
       });
 
-    // The global catalog draft as a working owner (ownerId 'singleton').
-    if (catalogDraft) {
-      const inDraft = collectAssetIds(catalogDraft.draftSnapshot).has(assetId);
-      const inLive = catalogDraft.liveSnapshot
-        ? collectAssetIds(catalogDraft.liveSnapshot).has(assetId)
-        : false;
-      if (inDraft || inLive) {
-        working.push({
-          id: 'catalog',
-          ownerType: 'catalog',
-          ownerId: 'singleton',
-          field: inDraft ? 'draftSnapshot' : 'liveSnapshot',
-        });
-      }
+    // The global live catalog as a working owner (ownerId 'singleton').
+    if (catalog && collectAssetIds(catalog.snapshot).has(assetId)) {
+      working.push({
+        id: 'catalog',
+        ownerType: 'catalog',
+        ownerId: 'singleton',
+        field: 'snapshot',
+      });
     }
 
-    // Union content + catalog release pins — either protects the asset.
-    const releases = [...releaseRefs, ...catalogReleaseRefs];
-    return { working, releases };
+    return { working, releases: releaseRefs };
   }
 
   async softDelete(actor: Actor, assetId: string): Promise<AssetDto> {

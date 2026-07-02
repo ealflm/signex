@@ -79,23 +79,23 @@ export class PreviewController {
       }
     }
 
-    // Compose: theme draft (blocks/content) + the GLOBAL catalog draft. The
+    // Compose: theme draft (blocks/content) + the GLOBAL live catalog. The
     // catalog is its own domain now, so the preview must overlay the live
-    // CatalogDraft categories onto the theme's (dormant) snapshot.catalog — else
-    // the preview would show a stale catalog frozen in the theme draft.
-    const [theme, catalogDraft] = await Promise.all([
+    // Catalog categories onto the theme's (dormant) snapshot.catalog — else the
+    // preview would show a stale catalog frozen in the theme draft.
+    const [theme, catalog] = await Promise.all([
       this.prisma.client.theme.findUniqueOrThrow({
         where: { id: themeId },
         select: { draftSnapshot: true },
       }),
-      this.prisma.client.catalogDraft.findUnique({
+      this.prisma.client.catalog.findUnique({
         where: { id: 'singleton' },
-        select: { draftSnapshot: true },
+        select: { snapshot: true },
       }),
     ]);
 
     const snap = theme.draftSnapshot as Record<string, unknown>;
-    const catalogSnap = catalogDraft?.draftSnapshot as
+    const catalogSnap = catalog?.snapshot as
       | { categories?: unknown[] }
       | undefined;
     const themeCatalog = snap.catalog as { categories?: unknown[] } | undefined;
