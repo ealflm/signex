@@ -34,7 +34,15 @@ describe('RevalidationService', () => {
     expect(init.method).toBe('POST');
     expect(init.headers['x-revalidate-secret']).toBe('s3cret');
     expect(init.headers['content-type']).toBe('application/json');
-    expect(JSON.parse(init.body)).toEqual({ paths: ['/vi', '/en'] });
+    expect(JSON.parse(init.body)).toEqual({ paths: ['/vi', '/en'], tags: [] });
+  });
+
+  it('forwards cache tags in the POST body (catalog publish path)', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200 });
+    global.fetch = fetchMock as any;
+    await service.revalidate({ tags: ['catalog'] });
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({ paths: [], tags: ['catalog'] });
   });
 
   it('queues for retry and resolves {ok:false} on a non-2xx response (never throws)', async () => {

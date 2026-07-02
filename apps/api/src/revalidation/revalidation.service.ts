@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 
 export interface RevalidatePayload {
   paths?: string[];
+  /** Next.js cache tags to revalidate (e.g. 'release', 'catalog'). */
+  tags?: string[];
 }
 
 /**
@@ -68,7 +70,10 @@ export class RevalidationService {
           'content-type': 'application/json',
           'x-revalidate-secret': this.secret,
         },
-        body: JSON.stringify({ paths: input.paths ?? [] }),
+        body: JSON.stringify({
+          paths: input.paths ?? [],
+          tags: input.tags ?? [],
+        }),
       });
       if (!res.ok) {
         this.logger.warn(`revalidate non-2xx: ${res.status}`);

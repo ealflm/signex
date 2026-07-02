@@ -21,6 +21,8 @@ function makePrisma() {
       },
       assetRef: { findMany: jest.fn().mockResolvedValue([]) },
       releaseAssetRef: { findMany: jest.fn().mockResolvedValue([]) },
+      catalogReleaseAssetRef: { findMany: jest.fn().mockResolvedValue([]) },
+      catalogDraft: { findUnique: jest.fn().mockResolvedValue(null) },
       theme: { findMany: jest.fn().mockResolvedValue([]) },
       auditLog: { create: jest.fn().mockResolvedValue({}) },
     },
