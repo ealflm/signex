@@ -29,17 +29,37 @@ async function main(): Promise<void> {
     return;
   }
 
-  // v1 source of truth: the categories embedded in the LIVE content release.
-  // Tolerant read of just the catalog slice — blocks/assets are irrelevant here,
-  // and the live snapshot was already validated when it was published.
+  // v1 source of truth for the catalog categories. Prefer the LIVE THEME's draft
+  // catalog (Theme.draftSnapshot.catalog) — it is retained even after the content
+  // publish path strips catalog from the release, so this works on fresh installs
+  // too. Fall back to the (historical) live release snapshot for an existing
+  // cutover where the release still embeds catalog. Tolerant read of just the
+  // catalog slice — blocks/assets are irrelevant, and both were validated on write.
   const livePointer = await prisma.publishedPointer.findUnique({
     where: { id: 'singleton' },
-    include: { release: { select: { snapshot: true, createdById: true } } },
+    include: {
+      release: { select: { snapshot: true, themeId: true, createdById: true } },
+    },
   });
-  const liveSnap = livePointer?.release?.snapshot as
-    | { catalog?: { categories?: unknown[] } }
-    | undefined;
-  const categories: unknown[] = liveSnap?.catalog?.categories ?? [];
+
+  let categories: unknown[] = [];
+  const themeId = livePointer?.release?.themeId;
+  if (themeId) {
+    const theme = await prisma.theme.findUnique({
+      where: { id: themeId },
+      select: { draftSnapshot: true },
+    });
+    const themeSnap = theme?.draftSnapshot as
+      | { catalog?: { categories?: unknown[] } }
+      | undefined;
+    categories = themeSnap?.catalog?.categories ?? [];
+  }
+  if (categories.length === 0) {
+    const relSnap = livePointer?.release?.snapshot as
+      | { catalog?: { categories?: unknown[] } }
+      | undefined;
+    categories = relSnap?.catalog?.categories ?? [];
+  }
 
   // Actor: the live release's author, else the first ADMIN. Fail loudly if none.
   let actorId = livePointer?.release?.createdById;

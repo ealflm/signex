@@ -54,7 +54,8 @@ function makeCtx(
 
   const client = {
     catalogDraft: {
-      findUnique: jest.fn().mockResolvedValue(
+      // ensureDraft() uses an idempotent upsert (returns existing or created row).
+      upsert: jest.fn().mockResolvedValue(
         opts.ensureRow ?? {
           id: 'singleton',
           draftSnapshot: { catalogSchemaVersion: 1, categories: [] },
@@ -62,7 +63,6 @@ function makeCtx(
           lastPublishedRevision: 3,
         },
       ),
-      create: jest.fn(),
     },
     $transaction: jest.fn(async (cb: any) => cb(tx)),
   };

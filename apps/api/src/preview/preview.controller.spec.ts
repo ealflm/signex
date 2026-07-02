@@ -21,6 +21,10 @@ function makePrisma() {
           .fn()
           .mockResolvedValue({ release: { themeId: 'ctheme-live' } }),
       },
+      catalogDraft: {
+        // default: no global catalog draft → preview keeps the theme's catalog
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
     },
   };
 }
@@ -62,6 +66,19 @@ describe('PreviewController.snapshot', () => {
     });
     // themeId provided → no pointer lookup.
     expect(prisma.client.publishedPointer.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('overlays the GLOBAL catalog draft onto the theme snapshot', async () => {
+    prisma.client.catalogDraft.findUnique.mockResolvedValue({
+      draftSnapshot: {
+        catalogSchemaVersion: 1,
+        categories: [{ slug: 'global-cat' }],
+      },
+    });
+    const res = (await controller.snapshotGet(SECRET, 'ctheme-x')) as any;
+    expect(res.catalog).toEqual({ categories: [{ slug: 'global-cat' }] });
+    // theme content still comes through
+    expect(res.schemaVersion).toBe(1);
   });
 
   it('accepts themeId from the body', async () => {

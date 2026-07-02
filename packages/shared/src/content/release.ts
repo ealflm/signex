@@ -16,15 +16,16 @@ export const SCHEMA_VERSION = 1 as const;
  * can be displayed without a second round-trip. (Catalog images are inline
  * FrozenAssets and are NOT resolved through this map.)
  *
- * NOTE: `catalog` stays REQUIRED for now. It is being extracted into its own
- * global, independently-published domain (CatalogSnapshotSchema); it becomes
- * optional here in the same change that stops the content publish path writing
- * it (milestone M-F), so downstream `snap.catalog` readers stay green until then.
+ * `catalog` is OPTIONAL: the product catalog now lives in its own global,
+ * independently-published domain (CatalogSnapshotSchema). The content publish
+ * path strips it (M-F), and the web reads the catalog from its own pointer
+ * (M-G); historical snapshots that still embed it keep parsing (dormant). Catalog
+ * images are inline FrozenAssets and are NOT resolved through this `assets` map.
  */
 export const ReleaseSnapshotSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   blocks: z.object(BLOCK_REGISTRY),
-  catalog: FrozenCatalog,
+  catalog: FrozenCatalog.optional(),
   assets: z.record(z.string(), FrozenAsset), // assetId -> FrozenAsset; resolves block images
 });
 export type ReleaseSnapshot = z.infer<typeof ReleaseSnapshotSchema>;

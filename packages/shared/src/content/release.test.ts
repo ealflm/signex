@@ -219,6 +219,18 @@ describe("ReleaseSnapshotSchema", () => {
     expect(r.success).toBe(true);
   });
 
+  it("parses a content-only snapshot with NO catalog (catalog is optional — content publish strips it)", () => {
+    const r = ReleaseSnapshotSchema.safeParse({
+      schemaVersion: 1,
+      blocks: VALID_BLOCKS,
+      // catalog intentionally omitted — it lives in its own domain now
+      assets: {},
+    });
+    if (!r.success) console.error(JSON.stringify(r.error.format(), null, 2));
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.catalog).toBeUndefined();
+  });
+
   it("parses a snapshot with a populated assets map (block + catalog assetIds)", () => {
     const frozenAsset = {
       assetId: CUID,

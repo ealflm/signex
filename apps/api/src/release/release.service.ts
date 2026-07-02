@@ -55,7 +55,13 @@ export class ReleaseService {
     const theme = await this.prisma.client.theme.findUniqueOrThrow({
       where: { id: input.themeId },
     });
-    const snapshot = ReleaseSnapshotSchema.parse(theme.draftSnapshot);
+    const parsed = ReleaseSnapshotSchema.parse(theme.draftSnapshot);
+    // The catalog is now its own global, independently-published domain. Strip it
+    // from the content release so the content checksum, asset pins, and frozen
+    // snapshot all EXCLUDE catalog (catalog images are pinned by
+    // CatalogReleaseAssetRef, and the web reads the catalog from its own pointer).
+    const snapshot = { ...parsed };
+    delete snapshot.catalog;
     const checksum = createHash('sha256')
       .update(canonicalJson(snapshot))
       .digest('hex');

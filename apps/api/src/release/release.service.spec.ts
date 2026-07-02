@@ -36,9 +36,14 @@ const MOCK_SNAPSHOT = {
   assets: {},
 };
 
-/** Pre-computed: sha256(canonicalJson(MOCK_SNAPSHOT)) */
+/**
+ * Pre-computed checksum. publish() STRIPS catalog before hashing (catalog is now
+ * its own global domain), so the expected content checksum is over the
+ * catalog-less snapshot.
+ */
+const MOCK_CONTENT_SNAPSHOT = { schemaVersion: 1, blocks: {}, assets: {} };
 const MOCK_CHECKSUM = createHash('sha256')
-  .update(canonicalJson(MOCK_SNAPSHOT))
+  .update(canonicalJson(MOCK_CONTENT_SNAPSHOT))
   .digest('hex');
 
 function makeTx() {
@@ -204,6 +209,8 @@ describe('ReleaseService.publish', () => {
     expect(createArg.fromRevision).toBe(DRAFT_REVISION);
     expect(createArg.publishedById).toBe(ACTOR.id);
     expect(createArg.note).toBe('launch');
+    // catalog is stripped from the content release (its own domain now)
+    expect(createArg.snapshot.catalog).toBeUndefined();
 
     // PublishedPointer repointed
     expect(tx.publishedPointer.upsert).toHaveBeenCalledTimes(1);
@@ -215,7 +222,8 @@ describe('ReleaseService.publish', () => {
     expect(tx.theme.update).toHaveBeenCalledWith({
       where: { id: THEME_ID },
       data: expect.objectContaining({
-        liveSnapshot: MOCK_SNAPSHOT,
+        // catalog stripped → theme.liveSnapshot is the content-only snapshot
+        liveSnapshot: MOCK_CONTENT_SNAPSHOT,
         lastPublishedRevision: DRAFT_REVISION,
         lastPublishedChecksum: MOCK_CHECKSUM,
       }),

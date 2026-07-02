@@ -47,14 +47,16 @@ export class CatalogDraftService {
     private readonly audit: AuditService,
   ) {}
 
-  /** Self-heal: the backfill creates the singleton, but a fresh/dev system may not have run it. */
+  /**
+   * Self-heal: the backfill creates the singleton, but a fresh/dev system may not
+   * have run it. `upsert` is atomic, so two concurrent first-ever writes on a
+   * fresh system can't both race a `create` into a P2002 unique violation.
+   */
   private async ensureDraft() {
-    const existing = await this.prisma.client.catalogDraft.findUnique({
+    return this.prisma.client.catalogDraft.upsert({
       where: { id: 'singleton' },
-    });
-    if (existing) return existing;
-    return this.prisma.client.catalogDraft.create({
-      data: { id: 'singleton', draftSnapshot: emptySnapshot() },
+      create: { id: 'singleton', draftSnapshot: emptySnapshot() },
+      update: {},
     });
   }
 

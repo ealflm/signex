@@ -200,7 +200,7 @@ function resolveForLang(snap: ReleaseSnapshot, lang: Locale) {
       // Resolve r2Key → URL at read time so a CDN/domain migration never requires a
       // snapshot re-publish (spec §3.1.3). Falls back to empty string when no image
       // is attached yet (caller should guard or use a placeholder).
-      categories: snap.catalog.categories.map((cat) => ({
+      categories: (snap.catalog?.categories ?? []).map((cat) => ({
         tag: t(cat.tag, lang),
         title: t(cat.title, lang),
         slug: cat.slug,
