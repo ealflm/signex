@@ -58,6 +58,20 @@ async function makeRelease(version: number, createdById: string, status: Release
   });
 }
 
+async function makeCatalogRelease(version: number, createdById: string, status: ReleaseStatus) {
+  return prisma.catalogRelease.create({
+    data: {
+      version,
+      status,
+      snapshot: {},
+      checksum: `cc${version}`,
+      schemaVersion: 1,
+      fromRevision: 0,
+      createdById,
+    },
+  });
+}
+
 describeIntegration("cms_foundation migration", () => {
   it("exposes the Role enum members EDITOR/PUBLISHER/ADMIN", () => {
     expect(Role).toMatchObject({ EDITOR: "EDITOR", PUBLISHER: "PUBLISHER", ADMIN: "ADMIN" });
@@ -213,5 +227,46 @@ describeIntegration("cms_foundation migration", () => {
   it("ReleaseStatus has exactly PUBLISHED and ARCHIVED — no DRAFT", () => {
     expect(Object.keys(ReleaseStatus).sort()).toEqual(["ARCHIVED", "PUBLISHED"]);
     expect(ReleaseStatus).not.toHaveProperty("DRAFT");
+  });
+});
+
+// Global catalog domain (migration 20260702140000_global_catalog_domain). The
+// catalog release machinery mirrors the content release machinery, so these
+// invariants mirror the content ones above — but on the independent tables.
+describeIntegration("global_catalog_domain migration", () => {
+  it("defaults the CatalogDraft singleton id to 'singleton' with zeroed revisions", async () => {
+    const d = await prisma.catalogDraft.create({ data: { draftSnapshot: {} } });
+    expect(d.id).toBe("singleton");
+    expect(d.draftRevision).toBe(0);
+    expect(d.lastPublishedRevision).toBe(0);
+  });
+
+  it("has a monotonic catalog_release_version_seq (independent of release_version_seq)", async () => {
+    const a =
+      await prisma.$queryRaw<{ nextval: bigint }[]>`SELECT nextval('catalog_release_version_seq')`;
+    const b =
+      await prisma.$queryRaw<{ nextval: bigint }[]>`SELECT nextval('catalog_release_version_seq')`;
+    expect(Number(b[0].nextval)).toBe(Number(a[0].nextval) + 1);
+  });
+
+  it("enforces unique CatalogRelease.version (monotonic-version invariant)", async () => {
+    const u = await makeUser();
+    await makeCatalogRelease(1, u.id, ReleaseStatus.ARCHIVED);
+    await expect(makeCatalogRelease(1, u.id, ReleaseStatus.PUBLISHED)).rejects.toThrow();
+  });
+
+  it("enforces the single-CatalogPublishedPointer invariant via @id singleton + releaseId @unique", async () => {
+    const u = await makeUser();
+    const r2 = await makeCatalogRelease(2, u.id, ReleaseStatus.PUBLISHED);
+    const r3 = await makeCatalogRelease(3, u.id, ReleaseStatus.PUBLISHED);
+    await prisma.catalogPublishedPointer.create({
+      data: { releaseId: r2.id, publishedVersion: 2, publishedById: u.id },
+    });
+    // A second pointer row collides on the singleton PK -> exactly one LIVE catalog release.
+    await expect(
+      prisma.catalogPublishedPointer.create({
+        data: { releaseId: r3.id, publishedVersion: 3, publishedById: u.id },
+      }),
+    ).rejects.toThrow();
   });
 });

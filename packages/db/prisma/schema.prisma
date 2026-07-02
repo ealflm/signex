@@ -42,12 +42,15 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  sessions          Session[]
-  releasesCreated   Release[]  @relation("ReleaseCreatedBy")
-  releasesPublished Release[]  @relation("ReleasePublishedBy")
-  assetsUploaded    Asset[]
-  auditLogs         AuditLog[]
-  themesCreated     Theme[]    @relation("ThemeCreatedBy")
+  sessions                 Session[]
+  releasesCreated          Release[]        @relation("ReleaseCreatedBy")
+  releasesPublished        Release[]        @relation("ReleasePublishedBy")
+  assetsUploaded           Asset[]
+  auditLogs                AuditLog[]
+  themesCreated            Theme[]          @relation("ThemeCreatedBy")
+  catalogReleasesCreated   CatalogRelease[] @relation("CatalogReleaseCreatedBy")
+  catalogReleasesPublished CatalogRelease[] @relation("CatalogReleasePublishedBy")
+  catalogDraftsUpdated     CatalogDraft[]   @relation("CatalogDraftUpdatedBy")
 }
 
 model Session {
@@ -114,7 +117,8 @@ model Asset {
   createdAt    DateTime    @default(now())
   deletedAt    DateTime? // soft-delete; service-layer enforces "no delete while referenced"
 
-  releaseRefs ReleaseAssetRef[] // indexed release<->asset (delete/GC safety)
+  releaseRefs        ReleaseAssetRef[] // indexed release<->asset (delete/GC safety)
+  catalogReleaseRefs CatalogReleaseAssetRef[] // indexed catalogRelease<->asset (delete/GC safety)
 
   @@index([status, kind])
   @@index([deletedAt])
@@ -170,6 +174,7 @@ enum ReleaseStatus {
   PUBLISHED
   ARCHIVED
 }
+
 // DRAFT removed (locked #4: working tables ARE the draft)
 
 model Release {
@@ -237,4 +242,77 @@ model Theme {
   releases              Release[]
 
   @@index([updatedAt])
+}
+
+// ===== GLOBAL CATALOG DOMAIN (independent of themes/content) =====
+// The product catalog is a single GLOBAL entity with its own draft → publish →
+// rollback lifecycle, mirroring the content machinery (Theme + Release +
+// PublishedPointer + ReleaseAssetRef) but scoped to the catalog and NOT tied to
+// any theme. Catalog images are inline FrozenAssets inside the snapshot
+// (self-contained); assetRefs exist only as GC pins.
+
+// Singleton: the one editable global catalog. The admin catalog editor mutates
+// draftSnapshot in place; publish freezes it into a CatalogRelease.
+// draftRevision is the optimistic lock (replaces the theme draftRevision the
+// catalog previously borrowed).
+model CatalogDraft {
+  id                    String   @id @default("singleton")
+  draftSnapshot         Json // full CatalogSnapshot (CatalogSnapshotSchema) — the editable catalog
+  liveSnapshot          Json? // snapshot frozen at the last catalog publish; null if never published
+  draftRevision         Int      @default(0) // optimistic lock (bumped per catalog save-draft)
+  lastPublishedRevision Int      @default(0) // draftRevision at last publish; dirty iff != draftRevision
+  lastPublishedChecksum String? // sha256(liveSnapshot) — gated-no-op + dirty signal
+  updatedById           String?
+  updatedBy             User?    @relation("CatalogDraftUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt             DateTime @updatedAt
+}
+
+// Immutable published catalog. Mirrors Release, catalog-scoped: no themeId, no
+// blocks — just the frozen CatalogSnapshot. version is assigned from the
+// dedicated catalog_release_version_seq Postgres sequence.
+model CatalogRelease {
+  id                    String        @id @default(cuid())
+  version               Int           @unique // assigned from catalog_release_version_seq
+  status                ReleaseStatus @default(PUBLISHED)
+  label                 String?
+  note                  String?
+  snapshot              Json // frozen CatalogSnapshot (CatalogSnapshotSchema)
+  checksum              String // sha256(canonical catalog snapshot)
+  schemaVersion         Int // CATALOG_SCHEMA_VERSION; web gates/migrates on this
+  fromRevision          Int // CatalogDraft.draftRevision at serialize time
+  rolledBackFromVersion Int?
+  createdById           String
+  createdBy             User          @relation("CatalogReleaseCreatedBy", fields: [createdById], references: [id])
+  publishedById         String?
+  publishedBy           User?         @relation("CatalogReleasePublishedBy", fields: [publishedById], references: [id])
+  createdAt             DateTime      @default(now())
+  publishedAt           DateTime?
+
+  assetRefs        CatalogReleaseAssetRef[]
+  publishedPointer CatalogPublishedPointer?
+
+  @@index([status])
+  @@index([version])
+}
+
+// Singleton: which CatalogRelease is LIVE. Repoint = one-row update.
+model CatalogPublishedPointer {
+  id               String         @id @default("singleton")
+  releaseId        String         @unique
+  release          CatalogRelease @relation(fields: [releaseId], references: [id])
+  publishedVersion Int
+  publishedAt      DateTime       @default(now())
+  publishedById    String
+}
+
+// Indexed "which retained catalog release references this asset" — makes
+// delete/GC an O(1) set query for catalog-owned assets.
+model CatalogReleaseAssetRef {
+  releaseId String
+  release   CatalogRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  assetId   String
+  asset     Asset          @relation(fields: [assetId], references: [id])
+
+  @@id([releaseId, assetId])
+  @@index([assetId])
 }
