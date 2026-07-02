@@ -1,24 +1,52 @@
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
-import { getActiveThemeId } from "@/app/lib/themes";
-import type { ReleaseSnapshot, FrozenCategory } from "@signex/shared";
+import { atLeast, type FrozenCategory } from "@signex/shared";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/admin/page-header";
-import { EmptyState } from "@/components/admin/empty-state";
-import { Layers } from "lucide-react";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { CategoriesPanel, type CategoryCardData } from "./categories-panel";
 import { ProductsPanel, type ProductRowData } from "./products-panel";
+import {
+  PublishCatalogButton,
+  RollbackCatalogButton,
+} from "./catalog-release-controls";
 import type { CategoryOption } from "./product-dialog";
 import type { AssetOption } from "./catalog-fields";
 
 // GET /api/assets returns the full AssetDto; the catalog page needs id/status/
-// originalName plus the precomputed public `url` (= MEDIA_PUBLIC_BASE/r2Key) for
-// thumbnails. Other AssetDto fields exist on the payload but are unused here.
+// originalName plus the precomputed public `url` for thumbnails.
 interface AssetListItem {
   id: string;
   status: string;
   originalName: string;
   url: string;
+}
+
+// GET /api/catalog — the global catalog draft.
+interface CatalogDraftResponse {
+  draftRevision: number;
+  lastPublishedRevision: number;
+  dirty: boolean;
+  categories: FrozenCategory[];
+}
+
+// GET /api/catalog/releases — catalog release history (version desc).
+interface CatalogReleaseRow {
+  id: string;
+  version: number;
+  status: "PUBLISHED" | "ARCHIVED";
+  note: string | null;
+  publishedAt: string | null;
+  rolledBackFromVersion: number | null;
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // ── KPI stat cell (divided-bar strip, mirrors the leads KPI strip) ────────────
@@ -52,36 +80,94 @@ function Stat({
   );
 }
 
+// ── Release history (with rollback) ───────────────────────────────────────────
+
+function ReleaseHistory({
+  releases,
+  liveVersion,
+  canPublish,
+}: {
+  releases: CatalogReleaseRow[];
+  liveVersion: number | null;
+  canPublish: boolean;
+}) {
+  if (releases.length === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-semibold text-foreground">Release history</h2>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left">
+              <th className="h-10 px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Version
+              </th>
+              <th className="h-10 px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Status
+              </th>
+              <th className="h-10 px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Published
+              </th>
+              <th className="h-10 px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Note
+              </th>
+              <th className="h-10 px-5" />
+            </tr>
+          </thead>
+          <tbody>
+            {releases.map((r) => {
+              const isLive = r.version === liveVersion;
+              return (
+                <tr
+                  key={r.id}
+                  className="border-b border-border last:border-0 hover:bg-muted/50"
+                >
+                  <td className="px-5 py-3 font-mono tabular-nums text-foreground">
+                    v{r.version}
+                  </td>
+                  <td className="px-5 py-3">
+                    {isLive ? (
+                      <StatusBadge tone="success">Live</StatusBadge>
+                    ) : (
+                      <StatusBadge tone="neutral">Archived</StatusBadge>
+                    )}
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground">
+                    {formatDate(r.publishedAt)}
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground">
+                    {r.note ??
+                      (r.rolledBackFromVersion
+                        ? `Rollback to v${r.rolledBackFromVersion}`
+                        : "—")}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    {canPublish && !isLive && (
+                      <RollbackCatalogButton toVersion={r.version} />
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function CatalogPage() {
-  // Hard role gate — redirects to / if under-ranked
-  await requireRole("EDITOR");
+  // Hard role gate — redirects to / if under-ranked. Returns the session user.
+  const user = await requireRole("EDITOR");
+  const canPublish = atLeast(user.role, "PUBLISHER");
 
-  // Catalog data is read from the active theme's draft snapshot.
-  // There are no standalone catalog GET routes in this API version.
-  const themeId = await getActiveThemeId();
-  if (!themeId) {
-    return (
-      <div className="flex flex-col gap-6">
-        <PageHeader
-          title="Catalog"
-          subtitle="Manage categories and products. Changes stay unpublished until you publish a release."
-        />
-        <div className="rounded-xl border border-dashed border-border">
-          <EmptyState
-            icon={Layers}
-            title="No active theme selected"
-            description="Pick an active theme in the header to manage its catalog."
-          />
-        </div>
-      </div>
-    );
-  }
-
-  const [themeRes, assetsRes] = await Promise.all([
-    apiServer<{ draftSnapshot: ReleaseSnapshot }>(`/api/themes/${themeId}`),
+  const [catalogRes, assetsRes, releasesRes] = await Promise.all([
+    apiServer<CatalogDraftResponse>("/api/catalog"),
     apiServer<AssetListItem[]>("/api/assets"),
+    apiServer<CatalogReleaseRow[]>("/api/catalog/releases"),
   ]);
 
   // assetId → public URL, keyed off the READY assets the API already resolved.
@@ -92,14 +178,8 @@ export default async function CatalogPage() {
   const thumbSrc = (imageId: string | null): string | null =>
     imageId ? (assetUrlById.get(imageId) ?? null) : null;
 
-  // Build rows from the snapshot catalog (each image carries { assetId }).
-  // apiServer does no runtime validation, so guard against a 200 with an
-  // unexpected/empty body rather than crashing the whole route.
-  const cats = (
-    themeRes.ok
-      ? (themeRes.data.draftSnapshot?.catalog?.categories ?? [])
-      : []
-  ) as FrozenCategory[];
+  const draft = catalogRes.ok ? catalogRes.data : null;
+  const cats = (draft?.categories ?? []) as FrozenCategory[];
 
   const categories: CategoryCardData[] = cats.map((c) => {
     const imageId = c.image?.assetId ?? null;
@@ -142,23 +222,45 @@ export default async function CatalogPage() {
     slug,
   }));
 
+  const dirty = draft?.dirty ?? false;
+  const draftRevision = draft?.draftRevision ?? 0;
+  const releases = releasesRes.ok ? releasesRes.data : [];
+  const liveVersion =
+    releases.find((r) => r.status === "PUBLISHED")?.version ?? null;
+
   // KPI numbers
   const totalItems = categories.length + products.length;
   const withImage =
     categories.filter((c) => c.imageSrc).length +
     products.filter((p) => p.imageSrc).length;
 
-  const apiError = !themeRes.ok;
+  const apiError = !catalogRes.ok;
   // Assets drive thumbnails + the image picker. If that call fails while the
-  // theme loads, warn — saving still preserves existing images (the picker
-  // keeps a "Current image (keep)" option), but new images can't be chosen.
-  const assetsError = themeRes.ok && !assetsRes.ok;
+  // catalog loads, warn — saving still preserves existing images.
+  const assetsError = catalogRes.ok && !assetsRes.ok;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Catalog"
-        subtitle="Manage categories and products. Changes stay unpublished until you publish a release."
+        subtitle="One global catalog for the whole site. Edit here, then publish it independently of themes."
+        actions={
+          <div className="flex items-center gap-2">
+            {dirty ? (
+              <StatusBadge tone="warning">Unpublished changes</StatusBadge>
+            ) : (
+              <StatusBadge tone="success">
+                {liveVersion ? `Published · v${liveVersion}` : "Published"}
+              </StatusBadge>
+            )}
+            {canPublish && (
+              <PublishCatalogButton
+                draftRevision={draftRevision}
+                dirty={dirty}
+              />
+            )}
+          </div>
+        }
       />
 
       {apiError && (
@@ -166,7 +268,7 @@ export default async function CatalogPage() {
           role="alert"
           className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          Could not load catalog data. The API may be unavailable.
+          Could not load the catalog. The API may be unavailable.
         </p>
       )}
 
@@ -202,6 +304,12 @@ export default async function CatalogPage() {
         products={products}
         categories={categoryOptions}
         assets={assetOptions}
+      />
+
+      <ReleaseHistory
+        releases={releases}
+        liveVersion={liveVersion}
+        canPublish={canPublish}
       />
     </div>
   );

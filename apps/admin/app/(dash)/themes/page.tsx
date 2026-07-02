@@ -37,7 +37,7 @@ export default async function ThemesPage() {
     <section className="flex flex-col gap-8">
       <PageHeader
         title="Themes"
-        subtitle="Each theme is a saved version of your site. Publish one to make it live for visitors."
+        subtitle="Each theme is a saved version of your site content. Publish one to make it live for visitors. (The product catalog is site-wide — manage and publish it on the Catalog page.)"
         actions={<NewThemeButton themes={themes} />}
       />
 
