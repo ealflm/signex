@@ -130,6 +130,7 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
               <a
                 button=""
                 className="cta_primary w-inline-block"
+                data-cta="nav-quote"
                 data-wf--cta-primary--variant="primary"
                 href="/contact"
               >

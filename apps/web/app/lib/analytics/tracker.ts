@@ -48,6 +48,7 @@ function getSessionId(): string {
 export function getAnalyticsIds(): { visitorId: string; sessionId: string } | null {
   try {
     if (typeof window === "undefined") return null;
+    if (navigator.doNotTrack === "1") return null;
     return { visitorId: getVisitorId(), sessionId: getSessionId() };
   } catch {
     return null;

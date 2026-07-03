@@ -19,3 +19,8 @@ test("tracker persists identity in cookie + sessionStorage", () => {
   assert.match(src, /sessionStorage/, "session id in sessionStorage");
   assert.match(src, /SESSION_GAP_MS = 30 \* 60 \* 1000/, "30-min session window");
 });
+
+test("a real CTA element carries data-cta so cta_click can fire", () => {
+  const navbar = readFileSync(join(dir, "../../components/navbar.tsx"), "utf8");
+  assert.match(navbar, /data-cta/, "navbar must tag its quote CTA with data-cta");
+});

@@ -75,6 +75,7 @@ export function HeroQuoteForm({
       <a
         button=""
         className="cta_primary w-inline-block"
+        data-cta="hero-quote"
         data-wf--cta-primary--variant="primary"
         href="#"
         tabIndex={tabIndex}
