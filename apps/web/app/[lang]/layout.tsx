@@ -12,6 +12,7 @@ import { buildMetadata, THEME_COLOR } from "@/app/lib/seo";
 import { siteAttrs } from "@/app/lib/webflow-bundles";
 import { OrgJsonLd } from "@/app/components/org-json-ld";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { Analytics } from "@/app/components/analytics";
 
 // Verbatim from legacy/caladan/index.html <head>: the FOUC guard hides animated
 // elements until the IX2 runtime adds w-mod-ix3; the shim sets w-mod-js/w-mod-touch early.
@@ -103,6 +104,8 @@ export default async function RootLayout({
         <OrgJsonLd dict={dict} />
         {/* Google Analytics is injected ONLY when a GA4 id is configured (admin → Settings). */}
         {ga4Id ? <GoogleAnalytics gaId={ga4Id} debugMode={gaDebug} /> : null}
+        {/* First-party analytics — parallel to GA4; reads its own /api/collect. */}
+        <Analytics />
         <PreviewBar />
         <WebflowPageAttrs />
         <WebflowRuntime />

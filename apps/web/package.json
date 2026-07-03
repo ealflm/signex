@@ -9,7 +9,7 @@
     "lint": "eslint",
     "verify:readpath": "node scripts/verify-readpath.mjs",
     "verify:dynamic-params": "node scripts/verify-dynamic-params.mjs",
-    "test": "node scripts/verify-readpath.mjs && node scripts/verify-dynamic-params.mjs && node --test test/dynamic-params.test.mjs && node app/api/draft/route.test.mjs && node app/api/revalidate/route.test.mjs && node app/components/static-webflow-form.test.mjs && jiti app/lib/nap.test.mjs"
+    "test": "node scripts/verify-readpath.mjs && node scripts/verify-dynamic-params.mjs && node --test test/dynamic-params.test.mjs && node app/api/draft/route.test.mjs && node app/api/revalidate/route.test.mjs && node app/components/static-webflow-form.test.mjs && jiti app/lib/nap.test.mjs && node --test app/lib/analytics/tracker.test.mjs"
   },
   "dependencies": {
     "@next/third-parties": "^16.2.9",

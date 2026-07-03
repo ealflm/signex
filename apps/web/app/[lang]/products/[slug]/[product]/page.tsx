@@ -15,6 +15,7 @@ import { hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { getSiteContent, type SiteContent } from "@/app/lib/content";
 import { buildMetadata } from "@/app/lib/seo";
 import { ProductImageZoom } from "@/app/components/product-image-zoom";
+import { AnalyticsView } from "@/app/components/analytics-view";
 
 // Under cacheComponents the `dynamicParams` route config is not allowed; slugs
 // not in generateStaticParams render on demand then cache (invalid → notFound in-render).
@@ -61,6 +62,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   return (
     <section className="section_product-detail">
+      <AnalyticsView kind="product_view" catalogSlug={slug} productSlug={product} />
       <div className="padding-global">
         <div className="w-layout-blockcontainer container-large w-container">
           <a className="product-detail_back link-underline tone-medium" href={`/products/${cat.slug}`}>

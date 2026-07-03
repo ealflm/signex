@@ -1,12 +1,13 @@
 // app/components/home/hero-quote-form.tsx
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { STANDARD_VALUES } from "@/app/lib/standard-options";
 import { editText } from "@/app/lib/edit-attrs";
 import { LeadFormNotice } from "@/app/components/lead-form-notice";
 import { LeadUploadField } from "@/app/components/lead-upload-field";
+import { getAnalyticsIds } from "@/app/lib/analytics/tracker";
 
 /**
  * Hero quote form — progressive disclosure, full-width. Text comes from the server-loaded
@@ -33,7 +34,12 @@ export function HeroQuoteForm({
 }) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [expanded, setExpanded] = useState(false);
+  const [ids, setIds] = useState<{ visitorId: string; sessionId: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    setIds(getAnalyticsIds());
+  }, []);
 
   const handleFocus = () => setExpanded(true);
 
@@ -124,6 +130,12 @@ export function HeroQuoteForm({
             onClose={() => setState("idle")}
           />
           <fieldset disabled={state === "sending"} style={{ border: 0, padding: 0, margin: 0 }}>
+          {ids && (
+            <>
+              <input type="hidden" name="visitorId" value={ids.visitorId} />
+              <input type="hidden" name="sessionId" value={ids.sessionId} />
+            </>
+          )}
           <div className="hero-quote_inner">
             {/* ---- Contact info — horizontal bar (always visible) ---- */}
             <div className="hero-quote_bar">

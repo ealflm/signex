@@ -1,8 +1,9 @@
 // app/components/static-webflow-form.tsx
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LeadFormNotice } from "./lead-form-notice";
+import { getAnalyticsIds } from "@/app/lib/analytics/tracker";
 
 type Props = {
   id: string;
@@ -22,7 +23,12 @@ export function StaticWebflowForm({
   id, name, className, formKey, children, successText, failText, ...rest
 }: Props) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [ids, setIds] = useState<{ visitorId: string; sessionId: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    setIds(getAnalyticsIds());
+  }, []);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -66,6 +72,12 @@ export function StaticWebflowForm({
           }
           onClose={() => setState("idle")}
         />
+        {ids && (
+          <>
+            <input type="hidden" name="visitorId" value={ids.visitorId} />
+            <input type="hidden" name="sessionId" value={ids.sessionId} />
+          </>
+        )}
         <fieldset disabled={state === "sending"} style={{ border: 0, padding: 0, margin: 0 }}>
           {children}
         </fieldset>

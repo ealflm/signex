@@ -16,6 +16,7 @@ import { notFound } from "next/navigation";
 import { hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { getSiteContent } from "@/app/lib/content";
 import { buildMetadata } from "@/app/lib/seo";
+import { AnalyticsView } from "@/app/components/analytics-view";
 
 // Under cacheComponents the `dynamicParams` route config is not allowed; slugs
 // not in generateStaticParams render on demand then cache (invalid → notFound in-render).
@@ -46,6 +47,7 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
 
   return (
     <>
+      <AnalyticsView kind="category_view" catalogSlug={slug} />
       {/* Category hero — blog-b's "featured" block, repurposed to present the category itself. */}
       <section className="section_hero-blog-b" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18">
         <div className="padding-global">
