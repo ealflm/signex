@@ -91,8 +91,8 @@ function ProductForm({
         <DialogTitle>{isEdit ? "Edit product" : "New product"}</DialogTitle>
         <DialogDescription>
           {isEdit
-            ? "Update this product. Changes stay unpublished until you publish a release."
-            : "Add a product to a category. It stays unpublished until you publish a release."}
+            ? "Update this product. Changes go live immediately."
+            : "Add a product to this category. It goes live immediately."}
         </DialogDescription>
       </DialogHeader>
 

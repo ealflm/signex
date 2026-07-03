@@ -1,8 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
+
+/** Detail-page path for a category. */
+function detailPath(categoryId: string): string {
+  return `/catalog/categories/${categoryId}`;
+}
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -53,24 +59,28 @@ export async function createCategory(
   // Hard role re-check (affordance from UI is not the gate)
   await requireRole("EDITOR");
 
-  const res = await apiServer(`/api/catalog/categories`, {
-    method: "POST",
-    body: {
-      expectedRevision: await catalogRevision(),
-      slug: String(fd.get("slug") ?? ""),
-      title: localized(fd, "title"),
-      tag: localized(fd, "tag"),
-      intro: localized(fd, "intro"),
-      productCount: Number(fd.get("productCount") ?? 0),
-      materialCount: Number(fd.get("materialCount") ?? 0),
-      imageId: imageId(fd),
+  const res = await apiServer<{ id: string; revision: number }>(
+    `/api/catalog/categories`,
+    {
+      method: "POST",
+      body: {
+        expectedRevision: await catalogRevision(),
+        slug: String(fd.get("slug") ?? ""),
+        title: localized(fd, "title"),
+        tag: localized(fd, "tag"),
+        intro: localized(fd, "intro"),
+        productCount: Number(fd.get("productCount") ?? 0),
+        materialCount: Number(fd.get("materialCount") ?? 0),
+        imageId: imageId(fd),
+      },
     },
-  });
+  );
 
   if (!res.ok) return { error: apiError(res.status, res.error) };
 
   revalidatePath("/catalog");
-  return { success: true };
+  // Jump straight into the new category's detail page to add products.
+  redirect(detailPath(res.data.id));
 }
 
 export async function updateCategory(
@@ -98,6 +108,7 @@ export async function updateCategory(
   if (!res.ok) return { error: apiError(res.status, res.error) };
 
   revalidatePath("/catalog");
+  revalidatePath(detailPath(id));
   return { success: true };
 }
 
@@ -117,7 +128,8 @@ export async function deleteCategory(
   if (!res.ok) return { error: apiError(res.status, res.error) };
 
   revalidatePath("/catalog");
-  return { success: true };
+  // The category is gone — return to the list.
+  redirect("/catalog");
 }
 
 // ── Product actions ───────────────────────────────────────────────────────────
@@ -149,6 +161,7 @@ export async function createProduct(
   if (!res.ok) return { error: apiError(res.status, res.error) };
 
   revalidatePath("/catalog");
+  revalidatePath(detailPath(categoryId));
   return { success: true };
 }
 
@@ -180,6 +193,7 @@ export async function updateProduct(
   if (!res.ok) return { error: apiError(res.status, res.error) };
 
   revalidatePath("/catalog");
+  revalidatePath(detailPath(categoryId));
   return { success: true };
 }
 
@@ -204,5 +218,6 @@ export async function deleteProduct(
   if (!res.ok) return { error: apiError(res.status, res.error) };
 
   revalidatePath("/catalog");
+  revalidatePath(detailPath(categoryId));
   return { success: true };
 }

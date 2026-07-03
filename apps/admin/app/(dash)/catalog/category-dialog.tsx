@@ -86,8 +86,8 @@ function CategoryForm({
         <DialogTitle>{isEdit ? "Edit category" : "New category"}</DialogTitle>
         <DialogDescription>
           {isEdit
-            ? "Update this category. Changes stay unpublished until you publish a release."
-            : "Add a catalog category. It stays unpublished until you publish a release."}
+            ? "Update this category. Changes go live immediately."
+            : "Add a catalog category. It goes live immediately — you'll land on its page to add products."}
         </DialogDescription>
       </DialogHeader>
 

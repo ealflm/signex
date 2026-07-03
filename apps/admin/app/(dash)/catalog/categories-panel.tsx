@@ -1,27 +1,24 @@
 "use client";
 
-import { Layers, Package, Pencil, Ruler } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Layers, Package, Ruler } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/admin/empty-state";
-import { deleteCategory } from "./actions";
-import { CreateCategoryDialog, EditCategoryDialog, type CategoryData } from "./category-dialog";
-import { DeleteButton, type AssetOption } from "./catalog-fields";
+import { CreateCategoryDialog, type CategoryData } from "./category-dialog";
+import { type AssetOption } from "./catalog-fields";
 
 export interface CategoryCardData extends CategoryData {
   /** Resolved public thumbnail URL, or null when unset / not yet READY. */
   imageSrc: string | null;
 }
 
-function CategoryCard({
-  category,
-  assets,
-}: {
-  category: CategoryCardData;
-  assets: AssetOption[];
-}) {
+/** A category card — the whole card links to the category's detail page. */
+function CategoryCard({ category }: { category: CategoryCardData }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-shadow duration-150 hover:shadow-elevated">
+    <Link
+      href={`/catalog/categories/${category.id}`}
+      className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card outline-none transition-shadow duration-150 hover:shadow-elevated focus-visible:ring-[3px] focus-visible:ring-ring/50"
+    >
       <div className="aspect-[4/3] w-full overflow-hidden border-b border-border bg-muted">
         {category.imageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- external MinIO host; thumbnail
@@ -44,15 +41,21 @@ function CategoryCard({
             {category.tag.en}
           </p>
         )}
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <h3 className="truncate text-base font-semibold leading-snug text-foreground">
-            {category.title.en || category.slug}
-          </h3>
-          {category.title.vi && (
-            <p className="truncate text-xs text-muted-foreground" lang="vi">
-              {category.title.vi}
-            </p>
-          )}
+        <div className="flex min-w-0 items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h3 className="truncate text-base font-semibold leading-snug text-foreground">
+              {category.title.en || category.slug}
+            </h3>
+            {category.title.vi && (
+              <p className="truncate text-xs text-muted-foreground" lang="vi">
+                {category.title.vi}
+              </p>
+            )}
+          </div>
+          <ChevronRight
+            className="mt-0.5 size-4 shrink-0 text-muted-foreground/40 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+            aria-hidden
+          />
         </div>
 
         <p className="truncate font-mono text-xs text-muted-foreground" title={category.slug}>
@@ -71,27 +74,8 @@ function CategoryCard({
             <dt>materials</dt>
           </div>
         </dl>
-
-        <div className="mt-auto flex items-center justify-end gap-1 pt-2">
-          <EditCategoryDialog
-            category={category}
-            assets={assets}
-            trigger={
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground hover:text-foreground">
-                <Pencil aria-hidden />
-                Edit
-              </Button>
-            }
-          />
-          <DeleteButton
-            action={deleteCategory}
-            hidden={{ id: category.id }}
-            confirmMessage={`Delete category "${category.slug}"? This cannot be undone.`}
-            srLabel={`Delete category ${category.slug}`}
-          />
-        </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -125,13 +109,9 @@ export function CategoriesPanel({
           />
         </div>
       ) : (
-        <div
-          className={cn(
-            "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4",
-          )}
-        >
+        <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4")}>
           {categories.map((c) => (
-            <CategoryCard key={c.id || c.slug} category={c} assets={assets} />
+            <CategoryCard key={c.id || c.slug} category={c} />
           ))}
         </div>
       )}

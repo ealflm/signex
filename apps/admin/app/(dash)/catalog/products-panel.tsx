@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ImageOff, Package, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,77 +19,66 @@ import {
   type CategoryOption,
   type ProductData,
 } from "./product-dialog";
-import { DeleteButton, nativeSelectCls, type AssetOption } from "./catalog-fields";
+import { DeleteButton, type AssetOption } from "./catalog-fields";
 
 export interface ProductRowData extends ProductData {
   /** Resolved public thumbnail URL, or null when unset / not yet READY. */
   imageSrc: string | null;
-  /** Parent category slug, for the category chip. */
+  /** Parent category slug (kept for keys / labels). */
   categorySlug: string;
 }
 
 const headCls =
   "h-10 px-5 text-xs font-medium uppercase tracking-wide text-muted-foreground";
 
+/**
+ * Products of a SINGLE category, shown on that category's detail page. The
+ * category is fixed (breadcrumb/header already names it), so there is no filter
+ * and no category column; add/edit/delete all operate within this category.
+ */
 export function ProductsPanel({
+  category,
   products,
-  categories,
   assets,
 }: {
+  /** The category this list belongs to (fixes create/edit to it). */
+  category: CategoryOption;
   products: ProductRowData[];
-  categories: CategoryOption[];
   assets: AssetOption[];
 }) {
-  const [filter, setFilter] = useState<string>("all");
-  const filtered =
-    filter === "all" ? products : products.filter((p) => p.categoryId === filter);
+  // The product dialogs take a category list; here it is fixed to this one.
+  const categories = [category];
 
   return (
-    <section className="rounded-xl border border-border bg-card" aria-labelledby="catalog-products-heading">
+    <section
+      className="rounded-xl border border-border bg-card"
+      aria-labelledby="catalog-products-heading"
+    >
       <header className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-baseline gap-2">
-          <h2 id="catalog-products-heading" className="text-sm font-semibold text-foreground">
-            Products
+          <h2
+            id="catalog-products-heading"
+            className="text-sm font-semibold text-foreground"
+          >
+            Products in this category
           </h2>
           <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {filter === "all"
-              ? products.length
-              : `${filtered.length} / ${products.length}`}
+            {products.length}
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Category</span>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              aria-label="Filter products by category"
-              disabled={categories.length === 0}
-              className={cn(nativeSelectCls, "h-8 w-auto min-w-44 text-xs")}
-            >
-              <option value="all">All categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.slug}
-                </option>
-              ))}
-            </select>
-          </label>
-          <CreateProductDialog
-            categories={categories}
-            assets={assets}
-            defaultCategoryId={filter === "all" ? "" : filter}
-            disabled={categories.length === 0}
-          />
-        </div>
+        <CreateProductDialog
+          categories={categories}
+          assets={assets}
+          defaultCategoryId={category.id}
+        />
       </header>
 
       {products.length === 0 ? (
         <EmptyState
           icon={Package}
           title="No products yet"
-          description="Add the first product to one of your categories."
+          description="Add the first product to this category."
         />
       ) : (
         <div className="max-h-[560px] overflow-auto">
@@ -104,9 +92,6 @@ export function ProductsPanel({
                   Slug
                 </TableHead>
                 <TableHead scope="col" className={headCls}>
-                  Category
-                </TableHead>
-                <TableHead scope="col" className={headCls}>
                   Tag
                 </TableHead>
                 <TableHead scope="col" className={cn(headCls, "text-right")}>
@@ -115,7 +100,7 @@ export function ProductsPanel({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((p) => (
+              {products.map((p) => (
                 <TableRow
                   key={p.id || `${p.categorySlug}-${p.slug}`}
                   className="border-border transition-colors duration-150 hover:bg-muted/50"
@@ -150,11 +135,6 @@ export function ProductsPanel({
                   <TableCell className="whitespace-nowrap px-5 py-3 font-mono text-xs tabular-nums text-muted-foreground">
                     {p.slug}
                   </TableCell>
-                  <TableCell className="px-5 py-3">
-                    <span className="inline-flex items-center whitespace-nowrap rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
-                      {p.categorySlug}
-                    </span>
-                  </TableCell>
                   <TableCell className="px-5 py-3 text-xs text-muted-foreground">
                     {p.tag.en}
                   </TableCell>
@@ -187,12 +167,6 @@ export function ProductsPanel({
               ))}
             </TableBody>
           </Table>
-
-          {filtered.length === 0 && (
-            <p className="px-5 py-14 text-center text-sm text-muted-foreground">
-              No products in this category yet.
-            </p>
-          )}
         </div>
       )}
     </section>
