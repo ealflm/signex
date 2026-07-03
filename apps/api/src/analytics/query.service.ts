@@ -6,6 +6,7 @@ import type {
   Channel, ChannelStat, CampaignStat, CatalogStat,
 } from "@signex/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { VALID_FORM_KEYS } from "../forms/dto/forms.dto";
 
 export interface Range { from: string; to: string; }
 
@@ -32,13 +33,19 @@ export class QueryService {
     const occurredAt = bounds(r);
     const startedAt = bounds(r);
     const c = this.prisma.client;
-    const [visitorRows, pageviews, sessions, bounced, agg, leads] = await Promise.all([
+    const [visitorRows, pageviews, sessions, bounced, agg, leads, convertedSessions] = await Promise.all([
       c.analyticsEvent.findMany({ where: { occurredAt }, distinct: ["visitorId"], select: { visitorId: true } }),
       c.analyticsEvent.count({ where: { occurredAt, kind: "page_view" } }),
       c.analyticsSession.count({ where: { startedAt } }),
       c.analyticsSession.count({ where: { startedAt, bounced: true } }),
       c.analyticsSession.aggregate({ where: { startedAt }, _avg: { durationSec: true } }),
-      c.formSubmission.count({ where: { createdAt: startedAt } }),
+      // Headline lead total: real business leads only (unflagged, current form key).
+      // Unattributed rows (no sessionId, e.g. DNT/pre-tracker) are still real leads, so no sessionId filter here.
+      c.formSubmission.count({
+        where: { createdAt: startedAt, flagged: false, formKey: { in: [...VALID_FORM_KEYS] } },
+      }),
+      // Converted-session count backs conversionRate — bounded and consistent with `sessions`.
+      c.analyticsSession.count({ where: { startedAt, converted: true } }),
     ]);
     const visitors = visitorRows.length;
     return {
@@ -48,7 +55,9 @@ export class QueryService {
       avgSessionSec: Math.round(agg._avg.durationSec ?? 0),
       bounceRate: sessions ? bounced / sessions : 0,
       leads,
-      conversionRate: sessions ? leads / sessions : 0,
+      // Intentionally NOT leads/sessions: `leads` may include unattributed rows (honest headline
+      // total), while conversionRate is a bounded (<=1) rate over sessions that actually converted.
+      conversionRate: sessions ? convertedSessions / sessions : 0,
     };
   }
 
@@ -169,7 +178,12 @@ export class QueryService {
       c.analyticsSession.count({ where: { startedAt } }),
       c.analyticsEvent.findMany({ where: { occurredAt, kind: "product_view" }, distinct: ["sessionId"], select: { sessionId: true } }),
       c.analyticsEvent.findMany({ where: { occurredAt, kind: "cta_click" }, distinct: ["sessionId"], select: { sessionId: true } }),
-      c.formSubmission.findMany({ where: { createdAt: startedAt }, select: { sessionId: true } }),
+      // Same attributed, non-spam, current-form-key population as the `attribution` breakdown
+      // below (and as `leads` in kpis()) — keeps the funnel monotonic (Lead <= Visit).
+      c.formSubmission.findMany({
+        where: { createdAt: startedAt, sessionId: { not: null }, flagged: false, formKey: { in: [...VALID_FORM_KEYS] } },
+        select: { sessionId: true },
+      }),
     ]);
     const leads = leadRows.length;
     const first = visits || 1;
