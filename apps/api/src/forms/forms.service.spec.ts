@@ -268,6 +268,40 @@ describe('FormsService', () => {
       expect(data).toMatchObject({ sessionId: null, visitorId: null });
       expect(prisma.client.analyticsSession.updateMany).not.toHaveBeenCalled();
     });
+
+    it('flags a content-duplicate even when sessionId/visitorId differ from the stored (ids-stripped) fingerprint', async () => {
+      const prisma = buildPrisma();
+      // A prior submission's stored payload is content-only (ids are never
+      // persisted inside the payload blob) — this is what isSpam's dedup query
+      // compares against.
+      prisma.client.formSubmission.findMany.mockResolvedValue([
+        {
+          payload: { name: 'A', email: 'a@b.co', message: 'hi' },
+          ip: '9.9.9.9',
+        },
+      ]);
+      const assets = buildAssets();
+      const svc = new FormsService(prisma, assets);
+
+      await svc.submit(
+        'contact',
+        {
+          name: 'A',
+          email: 'a@b.co',
+          message: 'hi',
+          sessionId: 'sDIFF',
+          visitorId: 'vDIFF',
+        },
+        null,
+        '1.1.1.1',
+        'ua',
+      );
+
+      const data = prisma.client.formSubmission.create.mock.calls[0][0].data;
+      // Same content, different session/visitor/ip — dedup must still catch it
+      // because the fingerprint is computed over content only.
+      expect(data.flagged).toBe(true);
+    });
   });
 
   // ─── list ──────────────────────────────────────────────────────────────────

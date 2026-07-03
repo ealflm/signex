@@ -147,15 +147,19 @@ export class FormsService {
       uploadAssetId = assetDto.id;
     }
 
-    // 3. Anti-spam: flag (don't reject) a repeat — identical content, or a burst
+    // 3. Pull attribution ids out BEFORE spam-checking so the dedup fingerprint
+    //    and the stored payload JSON both compare content only (the ids are
+    //    per-session and would otherwise defeat duplicate detection).
+    const { sessionId, visitorId, ...rest } = payload;
+
+    // 4. Anti-spam: flag (don't reject) a repeat — identical content, or a burst
     //    from the same IP, inside the window. Flagged rows stay out of the inbox
     //    and are bulk-clearable; the submitter still gets a normal success.
-    const flagged = await this.isSpam(formKey, payload, ip);
+    const flagged = await this.isSpam(formKey, rest, ip);
 
-    // 4. Persist the submission. The attribution ids are pulled into their own
+    // 5. Persist the submission. The attribution ids are stored in their own
     //    columns (not duplicated inside the payload JSON blob) so the analytics
     //    read-model can join leads back to sessions/visitors.
-    const { sessionId, visitorId, ...rest } = payload;
     await this.prisma.client.formSubmission.create({
       data: {
         formKey: formKey as FormKey,
@@ -169,7 +173,7 @@ export class FormsService {
       },
     });
 
-    // 5. Attribute the lead: flip the matching analytics session to converted.
+    // 6. Attribute the lead: flip the matching analytics session to converted.
     //    updateMany so a missing/expired session id is a silent no-op, never a
     //    throw — attribution is best-effort and must never fail the submit.
     if (sessionId) {
