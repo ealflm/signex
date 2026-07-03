@@ -19,6 +19,16 @@ describe("classifyChannel", () => {
   it("direct when there is no referrer and no utm", () => {
     expect(classifyChannel(undefined, {})).toBe("direct");
   });
+  it("referral (not social) for lookalike hosts x.com / t.co substrings", () => {
+    expect(classifyChannel("https://www.netflix.com/", {})).toBe("referral");
+    expect(classifyChannel("https://box.com/s/abc", {})).toBe("referral");
+    expect(classifyChannel("https://about.co/page", {})).toBe("referral");
+  });
+  it("social for the x.com and t.co shorteners themselves", () => {
+    expect(classifyChannel("https://x.com/user", {})).toBe("social");
+    expect(classifyChannel("https://t.co/abc", {})).toBe("social");
+    expect(classifyChannel("https://twitter.com/user", {})).toBe("social");
+  });
 });
 
 describe("UA parsing", () => {

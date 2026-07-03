@@ -61,4 +61,12 @@ describe("IngestService.ingest", () => {
     const svc = await makeService(prisma);
     await expect(svc.ingest(ev(), ctx)).resolves.toBeUndefined();
   });
+
+  it("still records the event when the session write fails", async () => {
+    const prisma = makePrisma();
+    prisma.client.analyticsSession.findUnique.mockRejectedValue(new Error("session db err"));
+    const svc = await makeService(prisma);
+    await svc.ingest(ev(), ctx);
+    expect(prisma.client.analyticsEvent.create).toHaveBeenCalledTimes(1);
+  });
 });

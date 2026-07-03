@@ -17,13 +17,15 @@ export class IngestService {
   /** Enrich, sessionize (upsert), and store one event. Never throws — the ingest
    *  endpoint is fire-and-forget and must not surface DB errors to the beacon. */
   async ingest(input: CollectEvent, ctx: IngestCtx): Promise<void> {
-    try {
-      const channel = classifyChannel(input.referrer, input);
-      const device = parseDevice(ctx.ua);
-      const browser = parseBrowser(ctx.ua) ?? null;
-      const os = parseOs(ctx.ua) ?? null;
-      const now = new Date();
+    const channel = classifyChannel(input.referrer, input);
+    const device = parseDevice(ctx.ua);
+    const browser = parseBrowser(ctx.ua) ?? null;
+    const os = parseOs(ctx.ua) ?? null;
+    const now = new Date();
 
+    // Session upsert — a denormalized convenience; swallow independently so a
+    // race/failure here never blocks the event insert.
+    try {
       const existing = await this.prisma.client.analyticsSession.findUnique({
         where: { id: input.sessionId },
       });
@@ -70,7 +72,12 @@ export class IngestService {
           },
         });
       }
+    } catch {
+      // session rollup only; events are the source of truth
+    }
 
+    // Event insert — the source of truth; always attempted.
+    try {
       await this.prisma.client.analyticsEvent.create({
         data: {
           occurredAt: now,
@@ -97,7 +104,7 @@ export class IngestService {
         },
       });
     } catch {
-      // fire-and-forget: swallow (a dropped analytics write must not 500 the beacon)
+      // fire-and-forget
     }
   }
 }

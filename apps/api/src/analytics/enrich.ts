@@ -2,20 +2,17 @@
 // Pure server-side enrichment: referrer/utm -> channel, UA -> device/browser/os.
 import type { Channel } from "@signex/shared";
 
-const SEARCH_HOSTS = ["google.", "bing.", "duckduckgo.", "coccoc.", "yahoo.", "yandex."];
-const SOCIAL_HOSTS = [
-  "facebook.", "instagram.", "zalo.", "tiktok.", "youtube.",
-  "linkedin.", "twitter.", "x.com", "t.co", "threads.",
-];
-
-function refHost(referrer?: string): string | null {
-  if (!referrer) return null;
+function hostLabels(referrer?: string): string[] {
+  if (!referrer) return [];
   try {
-    return new URL(referrer).host.toLowerCase();
+    return new URL(referrer).host.toLowerCase().split(".");
   } catch {
-    return null;
+    return [];
   }
 }
+
+const SEARCH_BRANDS = ["google", "bing", "duckduckgo", "coccoc", "yahoo", "yandex"];
+const SOCIAL_BRANDS = ["facebook", "instagram", "zalo", "tiktok", "youtube", "linkedin", "twitter", "x", "t", "threads"];
 
 export function classifyChannel(
   referrer: string | undefined,
@@ -25,10 +22,10 @@ export function classifyChannel(
   const source = (utm.utmSource ?? "").toLowerCase();
   if (/(^|[-_])(cpc|ppc|paid)/.test(medium) || medium === "paidsearch") return "paid";
   if (medium === "email" || source === "newsletter" || source === "email") return "email";
-  const host = refHost(referrer);
-  if (medium === "social" || (host !== null && SOCIAL_HOSTS.some((h) => host.includes(h)))) return "social";
-  if (host !== null && SEARCH_HOSTS.some((h) => host.includes(h))) return "organic";
-  if (host !== null) return "referral";
+  const labels = hostLabels(referrer);
+  if (medium === "social" || SOCIAL_BRANDS.some((b) => labels.includes(b))) return "social";
+  if (SEARCH_BRANDS.some((b) => labels.includes(b))) return "organic";
+  if (labels.length > 0) return "referral";
   return "direct";
 }
 
