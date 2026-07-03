@@ -150,6 +150,9 @@ services:
       # Server-side calls to the api (preview snapshot, form submit forwarding if proxied).
       API_URL: ${API_URL:-http://api:3060}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3060}
+      # GA4 DebugView toggle: GA_DEBUG=1 flags hits as debug (surface in GA4 DebugView)
+      # for local testing. Leave empty in production so real traffic isn't marked debug.
+      GA_DEBUG: ${GA_DEBUG:-}
     ports:
       - "${WEB_PORT:-3062}:3062"
     healthcheck:

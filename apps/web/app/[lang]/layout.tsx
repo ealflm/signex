@@ -65,6 +65,10 @@ export default async function RootLayout({
   // Consent Mode v2 — `gtag('consent','default',{analytics_storage:'denied'})` before the
   // config call, then update on opt-in — NOT the legacy UA `anonymize_ip`. Out of scope here.
   const ga4Id = await getGa4Id();
+  // Optional GA4 DebugView: set GA_DEBUG=1 (server env) to flag hits as debug so
+  // they surface in GA4 → Admin → DebugView while testing. OFF in production so
+  // real traffic is never marked debug (and excluded from standard reports).
+  const gaDebug = process.env.GA_DEBUG === "1";
   return (
     // suppressHydrationWarning: the WF_MOD_SHIM script adds w-mod-js/w-mod-touch to <html> before
     // hydration, and WebflowPageAttrs sets data-wf-page on it — both intentionally diverge from SSR.
@@ -98,7 +102,7 @@ export default async function RootLayout({
         </div>
         <OrgJsonLd dict={dict} />
         {/* Google Analytics is injected ONLY when a GA4 id is configured (admin → Settings). */}
-        {ga4Id ? <GoogleAnalytics gaId={ga4Id} /> : null}
+        {ga4Id ? <GoogleAnalytics gaId={ga4Id} debugMode={gaDebug} /> : null}
         <PreviewBar />
         <WebflowPageAttrs />
         <WebflowRuntime />
