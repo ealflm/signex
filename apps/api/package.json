@@ -18,6 +18,7 @@
     "forms:seed-samples": "node dist/forms/seed-samples",
     "assets:backfill-storage": "node dist/assets/backfill-storage",
     "catalog:backfill": "node dist/catalog/backfill",
+    "seed:analytics": "node dist/analytics/seed-analytics",
     "auth:seed:dev": "ts-node -r tsconfig-paths/register src/auth/seed.ts",
     "db:deploy": "npm run migrate:deploy -w @signex/db && npm run auth:seed -w @signex/api",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
