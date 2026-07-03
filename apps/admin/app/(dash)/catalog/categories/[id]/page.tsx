@@ -4,7 +4,6 @@ import { ChevronRight } from "lucide-react";
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
 import type { FrozenCategory } from "@signex/shared";
-import { PageHeader } from "@/components/admin/page-header";
 import { CategoryDetailsForm } from "../../category-details-form";
 import { ProductsPanel, type ProductRowData } from "../../products-panel";
 import type { CategoryData } from "../../category-dialog";
@@ -125,10 +124,7 @@ export default async function CategoryDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <Breadcrumb current={displayName} />
-        <PageHeader title={displayName} subtitle={category.slug} />
-      </div>
+      <Breadcrumb current={displayName} />
 
       {assetsError && (
         <p
