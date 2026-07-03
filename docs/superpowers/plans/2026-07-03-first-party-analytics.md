@@ -826,9 +826,11 @@ function prismaFor(overview: {
         groupBy: jest.fn().mockResolvedValue([]),
       },
       analyticsSession: {
-        count: jest.fn()
-          .mockResolvedValueOnce(overview.sessions) // total sessions
-          .mockResolvedValueOnce(overview.bounced), // bounced sessions
+        // order-independent: overview() runs kpis(current)+kpis(previous) concurrently,
+        // so key the count on the `where` arg (bounced vs total) rather than call order.
+        count: jest.fn().mockImplementation((args: { where?: { bounced?: boolean } }) =>
+          Promise.resolve(args?.where?.bounced === true ? overview.bounced : overview.sessions),
+        ),
         aggregate: jest.fn().mockResolvedValue(overview.sessionAgg),
       },
       formSubmission: { count: jest.fn().mockResolvedValue(overview.leads) },
@@ -1299,30 +1301,31 @@ Expected: FAIL — `sessionId`/`visitorId` not on the created row / `updateMany`
 
 - [ ] **Step 4: Persist + attribute in the service**
 
-In `apps/api/src/forms/forms.service.ts`, in the `create({ data: {...} })` call add `sessionId`/`visitorId`, and after a successful create flip the session (use `updateMany` so a missing session row is a no-op, never a throw):
+In `apps/api/src/forms/forms.service.ts`, destructure the two attribution ids out of the parsed body so they land in their own columns (not duplicated inside the `payload` JSON blob), then after a successful create flip the session (use `updateMany` so a missing session row is a no-op, never a throw):
 
 ```ts
+const { sessionId, visitorId, ...rest } = payload; // payload is the zod-parsed SubmitInput
 const created = await this.prisma.client.formSubmission.create({
   data: {
     formKey: formKey as FormKey,
-    payload: payload as object,
+    payload: rest as object,
     uploadAssetId,
     ip,
     userAgent,
     flagged,
-    sessionId: payload.sessionId ?? null,
-    visitorId: payload.visitorId ?? null,
+    sessionId: sessionId ?? null,
+    visitorId: visitorId ?? null,
   },
 });
-if (payload.sessionId) {
+if (sessionId) {
   await this.prisma.client.analyticsSession
-    .updateMany({ where: { id: payload.sessionId }, data: { converted: true } })
+    .updateMany({ where: { id: sessionId }, data: { converted: true } })
     .catch(() => undefined);
 }
 return { ok: true };
 ```
 
-> `payload` here is the zod-parsed `SubmitInput`; `sessionId`/`visitorId` are now declared on it (Step 1). If the service stores `payload` verbatim as the JSON blob and you don't want the ids duplicated inside it, destructure them out first: `const { sessionId, visitorId, ...rest } = payload;` and store `rest` in `payload`, `sessionId`/`visitorId` in their columns.
+> Integrate this into the existing `submit()` body: keep the current `flagged` computation and `uploadAssetId` resolution (they run before this create), and only the `create({ data })` call + the post-create session flip change. If `flagged` is derived from `payload` fields (name/email), those remain in `rest`, so its logic is unaffected.
 
 - [ ] **Step 5: Run the test to confirm it passes**
 
@@ -2220,7 +2223,7 @@ Create `apps/api/src/analytics/seed-analytics.ts` — a standalone script (mirro
 Add to `apps/api/package.json` scripts:
 
 ```json
-"seed:analytics": "node dist/src/analytics/seed-analytics"
+"seed:analytics": "node dist/analytics/seed-analytics"
 ```
 
 - [ ] **Step 2: Build the whole repo**
@@ -2233,7 +2236,7 @@ Expected: turbo builds db → shared → api → web → admin in order, all gre
 Run:
 ```bash
 docker compose up -d --build
-docker exec signex-api node dist/src/analytics/seed-analytics
+docker exec signex-api node dist/analytics/seed-analytics
 ```
 Expected: containers healthy; the seed prints e.g. `seeded 200 events / 12 sessions / 3 leads`.
 
