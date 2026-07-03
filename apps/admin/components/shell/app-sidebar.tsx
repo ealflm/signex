@@ -10,6 +10,7 @@ import {
   Users,
   Palette,
   Settings,
+  ChartColumn as AnalyticsIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard, match: "/" },
+  { href: "/analytics", label: "Analytics", icon: AnalyticsIcon, match: "/analytics" },
   { href: "/forms", label: "Leads", icon: Inbox, match: "/forms" },
   { href: "/themes", label: "Themes", icon: Palette, match: "/themes" },
   { href: "/catalog", label: "Catalog", icon: Package, match: "/catalog" },
