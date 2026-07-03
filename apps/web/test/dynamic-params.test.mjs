@@ -87,8 +87,9 @@ test("[lang] layout: renders <GoogleAnalytics> guarded by a non-empty ga4Id from
   // id now comes from the global SiteConfig singleton (admin Settings), read via getGa4Id() —
   // independent of the published theme (GA4 was split out of the theme meta block).
   assert.match(layout, /const\s+ga4Id\s*=\s*await\s+getGa4Id\(\)/);
-  // conditional render: `ga4Id ? <GoogleAnalytics gaId={ga4Id} /> : null` — no id ⇒ nothing.
-  assert.match(layout, /ga4Id\s*\?\s*<GoogleAnalytics\s+gaId=\{ga4Id\}\s*\/>\s*:\s*null/);
+  // conditional render: `ga4Id ? <GoogleAnalytics gaId={ga4Id} ... /> : null` — no id ⇒ nothing.
+  // (allows extra props, e.g. debugMode={gaDebug}, between gaId and the closing tag.)
+  assert.match(layout, /ga4Id\s*\?\s*<GoogleAnalytics\s+gaId=\{ga4Id\}[^>]*\/>\s*:\s*null/);
 });
 
 test("GA4 id is sourced from the SiteConfig loader (getGa4Id), not the theme meta block", () => {
