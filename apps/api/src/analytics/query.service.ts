@@ -180,13 +180,17 @@ export class QueryService {
       { stage: "Lead", count: leads },
     ].map((s) => ({ ...s, pct: s.count / first }));
 
-    // attribution: leads by the channel of their session
+    // attribution: leads by the channel of their session (once per lead, not per session)
     const leadSessionIds = leadRows.map((l) => l.sessionId).filter((x): x is string => !!x);
     const leadSessions = leadSessionIds.length
-      ? await c.analyticsSession.findMany({ where: { id: { in: leadSessionIds } }, select: { channel: true } })
+      ? await c.analyticsSession.findMany({ where: { id: { in: leadSessionIds } }, select: { id: true, channel: true } })
       : [];
+    const channelBySession = new Map(leadSessions.map((s) => [s.id, s.channel]));
     const byChannel = new Map<string, number>();
-    for (const s of leadSessions) byChannel.set(s.channel, (byChannel.get(s.channel) ?? 0) + 1);
+    for (const l of leadRows) {
+      const ch = l.sessionId ? channelBySession.get(l.sessionId) : undefined;
+      if (ch) byChannel.set(ch, (byChannel.get(ch) ?? 0) + 1);
+    }
     const attribution = [...byChannel.entries()].map(([key, leads]) => ({ key, leads }))
       .sort((a, b) => b.leads - a.leads);
     return { stages, attribution };

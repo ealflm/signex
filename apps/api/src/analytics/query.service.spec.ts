@@ -55,3 +55,28 @@ describe("QueryService.overview", () => {
     expect(res.current.conversionRate).toBeCloseTo(0.2, 5);
   });
 });
+
+describe("QueryService.funnel", () => {
+  it("attribution counts once per lead even when one session has multiple leads", async () => {
+    const prisma = {
+      client: {
+        analyticsSession: {
+          count: jest.fn().mockResolvedValue(10),
+          findMany: jest.fn().mockResolvedValue([{ id: "s1", channel: "organic" }]),
+        },
+        analyticsEvent: {
+          findMany: jest.fn().mockImplementation((args: { where: { kind: string } }) =>
+            Promise.resolve([{ sessionId: "s1" }]),
+          ),
+        },
+        formSubmission: {
+          findMany: jest.fn().mockResolvedValue([{ sessionId: "s1" }, { sessionId: "s1" }]),
+        },
+      },
+    };
+    const svc = await make(prisma);
+    const res = await svc.funnel({ from: "2026-06-01T00:00:00.000Z", to: "2026-06-08T00:00:00.000Z" });
+    expect(res.stages.find((s) => s.stage === "Lead")!.count).toBe(2);
+    expect(res.attribution).toEqual([{ key: "organic", leads: 2 }]);
+  });
+});
