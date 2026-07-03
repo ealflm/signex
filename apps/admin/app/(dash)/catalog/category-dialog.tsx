@@ -19,13 +19,12 @@ import { Field } from "@/components/admin/field";
 import { createCategory, updateCategory } from "./actions";
 import {
   ActionFeedback,
-  AssetImageField,
   emptyState,
   LocalizedField,
   SubmitButton,
-  type AssetOption,
   type Loc,
 } from "./catalog-fields";
+import { CatalogImagePicker } from "./catalog-image-picker";
 
 export interface CategoryData {
   id: string;
@@ -61,12 +60,10 @@ const EMPTY_CATEGORY: CategoryData = {
 function CategoryForm({
   mode,
   category,
-  assets,
   onSuccess,
 }: {
   mode: "create" | "edit";
   category: CategoryData;
-  assets: AssetOption[];
   onSuccess: () => void;
 }) {
   const isEdit = mode === "edit";
@@ -134,10 +131,10 @@ function CategoryForm({
           </Field>
         </div>
 
-        <AssetImageField
-          assets={assets}
-          defaultValue={category.imageId}
-          id={`${idBase}-image`}
+        <CatalogImagePicker
+          field="catalog.category.image"
+          defaultImageId={category.imageId}
+          defaultImageUrl={null}
         />
 
         <DialogFooter className="gap-2 pt-2">
@@ -160,12 +157,10 @@ function CategoryForm({
 function CategoryDialog({
   mode,
   category = EMPTY_CATEGORY,
-  assets,
   trigger,
 }: {
   mode: "create" | "edit";
   category?: CategoryData;
-  assets: AssetOption[];
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -176,7 +171,6 @@ function CategoryDialog({
         <CategoryForm
           mode={mode}
           category={category}
-          assets={assets}
           onSuccess={() => setOpen(false)}
         />
       </DialogContent>
@@ -184,11 +178,10 @@ function CategoryDialog({
   );
 }
 
-export function CreateCategoryDialog({ assets }: { assets: AssetOption[] }) {
+export function CreateCategoryDialog() {
   return (
     <CategoryDialog
       mode="create"
-      assets={assets}
       trigger={
         <Button size="sm" className="h-8 gap-1.5">
           <Plus aria-hidden />
@@ -201,14 +194,12 @@ export function CreateCategoryDialog({ assets }: { assets: AssetOption[] }) {
 
 export function EditCategoryDialog({
   category,
-  assets,
   trigger,
 }: {
   category: CategoryData;
-  assets: AssetOption[];
   trigger: React.ReactNode;
 }) {
   return (
-    <CategoryDialog mode="edit" category={category} assets={assets} trigger={trigger} />
+    <CategoryDialog mode="edit" category={category} trigger={trigger} />
   );
 }

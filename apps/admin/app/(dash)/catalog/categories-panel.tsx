@@ -5,7 +5,6 @@ import { ChevronRight, Layers, Package, Ruler } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/admin/empty-state";
 import { CreateCategoryDialog, type CategoryData } from "./category-dialog";
-import { type AssetOption } from "./catalog-fields";
 
 export interface CategoryCardData extends CategoryData {
   /** Resolved public thumbnail URL, or null when unset / not yet READY. */
@@ -81,10 +80,8 @@ function CategoryCard({ category }: { category: CategoryCardData }) {
 
 export function CategoriesPanel({
   categories,
-  assets,
 }: {
   categories: CategoryCardData[];
-  assets: AssetOption[];
 }) {
   return (
     <section className="flex flex-col gap-4" aria-labelledby="catalog-categories-heading">
@@ -97,7 +94,7 @@ export function CategoriesPanel({
             {categories.length}
           </span>
         </div>
-        <CreateCategoryDialog assets={assets} />
+        <CreateCategoryDialog />
       </header>
 
       {categories.length === 0 ? (

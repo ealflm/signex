@@ -19,14 +19,13 @@ import { Field } from "@/components/admin/field";
 import { createProduct, updateProduct } from "./actions";
 import {
   ActionFeedback,
-  AssetImageField,
   emptyState,
   LocalizedField,
   nativeSelectCls,
   SubmitButton,
-  type AssetOption,
   type Loc,
 } from "./catalog-fields";
+import { CatalogImagePicker } from "./catalog-image-picker";
 
 export interface ProductData {
   id: string;
@@ -36,6 +35,8 @@ export interface ProductData {
   tag: Loc;
   desc: Loc;
   imageId: string | null;
+  /** Server-resolved URL of the current image, for the picker preview. */
+  imageUrl: string | null;
 }
 
 export interface CategoryOption {
@@ -52,6 +53,7 @@ function emptyProduct(categoryId: string): ProductData {
     tag: { en: "", vi: "" },
     desc: { en: "", vi: "" },
     imageId: null,
+    imageUrl: null,
   };
 }
 
@@ -65,13 +67,11 @@ function ProductForm({
   mode,
   product,
   categories,
-  assets,
   onSuccess,
 }: {
   mode: "create" | "edit";
   product: ProductData;
   categories: CategoryOption[];
-  assets: AssetOption[];
   onSuccess: () => void;
 }) {
   const isEdit = mode === "edit";
@@ -138,10 +138,10 @@ function ProductForm({
         <LocalizedField base="tag" label="Tag" value={product.tag} />
         <LocalizedField base="desc" label="Description" value={product.desc} multiline />
 
-        <AssetImageField
-          assets={assets}
-          defaultValue={product.imageId}
-          id={`${idBase}-image`}
+        <CatalogImagePicker
+          field="catalog.product.image"
+          defaultImageId={product.imageId}
+          defaultImageUrl={product.imageUrl}
         />
 
         <DialogFooter className="gap-2 pt-2">
@@ -165,13 +165,11 @@ function ProductDialog({
   mode,
   product,
   categories,
-  assets,
   trigger,
 }: {
   mode: "create" | "edit";
   product: ProductData;
   categories: CategoryOption[];
-  assets: AssetOption[];
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -183,7 +181,6 @@ function ProductDialog({
           mode={mode}
           product={product}
           categories={categories}
-          assets={assets}
           onSuccess={() => setOpen(false)}
         />
       </DialogContent>
@@ -193,12 +190,10 @@ function ProductDialog({
 
 export function CreateProductDialog({
   categories,
-  assets,
   defaultCategoryId = "",
   disabled = false,
 }: {
   categories: CategoryOption[];
-  assets: AssetOption[];
   /** Pre-select a category (e.g. the current products filter). */
   defaultCategoryId?: string;
   /** Disabled when there are no categories to add a product to. */
@@ -209,7 +204,6 @@ export function CreateProductDialog({
       mode="create"
       product={emptyProduct(defaultCategoryId)}
       categories={categories}
-      assets={assets}
       trigger={
         <Button
           size="sm"
@@ -228,12 +222,10 @@ export function CreateProductDialog({
 export function EditProductDialog({
   product,
   categories,
-  assets,
   trigger,
 }: {
   product: ProductData;
   categories: CategoryOption[];
-  assets: AssetOption[];
   trigger: React.ReactNode;
 }) {
   return (
@@ -241,7 +233,6 @@ export function EditProductDialog({
       mode="edit"
       product={product}
       categories={categories}
-      assets={assets}
       trigger={trigger}
     />
   );

@@ -1,11 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { ImageOff, Loader2, Trash2 } from "lucide-react";
+import { useActionState } from "react";
+import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import type { CatalogActionState } from "./actions";
 
 // ── Shared shapes ─────────────────────────────────────────────────────────────
@@ -13,13 +12,6 @@ import type { CatalogActionState } from "./actions";
 export interface Loc {
   en: string;
   vi: string;
-}
-
-/** Asset picker option — `url` drives the inline thumbnail preview. */
-export interface AssetOption {
-  id: string;
-  originalName: string;
-  url: string;
 }
 
 export type CatalogAction = (
@@ -97,66 +89,6 @@ export function LocalizedField({
         ))}
       </div>
     </fieldset>
-  );
-}
-
-// ── Image picker with live thumbnail preview ──────────────────────────────────
-
-/**
- * Native <select name="imageId"> paired with a live thumbnail of the current
- * choice, so the editor sees the picture instead of a hashed filename.
- */
-export function AssetImageField({
-  assets,
-  defaultValue,
-  id,
-}: {
-  assets: AssetOption[];
-  defaultValue: string | null;
-  id: string;
-}) {
-  const [selected, setSelected] = useState<string>(defaultValue ?? "");
-  const url = assets.find((a) => a.id === selected)?.url ?? null;
-  // A currently-linked image whose asset isn't in the READY list (still
-  // processing, deleted, or the media API is down) has no matching <option>.
-  // A controlled <select> with a value that matches no option submits "" and,
-  // because the update is a full-body replace, would silently wipe the image.
-  // Keep a synthetic option so the current id stays selected and is re-posted.
-  const orphanCurrent = selected !== "" && !assets.some((a) => a.id === selected);
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="text-sm font-medium">
-        Image
-      </Label>
-      <div className="flex items-center gap-3">
-        <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-          {url ? (
-            // eslint-disable-next-line @next/next/no-img-element -- external MinIO host; thumbnail preview
-            <img src={url} alt="" className="size-full object-cover" />
-          ) : (
-            <ImageOff className="size-4 text-muted-foreground/60" aria-hidden />
-          )}
-        </span>
-        <select
-          id={id}
-          name="imageId"
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          className={nativeSelectCls}
-        >
-          <option value="">— none —</option>
-          {orphanCurrent && (
-            <option value={selected}>Current image (keep)</option>
-          )}
-          {assets.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.originalName}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
   );
 }
 

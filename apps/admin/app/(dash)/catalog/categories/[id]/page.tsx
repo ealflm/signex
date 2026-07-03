@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/admin/page-header";
 import { CategoryDetailsForm } from "../../category-details-form";
 import { ProductsPanel, type ProductRowData } from "../../products-panel";
 import type { CategoryData } from "../../category-dialog";
-import type { AssetOption } from "../../catalog-fields";
 
 interface AssetListItem {
   id: string;
@@ -116,14 +115,10 @@ export default async function CategoryDetailPage({
       tag: p.tag,
       desc: p.desc,
       imageId,
-      imageSrc: thumbSrc(imageId),
+      imageUrl: thumbSrc(imageId),
       categorySlug: category.slug,
     };
   });
-
-  const assetOptions: AssetOption[] = readyAssets.map(
-    ({ id, originalName, url }) => ({ id, originalName, url }),
-  );
 
   const displayName = category.title.en || category.slug;
   const assetsError = !assetsRes.ok;
@@ -140,21 +135,20 @@ export default async function CategoryDetailPage({
           role="alert"
           className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
         >
-          Media library unavailable — thumbnails and the image picker are
-          disabled. Existing images are preserved when you save.
+          Media library unavailable — thumbnails can’t load. Existing images are
+          preserved when you save.
         </p>
       )}
 
       <CategoryDetailsForm
         category={categoryData}
-        assets={assetOptions}
+        defaultImageUrl={thumbSrc(categoryData.imageId)}
         productCount={products.length}
       />
 
       <ProductsPanel
         category={{ id: categoryData.id, slug: categoryData.slug }}
         products={products}
-        assets={assetOptions}
       />
     </div>
   );

@@ -8,12 +8,11 @@ import { Field } from "@/components/admin/field";
 import { deleteCategory, updateCategory } from "./actions";
 import {
   ActionFeedback,
-  AssetImageField,
   emptyState,
   LocalizedField,
-  type AssetOption,
 } from "./catalog-fields";
 import type { CategoryData } from "./category-dialog";
+import { CatalogImagePicker } from "./catalog-image-picker";
 
 /**
  * Inline editor for a category's own fields, rendered on the category detail
@@ -26,11 +25,12 @@ import type { CategoryData } from "./category-dialog";
  */
 export function CategoryDetailsForm({
   category,
-  assets,
+  defaultImageUrl,
   productCount,
 }: {
   category: CategoryData;
-  assets: AssetOption[];
+  /** Server-resolved URL of the current image, for the preview (null if none). */
+  defaultImageUrl: string | null;
   /** Number of products in this category, for the delete confirmation copy. */
   productCount: number;
 }) {
@@ -151,10 +151,10 @@ export function CategoryDetailsForm({
           </Field>
         </div>
 
-        <AssetImageField
-          assets={assets}
-          defaultValue={category.imageId}
-          id={`${idBase}-image`}
+        <CatalogImagePicker
+          field="catalog.category.image"
+          defaultImageId={category.imageId}
+          defaultImageUrl={defaultImageUrl}
         />
 
         <div className="flex justify-end pt-1">

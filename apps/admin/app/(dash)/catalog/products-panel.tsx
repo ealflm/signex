@@ -19,11 +19,9 @@ import {
   type CategoryOption,
   type ProductData,
 } from "./product-dialog";
-import { DeleteButton, type AssetOption } from "./catalog-fields";
+import { DeleteButton } from "./catalog-fields";
 
 export interface ProductRowData extends ProductData {
-  /** Resolved public thumbnail URL, or null when unset / not yet READY. */
-  imageSrc: string | null;
   /** Parent category slug (kept for keys / labels). */
   categorySlug: string;
 }
@@ -39,12 +37,10 @@ const headCls =
 export function ProductsPanel({
   category,
   products,
-  assets,
 }: {
   /** The category this list belongs to (fixes create/edit to it). */
   category: CategoryOption;
   products: ProductRowData[];
-  assets: AssetOption[];
 }) {
   // The product dialogs take a category list; here it is fixed to this one.
   const categories = [category];
@@ -69,7 +65,6 @@ export function ProductsPanel({
 
         <CreateProductDialog
           categories={categories}
-          assets={assets}
           defaultCategoryId={category.id}
         />
       </header>
@@ -108,10 +103,10 @@ export function ProductsPanel({
                   <TableCell className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-                        {p.imageSrc ? (
+                        {p.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element -- external MinIO host; thumbnail
                           <img
-                            src={p.imageSrc}
+                            src={p.imageUrl}
                             alt=""
                             loading="lazy"
                             className="size-full object-cover"
@@ -143,7 +138,6 @@ export function ProductsPanel({
                       <EditProductDialog
                         product={p}
                         categories={categories}
-                        assets={assets}
                         trigger={
                           <Button
                             variant="ghost"

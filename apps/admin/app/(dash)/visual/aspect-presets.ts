@@ -40,6 +40,8 @@ export function defaultPresetId(field: string | undefined): string {
 // Human-friendly caption for an edit field (block.path), so editors see "Home hero image" instead
 // of the raw `hero.image` dot-path. Returns null for unmapped fields (caller falls back to the code).
 const FIELD_LABEL: Record<string, string> = {
+  "catalog.category.image": "Category image",
+  "catalog.product.image": "Product image",
   "hero.image": "Home hero image",
   "contactPage.hero.image": "Contact hero image",
   "aboutPage.testimonial.image": "Testimonial photo",

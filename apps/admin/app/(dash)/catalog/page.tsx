@@ -3,7 +3,6 @@ import { apiServer } from "@/app/lib/api";
 import type { FrozenCategory } from "@signex/shared";
 import { PageHeader } from "@/components/admin/page-header";
 import { CategoriesPanel, type CategoryCardData } from "./categories-panel";
-import type { AssetOption } from "./catalog-fields";
 
 // GET /api/assets returns the full AssetDto; the catalog page needs id/status/
 // originalName plus the precomputed public `url` for thumbnails.
@@ -56,14 +55,10 @@ export default async function CatalogPage() {
     };
   });
 
-  // Slim shape for the create-category dialog's image picker.
-  const assetOptions: AssetOption[] = readyAssets.map(
-    ({ id, originalName, url }) => ({ id, originalName, url }),
-  );
-
   const apiError = !catalogRes.ok;
-  // Assets drive thumbnails + the image picker. If that call fails while the
-  // catalog loads, warn — saving still preserves existing images.
+  // Assets drive the category card thumbnails. If that call fails while the
+  // catalog loads, warn — saving still preserves existing images, and the image
+  // picker fetches its own library on demand.
   const assetsError = catalogRes.ok && !assetsRes.ok;
 
   return (
@@ -87,12 +82,12 @@ export default async function CatalogPage() {
           role="alert"
           className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
         >
-          Media library unavailable — thumbnails and the image picker are
-          disabled. Existing images are preserved when you save.
+          Media library unavailable — category thumbnails can’t load. Existing
+          images are preserved when you save.
         </p>
       )}
 
-      <CategoriesPanel categories={categories} assets={assetOptions} />
+      <CategoriesPanel categories={categories} />
     </div>
   );
 }
