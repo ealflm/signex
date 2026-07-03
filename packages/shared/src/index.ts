@@ -35,6 +35,7 @@ export * from "./content/registry";
 export * from "./content/catalog";
 export * from "./content/release";
 export * from "./auth";
+export * from "./analytics";
 
 /** Re-export zod so consumers can build/extend schemas without their own dep. */
 export { z };
