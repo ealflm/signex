@@ -159,11 +159,78 @@ model FormSubmission {
   flagged       Boolean          @default(false) // spam/duplicate marker — hidden from the inbox, bulk-clearable
   ip            String?
   userAgent     String?
+  sessionId     String? // analytics session that produced this lead (attribution join)
+  visitorId     String? // analytics visitor (cross-session attribution)
   createdAt     DateTime         @default(now())
 
   @@index([formKey, status])
   @@index([createdAt])
   @@index([flagged, createdAt])
+  @@index([sessionId])
+}
+
+// ===== ANALYTICS (first-party; operational-only, NOT in snapshots) =====
+// Raw events are the source of truth for all metrics; AnalyticsSession is a
+// denormalized convenience for channel/entry attribution + bounce/duration.
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  occurredAt  DateTime @default(now())
+  visitorId   String // sx_vid cookie, sent in the beacon payload
+  sessionId   String // 30-min inactivity window
+  kind        String // page_view|scroll|cta_click|outbound_click|category_view|product_view
+  path        String
+  title       String?
+  referrer    String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmTerm     String?
+  utmContent  String?
+  channel     String // direct|organic|social|referral|paid|email (server-derived)
+  country     String? // ISO-2, derived from IP; raw IP is never stored
+  device      String // mobile|tablet|desktop (UA-derived)
+  browser     String?
+  os          String?
+  lang        String?
+  catalogSlug String? // category slug for category_view
+  productSlug String? // product slug for product_view
+  meta        Json? // {depth}|{ctaId}|{href}
+
+  @@index([occurredAt])
+  @@index([kind, occurredAt])
+  @@index([sessionId])
+  @@index([visitorId])
+  @@index([catalogSlug])
+  @@index([productSlug])
+}
+
+model AnalyticsSession {
+  id          String   @id // the client sessionId
+  visitorId   String
+  startedAt   DateTime @default(now())
+  lastSeenAt  DateTime @updatedAt
+  entryPath   String
+  exitPath    String?
+  referrer    String?
+  channel     String
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  country     String?
+  device      String
+  browser     String?
+  os          String?
+  lang        String?
+  pageviews   Int      @default(0)
+  eventsCount Int      @default(0)
+  bounced     Boolean  @default(true)
+  durationSec Int      @default(0)
+  converted   Boolean  @default(false) // a lead linked this session
+
+  @@index([startedAt])
+  @@index([visitorId])
+  @@index([channel])
+  @@index([converted])
 }
 
 // ===== VERSIONING =====
