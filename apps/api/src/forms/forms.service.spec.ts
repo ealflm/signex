@@ -17,6 +17,11 @@ function buildPrisma(created: Record<string, unknown> = { id: 'sub_1' }) {
       asset: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      // analyticsSession.updateMany flips the matching session to converted
+      // (Task 5 lead attribution) — updateMany so a missing session is a no-op.
+      analyticsSession: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
     },
   } as any;
 }
@@ -225,6 +230,43 @@ describe('FormsService', () => {
       expect(prisma.client.formSubmission.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ ip: '1.2.3.4' }),
       });
+    });
+  });
+
+  describe('submit — attribution (sessionId/visitorId)', () => {
+    it('persists sessionId/visitorId and flips the session to converted', async () => {
+      const prisma = buildPrisma();
+      const assets = buildAssets();
+      const svc = new FormsService(prisma, assets);
+
+      await svc.submit(
+        'contact',
+        { ...validPayload, sessionId: 's1', visitorId: 'v1' },
+        null,
+        '1.2.3.4',
+        'ua',
+      );
+
+      const data = prisma.client.formSubmission.create.mock.calls[0][0].data;
+      expect(data).toMatchObject({ sessionId: 's1', visitorId: 'v1' });
+      // The attribution ids must not be duplicated inside the payload JSON blob.
+      expect(data.payload).toEqual(validPayload);
+      expect(prisma.client.analyticsSession.updateMany).toHaveBeenCalledWith({
+        where: { id: 's1' },
+        data: { converted: true },
+      });
+    });
+
+    it('omits the converted flip when no sessionId is provided', async () => {
+      const prisma = buildPrisma();
+      const assets = buildAssets();
+      const svc = new FormsService(prisma, assets);
+
+      await svc.submit('contact', validPayload, null, null, null);
+
+      const data = prisma.client.formSubmission.create.mock.calls[0][0].data;
+      expect(data).toMatchObject({ sessionId: null, visitorId: null });
+      expect(prisma.client.analyticsSession.updateMany).not.toHaveBeenCalled();
     });
   });
 

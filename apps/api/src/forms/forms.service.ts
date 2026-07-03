@@ -152,17 +152,31 @@ export class FormsService {
     //    and are bulk-clearable; the submitter still gets a normal success.
     const flagged = await this.isSpam(formKey, payload, ip);
 
-    // 4. Persist the submission
+    // 4. Persist the submission. The attribution ids are pulled into their own
+    //    columns (not duplicated inside the payload JSON blob) so the analytics
+    //    read-model can join leads back to sessions/visitors.
+    const { sessionId, visitorId, ...rest } = payload;
     await this.prisma.client.formSubmission.create({
       data: {
         formKey: formKey as FormKey,
-        payload: payload as object,
+        payload: rest as object,
         uploadAssetId,
         ip,
         userAgent,
         flagged,
+        sessionId: sessionId ?? null,
+        visitorId: visitorId ?? null,
       },
     });
+
+    // 5. Attribute the lead: flip the matching analytics session to converted.
+    //    updateMany so a missing/expired session id is a silent no-op, never a
+    //    throw — attribution is best-effort and must never fail the submit.
+    if (sessionId) {
+      await this.prisma.client.analyticsSession
+        .updateMany({ where: { id: sessionId }, data: { converted: true } })
+        .catch(() => undefined);
+    }
 
     return { ok: true };
   }

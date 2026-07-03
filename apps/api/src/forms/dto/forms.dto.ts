@@ -24,6 +24,8 @@ export const submitSchema = z.object({
   height: z.string().max(50).optional(),
   width: z.string().max(50).optional(),
   thickness: z.string().max(50).optional(),
+  visitorId: z.string().max(64).optional(),
+  sessionId: z.string().max(64).optional(),
 });
 
 export type SubmitInput = z.infer<typeof submitSchema>;
