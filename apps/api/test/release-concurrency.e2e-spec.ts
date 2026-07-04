@@ -22,7 +22,7 @@ import { BLOCK_FIXTURES } from '../src/release/__fixtures__/blocks.fixture';
 const DESCRIBE = process.env.DATABASE_URL ? describe : describe.skip;
 
 // ── constants ──────────────────────────────────────────────────────────────────
-const TEST_USER_EMAIL = 'e2e-concurrency@signex.test';
+const TEST_USER_USERNAME = 'e2e-concurrency';
 
 /**
  * The assetId used by the blocks fixture (hero, nav, meta, notFound).
@@ -66,22 +66,22 @@ DESCRIBE('Release concurrency (integration)', () => {
     // ── Clean slate ────────────────────────────────────────────────────────────
     // Teardown any leftovers from a previous aborted run, in FK-safe order.
     await prisma.publishedPointer.deleteMany({
-      where: { release: { createdBy: { email: { endsWith: '.test' } } } },
+      where: { release: { createdBy: { username: { startsWith: 'e2e' } } } },
     });
     await prisma.releaseAssetRef.deleteMany({
       where: { assetId: FIXTURE_ASSET_ID },
     });
     await prisma.release.deleteMany({
-      where: { createdBy: { email: { endsWith: '.test' } } },
+      where: { createdBy: { username: { startsWith: 'e2e' } } },
     });
     await prisma.session.deleteMany({
-      where: { user: { email: { endsWith: '.test' } } },
+      where: { user: { username: { startsWith: 'e2e' } } },
     });
     await prisma.auditLog.deleteMany({
-      where: { user: { email: { endsWith: '.test' } } },
+      where: { user: { username: { startsWith: 'e2e' } } },
     });
     await prisma.user.deleteMany({
-      where: { email: { endsWith: '.test' } },
+      where: { username: { startsWith: 'e2e' } },
     });
     await prisma.contentBlock.deleteMany({
       where: { key: { in: BLOCK_ROWS.map((r) => r.key) } },
@@ -90,10 +90,10 @@ DESCRIBE('Release concurrency (integration)', () => {
 
     // ── Seed test user ─────────────────────────────────────────────────────────
     const user = await prisma.user.upsert({
-      where: { email: TEST_USER_EMAIL },
+      where: { username: TEST_USER_USERNAME },
       update: {},
       create: {
-        email: TEST_USER_EMAIL,
+        username: TEST_USER_USERNAME,
         name: 'E2E Concurrency',
         passwordHash: 'x',
         role: 'ADMIN',
@@ -145,7 +145,7 @@ DESCRIBE('Release concurrency (integration)', () => {
     // ── Full cleanup in FK-safe order ──────────────────────────────────────────
     // PublishedPointer.releaseId RESTRICT — delete pointers before releases.
     await prisma.publishedPointer.deleteMany({
-      where: { release: { createdBy: { email: { endsWith: '.test' } } } },
+      where: { release: { createdBy: { username: { startsWith: 'e2e' } } } },
     });
     // ReleaseAssetRef.releaseId RESTRICT — delete asset refs before releases.
     // Also delete ReleaseAssetRef rows that reference our test asset.
@@ -154,19 +154,19 @@ DESCRIBE('Release concurrency (integration)', () => {
     });
     // Release.createdById RESTRICT — delete releases before users.
     await prisma.release.deleteMany({
-      where: { createdBy: { email: { endsWith: '.test' } } },
+      where: { createdBy: { username: { startsWith: 'e2e' } } },
     });
     // Session CASCADE from User — explicit delete is cleaner.
     await prisma.session.deleteMany({
-      where: { user: { email: { endsWith: '.test' } } },
+      where: { user: { username: { startsWith: 'e2e' } } },
     });
     // AuditLog.userId SET NULL — delete audit entries for test users.
     await prisma.auditLog.deleteMany({
-      where: { user: { email: { endsWith: '.test' } } },
+      where: { user: { username: { startsWith: 'e2e' } } },
     });
     // Remove test user.
     await prisma.user.deleteMany({
-      where: { email: { endsWith: '.test' } },
+      where: { username: { startsWith: 'e2e' } },
     });
     // Remove seeded content blocks.
     await prisma.contentBlock.deleteMany({

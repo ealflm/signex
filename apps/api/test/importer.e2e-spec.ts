@@ -54,9 +54,9 @@ DESCRIBE('importer (e2e)', () => {
   let res: { version: number; releaseId: string; snapshotPath: string };
 
   beforeAll(async () => {
-    // ── Ensure SEED_ADMIN_EMAIL is set (setup-env loads .env; assert here) ────
-    if (!process.env.SEED_ADMIN_EMAIL) {
-      process.env.SEED_ADMIN_EMAIL = 'admin@signex.local';
+    // ── Ensure SEED_ADMIN_USERNAME is set (setup-env loads .env; assert here) ──
+    if (!process.env.SEED_ADMIN_USERNAME) {
+      process.env.SEED_ADMIN_USERNAME = 'admin';
     }
 
     // ── Clean importer-created tables in FK-safe order ────────────────────────
@@ -82,7 +82,7 @@ DESCRIBE('importer (e2e)', () => {
       `ALTER SEQUENCE release_version_seq RESTART WITH 1`,
     );
 
-    // ── Ensure the seeded system admin exists (importer looks up by email) ────
+    // ── Ensure the seeded system admin exists (importer looks up by id) ──────
     // hashPassword matches the same scrypt path login verifies.
     const passwordHash = await hashPassword(
       process.env.SEED_ADMIN_PASSWORD ?? 'change-me-please-now',
@@ -91,14 +91,14 @@ DESCRIBE('importer (e2e)', () => {
       where: { id: SYSTEM_USER_ID },
       create: {
         id: SYSTEM_USER_ID,
-        email: process.env.SEED_ADMIN_EMAIL,
+        username: process.env.SEED_ADMIN_USERNAME,
         name: process.env.SEED_ADMIN_NAME ?? 'System Admin',
         passwordHash,
         role: 'ADMIN',
         isActive: true,
       },
       update: {
-        email: process.env.SEED_ADMIN_EMAIL,
+        username: process.env.SEED_ADMIN_USERNAME,
         role: 'ADMIN',
         isActive: true,
       },

@@ -76,7 +76,7 @@ describe('UsersService', () => {
       user: {
         update: jest.fn().mockResolvedValue({
           id: 'u1',
-          email: 'a@b.com',
+          username: 'a',
           name: 'A',
           passwordHash: 'h',
           role: 'EDITOR',
@@ -97,7 +97,7 @@ describe('UsersService', () => {
       user: {
         update: jest.fn().mockResolvedValue({
           id: 'u1',
-          email: 'a@b.com',
+          username: 'a',
           name: 'A2',
           passwordHash: 'h',
           role: 'ADMIN',
@@ -115,7 +115,7 @@ describe('UsersService', () => {
       user: {
         update: jest.fn().mockResolvedValue({
           id: 'u1',
-          email: 'a@b.com',
+          username: 'a',
           name: 'A',
           passwordHash: 'h',
           role: 'EDITOR',
@@ -169,7 +169,7 @@ describe('UsersService', () => {
         count: jest.fn().mockResolvedValue(2), // a second active admin exists
         update: jest.fn().mockResolvedValue({
           id: 'u1',
-          email: 'a@b.com',
+          username: 'a',
           name: 'A',
           role: 'ADMIN',
           isActive: false,
@@ -215,7 +215,7 @@ describe('UsersService', () => {
       user: {
         update: jest.fn().mockResolvedValue({
           id: 'u2',
-          email: 'b@b.com',
+          username: 'b',
           name: 'B',
           role: 'EDITOR',
           isActive: true,

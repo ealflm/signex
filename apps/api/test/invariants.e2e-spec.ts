@@ -128,7 +128,7 @@ beforeAll(async () => {
   await agent
     .post('/api/auth/login')
     .send({
-      email: process.env.SEED_ADMIN_EMAIL,
+      username: process.env.SEED_ADMIN_USERNAME,
       password: process.env.SEED_ADMIN_PASSWORD,
     })
     .expect(201);

@@ -9,14 +9,14 @@ import type { AuthedUser } from '../src/auth/auth.types';
 
 const ADMIN: AuthedUser = {
   id: 'u-admin',
-  email: 'admin@signex.test',
+  username: 'e2e-auth-admin',
   name: 'Admin',
   role: 'ADMIN',
   isActive: true,
 };
 const EDITOR: AuthedUser = {
   id: 'u-editor',
-  email: 'editor@signex.test',
+  username: 'e2e-auth-editor',
   name: 'Editor',
   role: 'EDITOR',
   isActive: true,
@@ -29,8 +29,8 @@ const tokenToUser: Record<string, AuthedUser> = {
 };
 
 const authStub: Partial<AuthService> = {
-  login: jest.fn(async (email: string, password: string) => {
-    if (email === 'admin@signex.test' && password === 'pw') {
+  login: jest.fn(async (username: string, password: string) => {
+    if (username === 'e2e-auth-admin' && password === 'pw') {
       return {
         user: ADMIN,
         rawToken: 'admin-tok',
@@ -74,27 +74,27 @@ describe('Auth + RBAC (e2e)', () => {
   it('POST /api/auth/login with bad creds is 401', () =>
     request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'admin@signex.test', password: 'WRONG' })
+      .send({ username: 'e2e-auth-admin', password: 'WRONG' })
       .expect(401));
 
   it('POST /api/auth/login with a malformed body is 422 (ZodValidationPipe)', () =>
     request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'not-an-email' })
+      .send({ username: 'e2e-auth-admin' })
       .expect(422));
 
   it('login sets the sx_session cookie and me returns the user', async () => {
     const agent = request.agent(app.getHttpServer());
     const login = await agent
       .post('/api/auth/login')
-      .send({ email: 'admin@signex.test', password: 'pw' })
+      .send({ username: 'e2e-auth-admin', password: 'pw' })
       .expect(201);
     const setCookie = login.headers['set-cookie'][0] as string;
     expect(setCookie).toContain(`${SESSION_COOKIE}=`);
     expect(setCookie.toLowerCase()).toContain('httponly');
 
     const me = await agent.get('/api/auth/me').expect(200);
-    expect(me.body.user.email).toBe('admin@signex.test');
+    expect(me.body.user.username).toBe('e2e-auth-admin');
     expect(me.body.user.passwordHash).toBeUndefined();
   });
 
@@ -104,7 +104,7 @@ describe('Auth + RBAC (e2e)', () => {
     await request(server)
       .post('/api/users')
       .send({
-        email: 'x@y.com',
+        username: 'e2e-new-user',
         name: 'X',
         password: 'pw12345',
         role: 'EDITOR',
@@ -115,7 +115,7 @@ describe('Auth + RBAC (e2e)', () => {
       .post('/api/users')
       .set('Cookie', [`${SESSION_COOKIE}=editor-tok`])
       .send({
-        email: 'x@y.com',
+        username: 'e2e-new-user',
         name: 'X',
         password: 'pw12345',
         role: 'EDITOR',
