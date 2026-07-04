@@ -40,7 +40,7 @@ afterAll(async () => {
 
 async function makeUser() {
   return prisma.user.create({
-    data: { email: `u${Date.now()}@x.test`, name: "Seed", passwordHash: "x" },
+    data: { username: `u${Date.now()}`, name: "Seed", passwordHash: "x" },
   });
 }
 
