@@ -3,6 +3,7 @@ import { loginSchema } from "@signex/shared";
 import { isAllowedOrigin } from "@/app/lib/origin";
 import { SESSION_COOKIE } from "@/app/lib/api";
 import { env } from "@/app/lib/env";
+import { BASE_PATH } from "@/app/lib/base-path";
 
 const THIRTY_DAYS = 60 * 60 * 24 * 30; // locked Decisions Log #10
 
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    path: "/",
+    path: BASE_PATH || "/",
     maxAge: THIRTY_DAYS,
   });
   return res;

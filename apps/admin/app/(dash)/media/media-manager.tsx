@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/admin/empty-state";
 import { Uploader } from "./uploader";
 import { MediaGrid } from "./media-grid";
 import type { AssetRow } from "./types";
+import { adminApi } from "@/app/lib/base-path";
 
 // Owns the asset list client-side. The server passes the initial list (fast first paint), then any
 // upload / alt-edit / delete calls refresh() to re-fetch — so the grid updates instantly without a
@@ -22,7 +23,7 @@ export function MediaManager({
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch("/admin-api/assets", { cache: "no-store" });
+      const res = await fetch(adminApi("/admin-api/assets"), { cache: "no-store" });
       if (res.ok) {
         const data = (await res.json()) as AssetRow[];
         if (Array.isArray(data)) setAssets(data);

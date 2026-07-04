@@ -9,6 +9,7 @@ import {
   type AssetRow,
   type MediaRef,
 } from "@/app/(dash)/visual/media-picker-dialog";
+import { adminApi } from "@/app/lib/base-path";
 
 /**
  * Catalog image field — the SAME media picker the theme editor uses (Library +
@@ -52,7 +53,7 @@ export function CatalogImagePicker({
   const loadAssets = useCallback(async (): Promise<AssetRow[]> => {
     setLoading(true);
     try {
-      const res = await fetch("/admin-api/assets", { cache: "no-store" });
+      const res = await fetch(adminApi("/admin-api/assets"), { cache: "no-store" });
       if (!res.ok) return [];
       const list = (await res.json()) as AssetRow[];
       setAssets(list);

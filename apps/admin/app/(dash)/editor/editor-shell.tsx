@@ -64,6 +64,7 @@ import {
   type EditTarget,
   type MediaRef,
 } from "@/app/(dash)/visual/media-picker-dialog";
+import { adminApi } from "@/app/lib/base-path";
 
 const SOURCE = "signex-editor";
 
@@ -296,7 +297,7 @@ export function EditorShell(props: EditorShellProps) {
   const loadAssets = useCallback(async (): Promise<AssetRow[]> => {
     setPickerLoading(true);
     try {
-      const res = await fetch("/admin-api/assets", { cache: "no-store" });
+      const res = await fetch(adminApi("/admin-api/assets"), { cache: "no-store" });
       if (!res.ok) return pickerAssets;
       const data = (await res.json()) as AssetRow[];
       if (Array.isArray(data)) {
@@ -453,7 +454,7 @@ export function EditorShell(props: EditorShellProps) {
     setSaving(true);
     const edits = [...pending.entries()].map(([key, data]) => ({ key, data }));
     try {
-      const res = await fetch(`/admin-api/themes/${themeId}/save-draft`, {
+      const res = await fetch(adminApi(`/admin-api/themes/${themeId}/save-draft`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ edits, expectedDraftRevision: draftRevision }),
@@ -477,7 +478,7 @@ export function EditorShell(props: EditorShellProps) {
       if (res.status === 409) {
         // STALE_DRAFT: refetch the theme, adopt the latest revision + base, KEEP pending (it stays
         // layered on the new base via workingBlockData). The editor re-saves on the next click.
-        const fresh = await fetch(`/admin-api/themes/${themeId}`, { cache: "no-store" });
+        const fresh = await fetch(adminApi(`/admin-api/themes/${themeId}`), { cache: "no-store" });
         if (fresh.ok) {
           const t = (await fresh.json()) as {
             draftSnapshot: ReleaseSnapshot;
@@ -527,7 +528,7 @@ export function EditorShell(props: EditorShellProps) {
           if (rev == null) return; // save failed / conflicted — abort publish
           expected = rev;
         }
-        const res = await fetch("/admin-api/releases/publish", {
+        const res = await fetch(adminApi("/admin-api/releases/publish"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isAllowedOrigin } from "@/app/lib/origin";
 import { apiServer, SESSION_COOKIE } from "@/app/lib/api";
+import { BASE_PATH } from "@/app/lib/base-path";
 
 export async function POST(req: NextRequest) {
   if (!isAllowedOrigin(req.headers.get("origin"))) {
@@ -9,6 +10,6 @@ export async function POST(req: NextRequest) {
   // Revoke server-side (instant kill), then clear the cookie regardless of api outcome.
   await apiServer("/api/auth/logout", { method: "POST" });
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+  res.cookies.set(SESSION_COOKIE, "", { path: BASE_PATH || "/", maxAge: 0 });
   return res;
 }

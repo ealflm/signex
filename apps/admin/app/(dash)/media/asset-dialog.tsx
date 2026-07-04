@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { AssetRow } from "./types";
+import { adminApi } from "@/app/lib/base-path";
 
 function humanBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -60,7 +61,7 @@ export function AssetDialog({ asset, canDelete, open, onOpenChange, onChanged }:
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    fetch(`/admin-api/assets/usage?assetId=${encodeURIComponent(asset.id)}`, { cache: "no-store" })
+    fetch(adminApi(`/admin-api/assets/usage?assetId=${encodeURIComponent(asset.id)}`), { cache: "no-store" })
       .then((r) => (r.ok ? (r.json() as Promise<Usage>) : null))
       .then((d) => {
         if (alive) setUsage(d ?? { working: [], releases: [] });
@@ -86,7 +87,7 @@ export function AssetDialog({ asset, canDelete, open, onOpenChange, onChanged }:
     setSavingAlt(true);
     setAltMsg(null);
     try {
-      const res = await fetch(`/admin-api/assets/${asset.id}/alt`, {
+      const res = await fetch(adminApi(`/admin-api/assets/${asset.id}/alt`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ alt: { en: altEn, vi: altVi } }),
@@ -105,7 +106,7 @@ export function AssetDialog({ asset, canDelete, open, onOpenChange, onChanged }:
     setDeleting(true);
     setDelErr(null);
     try {
-      const res = await fetch(`/admin-api/assets/${asset.id}`, { method: "DELETE" });
+      const res = await fetch(adminApi(`/admin-api/assets/${asset.id}`), { method: "DELETE" });
       if (!res.ok) {
         throw new Error(
           res.status === 409

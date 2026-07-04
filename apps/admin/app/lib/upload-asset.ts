@@ -4,6 +4,8 @@
 // (and its kind/url) instead of just refreshing a list. Used by the visual-editor drawer so an
 // uploaded file can be wired straight into a content block's AssetRef/VideoRef.
 
+import { adminApi } from "@/app/lib/base-path";
+
 export interface UploadedAsset {
   id: string;
   kind: string; // IMAGE | VIDEO | SVG
@@ -81,7 +83,7 @@ export async function uploadAsset(
   const sha256 = await sha256Hex(buf);
 
   onPhase?.("presigning");
-  const presignRes = await fetch("/admin-api/assets/presign", {
+  const presignRes = await fetch(adminApi("/admin-api/assets/presign"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -114,7 +116,7 @@ export async function uploadAsset(
   await putWithProgress(presign.upload.url, file, presign.upload.headers, onProgress);
 
   onPhase?.("confirming");
-  const confirmRes = await fetch(`/admin-api/assets/${presign.assetId}/confirm`, {
+  const confirmRes = await fetch(adminApi(`/admin-api/assets/${presign.assetId}/confirm`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),

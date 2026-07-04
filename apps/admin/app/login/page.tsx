@@ -5,6 +5,7 @@ import { Field } from "@/components/admin/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandMark } from "@/components/shell/brand-mark";
+import { adminApi } from "@/app/lib/base-path";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -16,7 +17,7 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await fetch("/admin-api/auth/login", {
+    const res = await fetch(adminApi("/admin-api/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
