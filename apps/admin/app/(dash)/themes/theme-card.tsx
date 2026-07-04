@@ -1,11 +1,8 @@
 import type { ThemeListItem } from "@/app/lib/themes";
-import { Badge } from "@/components/ui/badge";
 import { ThemeActions } from "./theme-actions";
 
 interface ThemeCardProps {
   theme: ThemeListItem;
-  /** This theme is the one the editor/preview currently targets. */
-  isActive: boolean;
   canPublish: boolean;
   liveSiteUrl: string;
   /** Pre-formatted "Edited 2 hours ago" (computed server-side). */
@@ -20,7 +17,6 @@ interface ThemeCardProps {
  */
 export function ThemeCard({
   theme,
-  isActive,
   canPublish,
   liveSiteUrl,
   editedLabel,
@@ -51,11 +47,6 @@ export function ThemeCard({
             </h3>
             <p className="text-xs text-muted-foreground">Edited {editedLabel}</p>
           </div>
-          {isActive && (
-            <Badge variant="outline" title="Your edits target this version">
-              Active
-            </Badge>
-          )}
         </div>
 
         {theme.dirty && (

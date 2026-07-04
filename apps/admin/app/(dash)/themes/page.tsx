@@ -1,6 +1,6 @@
 import { requireRole } from "@/app/lib/session";
 import { atLeast } from "@signex/shared";
-import { listThemes, getActiveThemeId } from "@/app/lib/themes";
+import { listThemes } from "@/app/lib/themes";
 import { env } from "@/app/lib/env";
 import { formatRelativeTime } from "@/app/lib/format";
 import { PageHeader } from "@/components/admin/page-header";
@@ -14,10 +14,7 @@ export default async function ThemesPage() {
   const user = await requireRole("EDITOR");
   const canPublish = atLeast(user.role, "PUBLISHER");
 
-  const [themes, activeThemeId] = await Promise.all([
-    listThemes(),
-    getActiveThemeId(),
-  ]);
+  const themes = await listThemes();
 
   const liveSiteUrl = (env().NEXT_PUBLIC_WEB_URL || "http://localhost:3062").replace(
     /\/+$/,
@@ -93,7 +90,6 @@ export default async function ThemesPage() {
                   <ThemeCard
                     key={theme.id}
                     theme={theme}
-                    isActive={theme.id === activeThemeId}
                     canPublish={canPublish}
                     liveSiteUrl={liveSiteUrl}
                     editedLabel={formatRelativeTime(theme.updatedAt)}

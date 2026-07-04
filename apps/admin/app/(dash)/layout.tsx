@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { atLeast } from "@signex/shared";
 import { requireSession } from "@/app/lib/session";
-import { ACTIVE_THEME_COOKIE, listThemes } from "@/app/lib/themes";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { Topbar } from "@/components/shell/topbar";
@@ -18,14 +17,12 @@ export default async function DashLayout({
   // Honour the persisted collapse state so the sidebar renders correctly on first paint.
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
-  const activeThemeId = cookieStore.get(ACTIVE_THEME_COOKIE)?.value ?? null;
-  const themes = await listThemes();
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar canManageUsers={canManageUsers} />
       <SidebarInset className="bg-background">
-        <Topbar username={user.username} role={user.role} themes={themes} activeThemeId={activeThemeId} />
+        <Topbar username={user.username} role={user.role} />
         <DashContent>{children}</DashContent>
       </SidebarInset>
     </SidebarProvider>
