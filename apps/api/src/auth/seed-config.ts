@@ -1,3 +1,5 @@
+import { usernameSchema } from '@signex/shared';
+
 /**
  * Deterministic id for the fixed SYSTEM / ADMIN user created by `auth:seed`.
  * Stable across every environment so the importer (build step 7) can reference
@@ -8,7 +10,7 @@
 export const SYSTEM_USER_ID = 'seedsystemadmin0000000000';
 
 export interface SeedAdminConfig {
-  email: string;
+  username: string;
   name: string;
   password: string;
 }
@@ -31,7 +33,7 @@ function required(env: NodeJS.ProcessEnv, key: string): string {
 export function readSeedAdminConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): SeedAdminConfig {
-  const email = required(env, 'SEED_ADMIN_EMAIL');
+  const username = usernameSchema.parse(required(env, 'SEED_ADMIN_USERNAME'));
   const name = required(env, 'SEED_ADMIN_NAME');
   const password = required(env, 'SEED_ADMIN_PASSWORD');
   if (password.length < MIN_PASSWORD_LEN) {
@@ -39,5 +41,5 @@ export function readSeedAdminConfig(
       `Seed failed: SEED_ADMIN_PASSWORD must be at least ${MIN_PASSWORD_LEN} characters.`,
     );
   }
-  return { email, name, password };
+  return { username, name, password };
 }

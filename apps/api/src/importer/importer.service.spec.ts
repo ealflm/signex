@@ -1,4 +1,5 @@
 import { ImporterService } from './importer.service';
+import { SYSTEM_USER_ID } from '../auth/seed-config';
 
 // ---------------------------------------------------------------------------
 // Stubs for heavy importer helpers — not under test here (unit level)
@@ -82,9 +83,9 @@ function makeDeps() {
       return Promise.resolve([{ pg_advisory_unlock: true }]);
     }),
     user: {
-      findUniqueOrThrow: jest
+      findUnique: jest
         .fn()
-        .mockResolvedValue({ id: 'sys', email: 'a@b.c', role: 'ADMIN' }),
+        .mockResolvedValue({ id: SYSTEM_USER_ID, username: 'admin', role: 'ADMIN' }),
     },
     theme: {
       count: jest.fn().mockResolvedValue(0),
@@ -153,12 +154,10 @@ function makeDeps() {
 // ---------------------------------------------------------------------------
 describe('ImporterService', () => {
   beforeEach(() => {
-    process.env.SEED_ADMIN_EMAIL = 'admin@test.com';
     process.env.MEDIA_PUBLIC_BASE = 'https://cdn.signex.vn';
   });
   afterEach(() => {
     jest.clearAllMocks();
-    delete process.env.SEED_ADMIN_EMAIL;
     delete process.env.MEDIA_PUBLIC_BASE;
   });
 
@@ -180,6 +179,11 @@ describe('ImporterService', () => {
       expect.stringContaining('pg_try_advisory_lock'),
     );
 
+    // System actor resolved by deterministic id, not by email.
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: SYSTEM_USER_ID },
+    });
+
     // Exactly one Default theme created.
     expect(prisma.theme.create).toHaveBeenCalledTimes(1);
     const data = prisma.theme.create.mock.calls[0][0].data;
@@ -187,7 +191,7 @@ describe('ImporterService', () => {
     expect(data.draftRevision).toBe(1);
     expect(data.lastPublishedRevision).toBe(1);
     expect(typeof data.lastPublishedChecksum).toBe('string');
-    expect(data.createdById).toBe('sys');
+    expect(data.createdById).toBe(SYSTEM_USER_ID);
     // draft == live snapshot.
     expect(data.draftSnapshot).toBe(data.liveSnapshot);
 
@@ -208,7 +212,7 @@ describe('ImporterService', () => {
     // Release published exactly once with the new themeId/expectedDraftRevision shape.
     expect(release.publish).toHaveBeenCalledTimes(1);
     const [actor, args] = release.publish.mock.calls[0];
-    expect(actor.id).toBe('sys');
+    expect(actor.id).toBe(SYSTEM_USER_ID);
     expect(args).toEqual({
       themeId: 'theme-1',
       expectedDraftRevision: 1,

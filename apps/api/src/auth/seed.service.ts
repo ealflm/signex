@@ -21,7 +21,7 @@ export class SeedService {
   ): Promise<{ id: string; created: boolean }> {
     const passwordHash = await hashPassword(cfg.password);
     const fields = {
-      email: cfg.email,
+      username: cfg.username,
       name: cfg.name,
       passwordHash,
       role: 'ADMIN' as const,
@@ -37,7 +37,7 @@ export class SeedService {
 
     const created = user.createdAt.getTime() === user.updatedAt.getTime();
     this.logger.log(
-      `${created ? 'Created' : 'Updated'} system admin ${cfg.email} (${user.id})`,
+      `${created ? 'Created' : 'Updated'} system admin ${cfg.username} (${user.id})`,
     );
     return { id: user.id, created };
   }

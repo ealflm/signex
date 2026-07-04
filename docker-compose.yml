@@ -79,7 +79,7 @@ services:
       # Inside the Compose network the DB host is the service name "postgres", not localhost.
       DATABASE_URL: postgresql://${POSTGRES_USER:-signex}:${POSTGRES_PASSWORD:-signex}@postgres:5432/${POSTGRES_DB:-signex}?schema=public
       # Seed admin (auth:seed creates a deterministic SYSTEM/ADMIN user before the importer runs).
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@signex.local}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
       SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Signex Admin}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-change-me-please-32chars-long}
       # Media storage (S3-compatible). REQUIRED for the api to boot (AssetsModule R2_CONFIG

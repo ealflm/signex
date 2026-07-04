@@ -11,32 +11,38 @@ describe('seed-config', () => {
 
   describe('readSeedAdminConfig', () => {
     const ok = {
-      SEED_ADMIN_EMAIL: 'admin@signex.test',
+      SEED_ADMIN_USERNAME: 'admin',
       SEED_ADMIN_NAME: 'System Admin',
       SEED_ADMIN_PASSWORD: 'change-me-please',
     };
 
     it('returns a typed config from SEED_ADMIN_* env', () => {
       expect(readSeedAdminConfig(ok)).toEqual({
-        email: 'admin@signex.test',
+        username: 'admin',
         name: 'System Admin',
         password: 'change-me-please',
       });
     });
 
-    it('trims surrounding whitespace on email and name', () => {
+    it('trims surrounding whitespace on username and name', () => {
       const cfg = readSeedAdminConfig({
         ...ok,
-        SEED_ADMIN_EMAIL: '  admin@signex.test  ',
+        SEED_ADMIN_USERNAME: '  admin  ',
         SEED_ADMIN_NAME: '  System Admin  ',
       });
-      expect(cfg.email).toBe('admin@signex.test');
+      expect(cfg.username).toBe('admin');
       expect(cfg.name).toBe('System Admin');
     });
 
-    it('throws when SEED_ADMIN_EMAIL is missing', () => {
-      const { SEED_ADMIN_EMAIL: _SEED_ADMIN_EMAIL, ...rest } = ok;
-      expect(() => readSeedAdminConfig(rest)).toThrow(/SEED_ADMIN_EMAIL/);
+    it('throws when SEED_ADMIN_USERNAME is missing', () => {
+      const { SEED_ADMIN_USERNAME: _SEED_ADMIN_USERNAME, ...rest } = ok;
+      expect(() => readSeedAdminConfig(rest)).toThrow(/SEED_ADMIN_USERNAME/);
+    });
+
+    it('throws when SEED_ADMIN_USERNAME is invalid (fails usernameSchema)', () => {
+      expect(() =>
+        readSeedAdminConfig({ ...ok, SEED_ADMIN_USERNAME: 'a@b' }),
+      ).toThrow();
     });
 
     it('throws when SEED_ADMIN_NAME is blank', () => {

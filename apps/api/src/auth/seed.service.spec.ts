@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as password from '../common/crypto/password';
 
 const cfg: SeedAdminConfig = {
-  email: 'admin@signex.test',
+  username: 'admin',
   name: 'System Admin',
   password: 'change-me-please',
 };
@@ -48,14 +48,14 @@ describe('SeedService', () => {
     expect(args.where).toEqual({ id: SYSTEM_USER_ID });
     expect(args.create).toMatchObject({
       id: SYSTEM_USER_ID,
-      email: 'admin@signex.test',
+      username: 'admin',
       name: 'System Admin',
       passwordHash: 'scrypt$SALT$HASH',
       role: 'ADMIN',
       isActive: true,
     });
     expect(args.update).toMatchObject({
-      email: 'admin@signex.test',
+      username: 'admin',
       name: 'System Admin',
       passwordHash: 'scrypt$SALT$HASH',
       role: 'ADMIN',

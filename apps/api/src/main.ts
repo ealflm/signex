@@ -24,7 +24,7 @@ async function runSeed(): Promise<void> {
     const seeder = seedApp.get(SeedService);
     const { id, created } = await seeder.seedAdmin(cfg);
     logger.log(
-      `auth:seed — ${cfg.email} (${id}) ${created ? 'created' : 'already present (updated)'}`,
+      `auth:seed — ${cfg.username} (${id}) ${created ? 'created' : 'already present (updated)'}`,
     );
   } finally {
     await seedApp.close();

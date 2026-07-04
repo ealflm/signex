@@ -5,6 +5,7 @@ import type { Prisma, User } from '@signex/db';
 import type { ReleaseSnapshot } from '@signex/shared';
 import { ReleaseSnapshotSchema } from '@signex/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { SYSTEM_USER_ID } from '../auth/seed-config';
 import { AssetsService } from '../assets/assets.service';
 import { ReleaseService } from '../release/release.service';
 import { canonicalJson } from '../release/canonical-json';
@@ -78,15 +79,14 @@ export class ImporterService {
       assertParity(en, vi);
 
       // ── 4. SYSTEM ACTOR ─────────────────────────────────────────────────
-      const actorEmail = process.env.SEED_ADMIN_EMAIL;
-      if (!actorEmail) {
+      const actor = await db.user.findUnique({
+        where: { id: SYSTEM_USER_ID },
+      });
+      if (!actor) {
         throw new Error(
-          'importer: SEED_ADMIN_EMAIL is not set — run auth:seed first',
+          'importer: system admin not found — run auth:seed first',
         );
       }
-      const actor = await db.user.findUniqueOrThrow({
-        where: { email: actorEmail },
-      });
 
       // ── 5. ASSETS (dedup by sha256) ─────────────────────────────────────
       // importAssets uses AssetsService.register (sha256, SVG sanitize, R2 put,
