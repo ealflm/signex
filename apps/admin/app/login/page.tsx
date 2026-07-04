@@ -24,7 +24,7 @@ export default function LoginPage() {
     });
     if (res.ok) {
       // Full navigation so the freshly-set cookie is visible to the (dash) server render.
-      window.location.assign("/");
+      window.location.assign(adminApi("/"));
       return;
     }
     const body = await res.json().catch(() => ({}));

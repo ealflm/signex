@@ -64,7 +64,7 @@ import {
   type EditTarget,
   type MediaRef,
 } from "@/app/(dash)/visual/media-picker-dialog";
-import { adminApi } from "@/app/lib/base-path";
+import { adminApi, stripBasePath } from "@/app/lib/base-path";
 
 const SOURCE = "signex-editor";
 
@@ -715,7 +715,7 @@ export function EditorShell(props: EditorShellProps) {
     setMediaPreview(new Map());
     setTextPreview(new Map());
     setDiscardAsk(null);
-    if (leaveHref) router.push(leaveHref);
+    if (leaveHref) router.push(stripBasePath(leaveHref));
     else postRefresh();
   }, [discardAsk, router, postRefresh]);
 
@@ -800,7 +800,7 @@ export function EditorShell(props: EditorShellProps) {
       >
         <Toolbar
           themeName={themeName}
-          backHref="/themes"
+          backHref={adminApi("/themes")}
           lang={lang}
           onLangChange={setLang}
           device={device}

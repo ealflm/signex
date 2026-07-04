@@ -20,3 +20,20 @@ describe("adminApi / BASE_PATH", () => {
     expect(adminApi(`/admin-api/themes/abc/save-draft`)).toBe("/admin/admin-api/themes/abc/save-draft");
   });
 });
+
+describe("stripBasePath", () => {
+  it("returns the path unchanged when no base path is set (dev)", async () => {
+    const { stripBasePath } = await import("./base-path");
+    expect(stripBasePath("/themes")).toBe("/themes");
+  });
+
+  it("strips the base path when set (prod)", async () => {
+    process.env.NEXT_PUBLIC_BASE_PATH = "/admin";
+    const { stripBasePath } = await import("./base-path");
+    expect(stripBasePath("/admin/themes")).toBe("/themes");
+    expect(stripBasePath("/admin")).toBe("/");
+    // Boundary — must NOT strip a path that merely starts with the same characters.
+    expect(stripBasePath("/administrators")).toBe("/administrators");
+    expect(stripBasePath("/other")).toBe("/other");
+  });
+});
