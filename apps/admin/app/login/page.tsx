@@ -90,6 +90,8 @@ export default function LoginPage() {
               placeholder="admin"
               value={username}
               autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
               required
               disabled={busy}
               onChange={(e) => setUsername(e.target.value)}

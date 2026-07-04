@@ -80,7 +80,7 @@ describe('Auth + RBAC (e2e)', () => {
   it('POST /api/auth/login with a malformed body is 422 (ZodValidationPipe)', () =>
     request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ username: 'e2e-auth-admin' })
+      .send({ username: 'ab', password: 'x' })
       .expect(422));
 
   it('login sets the sx_session cookie and me returns the user', async () => {

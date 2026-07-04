@@ -91,6 +91,8 @@ export function InviteUserDialog() {
               name="username"
               type="text"
               autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
               spellCheck={false}
               placeholder="jdoe"
               required

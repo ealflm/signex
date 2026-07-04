@@ -55,6 +55,9 @@ describe('Users management guards (e2e)', () => {
     await prisma.session.deleteMany({
       where: { user: { username: { startsWith: 'e2e' } } },
     });
+    await prisma.auditLog.deleteMany({
+      where: { user: { username: { startsWith: 'e2e' } } },
+    });
     await prisma.user.deleteMany({
       where: { username: { startsWith: 'e2e' } },
     });

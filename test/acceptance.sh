@@ -14,7 +14,7 @@
 # Env overrides (all have sensible defaults matching docker-compose defaults):
 #   API_BASE            default: http://localhost:3060
 #   WEB_BASE            default: http://localhost:3062
-#   SEED_ADMIN_EMAIL    default: admin@signex.local
+#   SEED_ADMIN_USERNAME default: admin
 #   SEED_ADMIN_PASSWORD default: change-me-please-32chars-long   (compose default)
 #   PREVIEW_SECRET      default: dev-preview-secret-change-me
 #   REVALIDATE_SECRET   default: dev-revalidate-secret-change-me
@@ -32,7 +32,7 @@ envval() { [ -f .env ] && grep -E "^$1=" .env 2>/dev/null | head -1 | cut -d= -f
 
 API="${API_BASE:-http://localhost:3060}"
 WEB="${WEB_BASE:-http://localhost:3062}"
-ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-$(envval SEED_ADMIN_EMAIL)}"; ADMIN_EMAIL="${ADMIN_EMAIL:-admin@signex.local}"
+ADMIN_USERNAME="${SEED_ADMIN_USERNAME:-$(envval SEED_ADMIN_USERNAME)}"; ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASS="${SEED_ADMIN_PASSWORD:-$(envval SEED_ADMIN_PASSWORD)}"; ADMIN_PASS="${ADMIN_PASS:-change-me-please-32chars-long}"
 PREVIEW_SECRET="${PREVIEW_SECRET:-$(envval PREVIEW_SECRET)}"; PREVIEW_SECRET="${PREVIEW_SECRET:-dev-preview-secret-change-me}"
 REVALIDATE_SECRET="${REVALIDATE_SECRET:-$(envval REVALIDATE_SECRET)}"; REVALIDATE_SECRET="${REVALIDATE_SECRET:-dev-revalidate-secret-change-me}"
@@ -65,12 +65,12 @@ say "2. login -> sx_session cookie + ADMIN role"
 # ---------------------------------------------------------------------------
 code="$(curl -sS -o /dev/null -w '%{http_code}' -c "$JAR" \
   -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASS\"}" \
+  -d "{\"username\":\"$ADMIN_USERNAME\",\"password\":\"$ADMIN_PASS\"}" \
   "$API/api/auth/login")"
 # NestJS @Post() returns 201 by default; accept 200 or 201.
 { [ "$code" = "200" ] || [ "$code" = "201" ]; } || fail "login returned $code (expected 200/201)"
 grep -q 'sx_session' "$JAR" || fail "no sx_session cookie issued"
-# GET /api/auth/me returns { user: { id, email, name, role, isActive } }
+# GET /api/auth/me returns { user: { id, username, name, role, isActive } }
 role="$(curl -sS -b "$JAR" "$API/api/auth/me" | jq -r '.user.role')"
 [ "$role" = "ADMIN" ] || fail "me.role=$role (expected ADMIN)"
 

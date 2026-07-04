@@ -11,7 +11,7 @@
 # leaves Default live at the end.
 #
 # Env overrides (defaults match docker-compose):
-#   API_BASE  WEB_BASE  SEED_ADMIN_EMAIL  SEED_ADMIN_PASSWORD  PREVIEW_SECRET
+#   API_BASE  WEB_BASE  SEED_ADMIN_USERNAME  SEED_ADMIN_PASSWORD  PREVIEW_SECRET
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
@@ -19,7 +19,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 envval() { [ -f .env ] && grep -E "^$1=" .env 2>/dev/null | head -1 | cut -d= -f2- || true; }
 API="${API_BASE:-http://localhost:3060}"
 WEB="${WEB_BASE:-http://localhost:3062}"
-ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-$(envval SEED_ADMIN_EMAIL)}"; ADMIN_EMAIL="${ADMIN_EMAIL:-admin@signex.local}"
+ADMIN_USERNAME="${SEED_ADMIN_USERNAME:-$(envval SEED_ADMIN_USERNAME)}"; ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASS="${SEED_ADMIN_PASSWORD:-$(envval SEED_ADMIN_PASSWORD)}"; ADMIN_PASS="${ADMIN_PASS:-change-me-please-now}"
 PREVIEW_SECRET="${PREVIEW_SECRET:-$(envval PREVIEW_SECRET)}"; PREVIEW_SECRET="${PREVIEW_SECRET:-dev-preview-secret-change-me}"
 JAR="$(mktemp)"; trap 'rm -f "$JAR"' EXIT
@@ -78,7 +78,7 @@ docker compose exec -T api node apps/api/dist/main seed >/dev/null 2>&1 || true 
 
 say "1. login -> sx_session + ADMIN"
 code="$(curl -sS -o /dev/null -w '%{http_code}' -c "$JAR" -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASS\"}" "$API/api/auth/login")"
+  -d "{\"username\":\"$ADMIN_USERNAME\",\"password\":\"$ADMIN_PASS\"}" "$API/api/auth/login")"
 { [ "$code" = "200" ] || [ "$code" = "201" ]; } || fail "login returned $code"
 grep -q 'sx_session' "$JAR" || fail "no sx_session cookie"
 [ "$(curl -sS -b "$JAR" "$API/api/auth/me" | jq -r '.user.role')" = "ADMIN" ] || fail "not ADMIN"

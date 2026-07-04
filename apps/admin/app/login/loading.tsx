@@ -20,7 +20,7 @@ export default function LoginLoading() {
           <Skeleton className="h-3.5 w-48 rounded" />
         </div>
         <div className="flex flex-col gap-4">
-          {/* Email field */}
+          {/* Username field */}
           <div className="flex flex-col gap-1.5">
             <Skeleton className="h-3.5 w-10 rounded" />
             <Skeleton className="h-9 w-full rounded-md" />
