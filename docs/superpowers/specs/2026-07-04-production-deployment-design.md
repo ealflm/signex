@@ -3,8 +3,8 @@
 **Date:** 2026-07-04
 **Status:** Approved (design phase)
 **Scope:** Deploy the full signex stack (api + web + admin + postgres + minio) to a single
-VPS behind a host-level nginx + Let's Encrypt, on **one domain** (`signex.com` — placeholder;
-substitute the real domain at deploy time). Deployment is **manual, built on the VPS**.
+VPS behind a host-level nginx + Let's Encrypt, on **one domain** (`signex.vn`). Deployment is
+**manual, built on the VPS**.
 
 ---
 
@@ -65,7 +65,7 @@ the `/api` path collision entirely and shrinks the attack surface.
                                │
                 ┌──────────────▼───────────────┐
                 │  Host nginx (systemd)         │  ← certbot / Let's Encrypt (TLS)
-                │  server_name signex.com       │
+                │  server_name signex.vn       │
                 └──────────────┬───────────────┘
                 proxy_pass → 127.0.0.1 loopback ports
      ┌────────────────┬────────────────────┬──────────────────────┐
@@ -95,15 +95,15 @@ proxying to the loopback-bound container ports. certbot injects the TLS/443 bloc
 ```nginx
 server {
     listen 80;
-    server_name signex.com;                 # ← real domain
+    server_name signex.vn;                 # ← real domain
 
     # Forms accept images + PDF up to 50MB; media uploads pass through too.
     client_max_body_size 64m;
 
     # ── Media: self-hosted MinIO exposed at the apex path /signex-media/ ──
     # NO path rewrite — the bucket name IS the first path segment, so the SigV4
-    # signature (signed against R2_PUBLIC_ENDPOINT=https://signex.com, path
-    # /signex-media/<key>, host signex.com) validates unchanged at MinIO.
+    # signature (signed against R2_PUBLIC_ENDPOINT=https://signex.vn, path
+    # /signex-media/<key>, host signex.vn) validates unchanged at MinIO.
     location /signex-media/ {
         proxy_pass http://127.0.0.1:9000;   # NO trailing slash → path preserved
         proxy_set_header Host $host;
@@ -136,7 +136,7 @@ server {
 ```
 
 Operator steps (documented, not automated): symlink to `sites-enabled`, `sudo nginx -t`,
-`sudo systemctl reload nginx`, `sudo certbot --nginx -d signex.com`.
+`sudo systemctl reload nginx`, `sudo certbot --nginx -d signex.vn`.
 
 nginx longest-prefix matching guarantees `/signex-media/` and `/admin/` win over `/`.
 
@@ -174,16 +174,16 @@ Gitignored, `chmod 600`, owned by the deploy user. Values that change from the d
 | `SEED_ADMIN_PASSWORD` | *(strong random, ≥12)* | rotate after first login |
 | `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | *(strong random)* | = MinIO root creds |
 | `R2_ENDPOINT` | `http://minio:9000` | internal server-side S3 calls |
-| `R2_PUBLIC_ENDPOINT` | `https://signex.com` | baked into presigned PUT URLs |
+| `R2_PUBLIC_ENDPOINT` | `https://signex.vn` | baked into presigned PUT URLs |
 | `R2_BUCKET` | `signex-media` | first path segment at the apex |
-| `MEDIA_PUBLIC_BASE` | `https://signex.com/signex-media` | public read base (no r2.dev) |
+| `MEDIA_PUBLIC_BASE` | `https://signex.vn/signex-media` | public read base (no r2.dev) |
 | `REVALIDATE_SECRET` | *(strong random)* | shared api↔web |
 | `PREVIEW_SECRET` | *(strong random)* | shared api↔admin |
-| `AUTH_ALLOWED_ORIGINS` | `https://signex.com` | api CORS + OriginGuard |
-| `ADMIN_ORIGIN` | `https://signex.com` | admin CSRF origin |
-| `ALLOWED_ORIGINS` | `https://signex.com` | admin route-handler CSRF |
-| `PREVIEW_FRAME_ANCESTORS` | `https://signex.com` | web CSP for /preview iframe |
-| `NEXT_PUBLIC_WEB_URL` | `https://signex.com` | admin "view live" links |
+| `AUTH_ALLOWED_ORIGINS` | `https://signex.vn` | api CORS + OriginGuard |
+| `ADMIN_ORIGIN` | `https://signex.vn` | admin CSRF origin |
+| `ALLOWED_ORIGINS` | `https://signex.vn` | admin route-handler CSRF |
+| `PREVIEW_FRAME_ANCESTORS` | `https://signex.vn` | web CSP for /preview iframe |
+| `NEXT_PUBLIC_WEB_URL` | `https://signex.vn` | admin "view live" links |
 | `NEXT_PUBLIC_BASE_PATH` | `/admin` | drives admin basePath + client fetch prefix (§7) |
 | `BIND_IP` | `127.0.0.1` | loopback-only host port bindings (§5) |
 | `API_URL` | `http://api:3060` | internal BFF target |
@@ -235,17 +235,17 @@ keeps working with no basePath):
 ## 8. Media — apex-path proxy (single-domain, no subdomain)
 
 - Server-side S3 (put/head/get) uses `R2_ENDPOINT=http://minio:9000` (internal).
-- Presigned PUT URLs are built by the presign client against `R2_PUBLIC_ENDPOINT=https://signex.com`;
-  with `forcePathStyle`, the URL is `https://signex.com/signex-media/<key>?X-Amz-…`.
+- Presigned PUT URLs are built by the presign client against `R2_PUBLIC_ENDPOINT=https://signex.vn`;
+  with `forcePathStyle`, the URL is `https://signex.vn/signex-media/<key>?X-Amz-…`.
 - nginx proxies `/signex-media/` → `127.0.0.1:9000` **without rewriting the path** and forwards
-  `Host: signex.com`, so MinIO recomputes the SigV4 signature over the same host+path → valid.
+  `Host: signex.vn`, so MinIO recomputes the SigV4 signature over the same host+path → valid.
 - Public reads (`MEDIA_PUBLIC_BASE + '/' + key`) are anonymous GETs (bucket public-read via
   `minio-init`) through the same location.
 - `client_max_body_size 64m` covers media uploads (align with the app's presign `maxBytes`).
 
 **Fallback if presign signatures ever misbehave through the proxy:** move MinIO to a
-`media.signex.com` subdomain (nginx pass-through, zero rewrite) and set
-`R2_PUBLIC_ENDPOINT=https://media.signex.com`, `MEDIA_PUBLIC_BASE=https://media.signex.com/signex-media`.
+`media.signex.vn` subdomain (nginx pass-through, zero rewrite) and set
+`R2_PUBLIC_ENDPOINT=https://media.signex.vn`, `MEDIA_PUBLIC_BASE=https://media.signex.vn/signex-media`.
 Documented as a known escape hatch; not the default.
 
 ---
@@ -295,7 +295,7 @@ the importer.
 5. Seed once: `docker exec signex-api node dist/auth/seed` then
    `docker exec signex-api node dist/importer/importer.command`.
 6. Install nginx site config, `sudo nginx -t && sudo systemctl reload nginx`,
-   `sudo certbot --nginx -d signex.com`.
+   `sudo certbot --nginx -d signex.vn`.
 7. Verify (§12).
 
 **Subsequent deploys**
@@ -307,13 +307,13 @@ happen through the admin, not the importer).
 
 ## 12. Verification (end-to-end)
 
-- `https://signex.com/en` and `/vi` render with images loading from `https://signex.com/signex-media/…`.
-- `https://signex.com/admin` → login works; cookie `sx_session` is set with `Path=/admin`.
+- `https://signex.vn/en` and `/vi` render with images loading from `https://signex.vn/signex-media/…`.
+- `https://signex.vn/admin` → login works; cookie `sx_session` is set with `Path=/admin`.
 - In admin: open the media manager, **upload an image** (exercises presign PUT through nginx →
   MinIO — the SigV4-through-proxy path), confirms READY.
 - Edit content in the visual editor, **publish**, then confirm the public web reflects it
   (on-demand revalidation via `WEB_REVALIDATE_URL`).
-- `curl -I https://signex.com/signex-media/<known-key>` → `200` with immutable cache headers.
+- `curl -I https://signex.vn/signex-media/<known-key>` → `200` with immutable cache headers.
 - Confirm api/postgres are **not** reachable from the public interface (only via `signex-net`).
 
 ---
