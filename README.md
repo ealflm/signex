@@ -124,6 +124,60 @@ Host ports come from `.env` (defaults in `.env.example`): `API_PORT=3060`, `WEB_
 
 ---
 
+## 3. Production deployment (single VPS — signex.vn)
+
+Host **nginx** (systemd, already installed) terminates TLS via **certbot** and reverse-proxies
+to the loopback-bound containers. Web is at `/`, admin at `/admin`, media at `/signex-media/`;
+the **api and Postgres stay internal** (no public route). Design:
+`docs/superpowers/specs/2026-07-04-production-deployment-design.md`.
+
+### First deploy
+
+```bash
+# 1) On the VPS, in the repo:
+git pull
+
+# 2) Create the production .env (see the PRODUCTION block in .env.example). Minimum:
+#    BIND_IP=127.0.0.1  NEXT_PUBLIC_BASE_PATH=/admin  + strong secrets + https://signex.vn URLs
+cp .env.example .env && $EDITOR .env
+chmod 600 .env
+
+# 3) Build + start the stack (api auto-runs `prisma migrate deploy` on boot).
+docker compose up -d --build
+docker compose ps                      # api / web / admin should be (healthy)
+
+# 4) One-time seed: fixed admin user, then initial content Release v1.
+docker exec signex-api node dist/auth/seed
+docker exec signex-api node dist/importer/importer.command
+
+# 5) nginx + TLS (DNS A records for signex.vn AND www.signex.vn must point here first):
+sudo cp deploy/nginx/signex.vn.conf /etc/nginx/sites-available/signex.vn.conf
+sudo ln -s /etc/nginx/sites-available/signex.vn.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d signex.vn -d www.signex.vn
+```
+
+### Subsequent deploys
+
+```bash
+git pull && docker compose up -d --build     # migrations auto-apply; auth:seed is idempotent
+```
+
+Re-run the importer only when the dictionary content changes — it refuses once a Theme exists
+(content is edited through the admin, not the importer).
+
+### Notes
+
+- **Content:** the importer seeds initial **Release v1** from `apps/web/app/[lang]/dictionaries/{en,vi}.json`.
+  Content edited later via the admin lives only in the DB — a fresh deploy starts at v1. To carry
+  edited content across environments, dump/restore Postgres, not the importer.
+- **Ad-hoc DB backup:** `docker exec signex-postgres pg_dump -U signex signex | gzip > signex-$(date +%F).sql.gz`
+- **Media fallback:** if presign uploads ever fail through the path proxy, move MinIO to a
+  `media.signex.vn` subdomain (nginx pass-through) and set `R2_PUBLIC_ENDPOINT=https://media.signex.vn`,
+  `MEDIA_PUBLIC_BASE=https://media.signex.vn/signex-media`.
+
+---
+
 ## Useful root scripts
 
 | Command | Description |
