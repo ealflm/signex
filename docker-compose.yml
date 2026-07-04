@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-signex}
       POSTGRES_DB: ${POSTGRES_DB:-signex}
     ports:
-      - "${POSTGRES_PORT:-3059}:5432"
+      - "${BIND_IP:-0.0.0.0}:${POSTGRES_PORT:-3059}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -38,8 +38,8 @@ services:
       MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_CORS_ALLOW_ORIGIN:-*}
     ports:
       # 9000 = S3 API (also the browser presign host: localhost:9000); 9001 = web console.
-      - "9000:9000"
-      - "9001:9001"
+      - "${BIND_IP:-0.0.0.0}:9000:9000"
+      - "${BIND_IP:-0.0.0.0}:9001:9001"
     volumes:
       - minio-data:/data
     networks:
@@ -106,7 +106,7 @@ services:
       # the Compose network (the browser connects to the host, not the container name).
       AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:3062,http://localhost:3061}
     ports:
-      - "${API_PORT:-3060}:3060"
+      - "${BIND_IP:-0.0.0.0}:${API_PORT:-3060}:3060"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3060/api/health"]
       interval: 30s
@@ -154,7 +154,7 @@ services:
       # for local testing. Leave empty in production so real traffic isn't marked debug.
       GA_DEBUG: ${GA_DEBUG:-}
     ports:
-      - "${WEB_PORT:-3062}:3062"
+      - "${BIND_IP:-0.0.0.0}:${WEB_PORT:-3062}:3062"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3062/en"]
       interval: 30s
@@ -168,6 +168,9 @@ services:
     build:
       context: .
       dockerfile: apps/admin/Dockerfile
+      args:
+        # Baked into the admin bundles so the app serves under /admin in production.
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
     image: signex-admin:latest
     container_name: signex-admin
     restart: unless-stopped
@@ -187,7 +190,7 @@ services:
       PREVIEW_SECRET: ${PREVIEW_SECRET:-dev-preview-secret-change-me}
       NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL:-http://localhost:3062}
     ports:
-      - "${ADMIN_PORT:-3061}:3061"
+      - "${BIND_IP:-0.0.0.0}:${ADMIN_PORT:-3061}:3061"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3061/"]
       interval: 30s

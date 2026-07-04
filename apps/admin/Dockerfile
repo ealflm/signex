@@ -27,6 +27,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # @signex/shared must be compiled to CJS dist/ BEFORE next build: Next does not bundle
 # workspace deps; it require()s ./dist and must trace runtime values (ROLE_RANK) into standalone.
 RUN npm run build --workspace @signex/shared
+# Baked into the Next bundles at build time (NEXT_PUBLIC_* is inlined, not runtime).
+# Empty default = dev/root; compose passes "/admin" for production.
+ARG NEXT_PUBLIC_BASE_PATH=""
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 RUN npm run build --workspace @signex/admin
 
 # ---------- runner: Next standalone server (monorepo-nested layout) ----------
@@ -36,6 +40,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3061
 ENV HOSTNAME=0.0.0.0
+ARG NEXT_PUBLIC_BASE_PATH=""
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs
 # 1) standalone root -> "./": launcher + hoisted node_modules + apps/admin/.
@@ -49,6 +55,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/packages/shared/dist ./packages/s
 USER nextjs
 EXPOSE 3061
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s \
-  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3061/ || exit 1
+  CMD wget --no-verbose --tries=1 --spider "http://127.0.0.1:3061${NEXT_PUBLIC_BASE_PATH}/login" || exit 1
 # Run the PER-APP server.js (not the standalone-root launcher).
 CMD ["node", "apps/admin/server.js"]
