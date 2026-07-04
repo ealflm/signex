@@ -10,7 +10,7 @@ import {
 import type { RoleName } from '@signex/shared';
 
 interface CreateUserInput {
-  email: string;
+  username: string;
   name: string;
   password: string;
   role: RoleName;
@@ -36,7 +36,7 @@ export class UsersService {
     try {
       const user = await this.prisma.client.user.create({
         data: {
-          email: dto.email,
+          username: dto.username,
           name: dto.name,
           passwordHash: await hashPassword(dto.password),
           role: dto.role,
@@ -45,13 +45,24 @@ export class UsersService {
       return publicUser(user);
     } catch (err) {
       if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException('Email already in use');
+        throw new ConflictException('Username already in use');
       }
       throw err;
     }
   }
 
-  async update(id: string, dto: UpdateUserInput): Promise<AuthedUser> {
+  async update(
+    id: string,
+    dto: UpdateUserInput,
+    actingUserId: string,
+  ): Promise<AuthedUser> {
+    // Business invariants (the api is the hard gate — the admin UI only mirrors these):
+    // you can't lock yourself out, and the site can't be left with no active admin.
+    if (dto.isActive === false) this.assertNotSelf(id, actingUserId);
+    if (dto.isActive === false || this.isDemotion(dto.role)) {
+      await this.assertNotLastActiveAdmin(id);
+    }
+
     const user = await this.prisma.client.user.update({
       where: { id },
       data: {
@@ -67,13 +78,44 @@ export class UsersService {
     return publicUser(user);
   }
 
-  async deactivate(id: string): Promise<AuthedUser> {
+  async deactivate(id: string, actingUserId: string): Promise<AuthedUser> {
+    this.assertNotSelf(id, actingUserId);
+    await this.assertNotLastActiveAdmin(id);
+
     const user = await this.prisma.client.user.update({
       where: { id },
       data: { isActive: false },
     });
     await this.revokeSessions(id);
     return publicUser(user);
+  }
+
+  /** Deactivating your own account would instantly sign you out with no way back in. */
+  private assertNotSelf(id: string, actingUserId: string): void {
+    if (id === actingUserId) {
+      throw new ConflictException('You cannot deactivate your own account');
+    }
+  }
+
+  private isDemotion(role?: RoleName): boolean {
+    return role !== undefined && role !== 'ADMIN';
+  }
+
+  /**
+   * Guard the site's last remaining active admin: refuse to deactivate or demote them.
+   * No-op when the target isn't an active admin (nothing to protect).
+   */
+  private async assertNotLastActiveAdmin(id: string): Promise<void> {
+    const target = await this.prisma.client.user.findUnique({ where: { id } });
+    if (!target || target.role !== 'ADMIN' || !target.isActive) return;
+    const activeAdmins = await this.prisma.client.user.count({
+      where: { role: 'ADMIN', isActive: true },
+    });
+    if (activeAdmins <= 1) {
+      throw new ConflictException(
+        'Cannot deactivate or demote the last active admin',
+      );
+    }
   }
 
   private async revokeSessions(userId: string): Promise<void> {

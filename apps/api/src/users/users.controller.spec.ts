@@ -6,7 +6,7 @@ describe('UsersController', () => {
   const mockUsers = [
     {
       id: 'u1',
-      email: 'admin@b.com',
+      username: 'admin',
       name: 'Alice',
       role: 'ADMIN' as const,
       isActive: true,
@@ -15,7 +15,7 @@ describe('UsersController', () => {
     },
     {
       id: 'u2',
-      email: 'editor@b.com',
+      username: 'editor',
       name: 'Bob',
       role: 'EDITOR' as const,
       isActive: false,
@@ -46,7 +46,7 @@ describe('UsersController', () => {
     // Has extended fields needed by admin table
     expect(result[0]).toMatchObject({
       id: 'u1',
-      email: 'admin@b.com',
+      username: 'admin',
       name: 'Alice',
       role: 'ADMIN',
       isActive: true,
@@ -55,14 +55,14 @@ describe('UsersController', () => {
     });
     expect(result[1]).toMatchObject({
       id: 'u2',
-      email: 'editor@b.com',
+      username: 'editor',
       lastLoginAt: null,
     });
   });
 
   it('POST / delegates to users.create()', async () => {
     const body = {
-      email: 'new@b.com',
+      username: 'newbie',
       name: 'New',
       password: 'pw12345',
       role: 'EDITOR' as const,
@@ -71,13 +71,17 @@ describe('UsersController', () => {
     expect(service.create).toHaveBeenCalledWith(body);
   });
 
-  it('PATCH /:id delegates to users.update()', async () => {
-    await ctrl.update('u1', { name: 'Updated' });
-    expect(service.update).toHaveBeenCalledWith('u1', { name: 'Updated' });
+  it('PATCH /:id delegates to users.update() with the acting user id', async () => {
+    await ctrl.update('u1', { name: 'Updated' }, { id: 'admin1' } as any);
+    expect(service.update).toHaveBeenCalledWith(
+      'u1',
+      { name: 'Updated' },
+      'admin1',
+    );
   });
 
-  it('DELETE /:id delegates to users.deactivate()', async () => {
-    await ctrl.deactivate('u1');
-    expect(service.deactivate).toHaveBeenCalledWith('u1');
+  it('DELETE /:id delegates to users.deactivate() with the acting user id', async () => {
+    await ctrl.deactivate('u2', { id: 'admin1' } as any);
+    expect(service.deactivate).toHaveBeenCalledWith('u2', 'admin1');
   });
 });

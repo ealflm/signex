@@ -8,6 +8,7 @@ function makePrisma(overrides: Record<string, any> = {}) {
     update: jest.fn(),
     findUnique: jest.fn(),
     findMany: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
     ...overrides.user,
   };
   const session = {
@@ -24,7 +25,7 @@ describe('UsersService', () => {
         create: jest.fn().mockImplementation(({ data }) =>
           Promise.resolve({
             id: 'u1',
-            email: data.email,
+            username: data.username,
             name: data.name,
             passwordHash: data.passwordHash,
             role: data.role,
@@ -35,14 +36,14 @@ describe('UsersService', () => {
     });
     const svc = new UsersService(prisma);
     const out = await svc.create({
-      email: 'new@b.com',
+      username: 'newbie',
       name: 'New',
       password: 'pw12345',
       role: 'EDITOR',
     });
     expect(out).toEqual({
       id: 'u1',
-      email: 'new@b.com',
+      username: 'newbie',
       name: 'New',
       role: 'EDITOR',
       isActive: true,
@@ -52,20 +53,22 @@ describe('UsersService', () => {
     await expect(verifyPassword('pw12345', stored)).resolves.toBe(true);
   });
 
-  it('create throws Conflict on duplicate email (P2002)', async () => {
+  it('create throws Conflict on duplicate username (P2002)', async () => {
     const prisma = makePrisma({
       user: {
         create: jest.fn().mockRejectedValue({ code: 'P2002' }),
       },
     });
-    await expect(
-      new UsersService(prisma).create({
-        email: 'dup@b.com',
+    const err = await new UsersService(prisma)
+      .create({
+        username: 'dup',
         name: 'X',
         password: 'pw12345',
         role: 'EDITOR',
-      }),
-    ).rejects.toBeInstanceOf(ConflictException);
+      })
+      .catch((e) => e);
+    expect(err).toBeInstanceOf(ConflictException);
+    expect(err.message).toBe('Username already in use');
   });
 
   it('update revokes sessions when role is provided (possible demote) or deactivating', async () => {
@@ -82,7 +85,7 @@ describe('UsersService', () => {
       },
     });
     const svc = new UsersService(prisma);
-    await svc.update('u1', { role: 'EDITOR' });
+    await svc.update('u1', { role: 'EDITOR' }, 'admin2');
     expect(prisma.client.session.updateMany).toHaveBeenCalledWith({
       where: { userId: 'u1', revokedAt: null },
       data: { revokedAt: expect.any(Date) },
@@ -103,7 +106,7 @@ describe('UsersService', () => {
       },
     });
     const svc = new UsersService(prisma);
-    await svc.update('u1', { name: 'A2' });
+    await svc.update('u1', { name: 'A2' }, 'admin2');
     expect(prisma.client.session.updateMany).not.toHaveBeenCalled();
   });
 
@@ -121,7 +124,7 @@ describe('UsersService', () => {
       },
     });
     const svc = new UsersService(prisma);
-    const out = await svc.deactivate('u1');
+    const out = await svc.deactivate('u1', 'admin2');
     expect(out.isActive).toBe(false);
     expect(prisma.client.user.update).toHaveBeenCalledWith({
       where: { id: 'u1' },
@@ -130,12 +133,107 @@ describe('UsersService', () => {
     expect(prisma.client.session.updateMany).toHaveBeenCalled();
   });
 
+  it('deactivate REFUSES to deactivate your own account (self-lockout guard)', async () => {
+    const prisma = makePrisma();
+    const svc = new UsersService(prisma);
+    await expect(svc.deactivate('u1', 'u1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    // Guard runs before any write / session revoke.
+    expect(prisma.client.user.update).not.toHaveBeenCalled();
+    expect(prisma.client.session.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('deactivate REFUSES to deactivate the last active admin', async () => {
+    const prisma = makePrisma({
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'u1', role: 'ADMIN', isActive: true }),
+        count: jest.fn().mockResolvedValue(1), // only one active admin left
+      },
+    });
+    const svc = new UsersService(prisma);
+    await expect(svc.deactivate('u1', 'admin2')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.client.user.update).not.toHaveBeenCalled();
+  });
+
+  it('deactivate ALLOWS deactivating an admin when another active admin remains', async () => {
+    const prisma = makePrisma({
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'u1', role: 'ADMIN', isActive: true }),
+        count: jest.fn().mockResolvedValue(2), // a second active admin exists
+        update: jest.fn().mockResolvedValue({
+          id: 'u1',
+          email: 'a@b.com',
+          name: 'A',
+          role: 'ADMIN',
+          isActive: false,
+        }),
+      },
+    });
+    const svc = new UsersService(prisma);
+    const out = await svc.deactivate('u1', 'admin2');
+    expect(out.isActive).toBe(false);
+    expect(prisma.client.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { isActive: false },
+    });
+  });
+
+  it('update REFUSES to self-deactivate (isActive:false on your own id)', async () => {
+    const prisma = makePrisma();
+    const svc = new UsersService(prisma);
+    await expect(
+      svc.update('u1', { isActive: false }, 'u1'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.client.user.update).not.toHaveBeenCalled();
+  });
+
+  it('update REFUSES to demote the last active admin', async () => {
+    const prisma = makePrisma({
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'u1', role: 'ADMIN', isActive: true }),
+        count: jest.fn().mockResolvedValue(1),
+      },
+    });
+    const svc = new UsersService(prisma);
+    await expect(
+      svc.update('u1', { role: 'EDITOR' }, 'admin2'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.client.user.update).not.toHaveBeenCalled();
+  });
+
+  it('update ALLOWS reactivation (isActive:true) with no guard interference', async () => {
+    const prisma = makePrisma({
+      user: {
+        update: jest.fn().mockResolvedValue({
+          id: 'u2',
+          email: 'b@b.com',
+          name: 'B',
+          role: 'EDITOR',
+          isActive: true,
+        }),
+      },
+    });
+    const svc = new UsersService(prisma);
+    const out = await svc.update('u2', { isActive: true }, 'admin1');
+    expect(out.isActive).toBe(true);
+    expect(prisma.client.user.update).toHaveBeenCalled();
+  });
+
   it('findAll returns users in public shape (no passwordHash) ordered by createdAt asc', async () => {
     const now = new Date('2024-01-01T00:00:00Z');
     const rows = [
       {
         id: 'u1',
-        email: 'a@b.com',
+        username: 'alice',
         name: 'Alice',
         passwordHash: 'scrypt$secret',
         role: 'ADMIN',
@@ -146,7 +244,7 @@ describe('UsersService', () => {
       },
       {
         id: 'u2',
-        email: 'b@b.com',
+        username: 'bob',
         name: 'Bob',
         passwordHash: 'scrypt$other',
         role: 'EDITOR',
@@ -180,7 +278,7 @@ describe('UsersService', () => {
     // Has the expected public fields including lastLoginAt and createdAt
     expect(out[0]).toEqual({
       id: 'u1',
-      email: 'a@b.com',
+      username: 'alice',
       name: 'Alice',
       role: 'ADMIN',
       isActive: true,
@@ -189,7 +287,7 @@ describe('UsersService', () => {
     });
     expect(out[1]).toEqual({
       id: 'u2',
-      email: 'b@b.com',
+      username: 'bob',
       name: 'Bob',
       role: 'EDITOR',
       isActive: false,
