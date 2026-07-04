@@ -27,6 +27,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { BrandMark } from "@/components/shell/brand-mark";
 
 interface NavItem {
   href: string;
@@ -74,7 +75,7 @@ export function AppSidebar({ canManageUsers }: { canManageUsers: boolean }) {
             aria-hidden
             className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm"
           >
-            <BrandMark />
+            <BrandMark className="w-[19px]" />
           </span>
           <span className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">
@@ -133,27 +134,5 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
-  );
-}
-
-/** Tiny geometric "S" mark — two interlocking strokes, drawn in currentColor. */
-function BrandMark() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-      className="text-primary-foreground"
-    >
-      <path
-        d="M11.5 4.2C10.7 3.3 9.5 3 8.2 3 6 3 4.6 4.1 4.6 5.7c0 1.5 1.2 2.2 3.2 2.6 2 .4 2.6.8 2.6 1.6 0 .8-.8 1.4-2.2 1.4-1.4 0-2.5-.5-3.3-1.4"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
