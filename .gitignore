@@ -34,3 +34,8 @@ npm-debug.log*
 # OS / editor
 .DS_Store
 .vercel
+
+# Local agent/skills tooling (not project source; .claude holds a git worktree)
+.agents/
+.claude/
+skills-lock.json
