@@ -4,14 +4,14 @@ import { apiServer } from "./api";
 
 export interface SessionUser {
   id: string;
-  email: string;
+  username: string;
   name: string;
   role: RoleName;
 }
 
 // Source of truth for "am I logged in" — re-validated server-side on every guarded render /
 // server action (the cookie alone is only a UX hint; proxy.ts does the cheap presence check).
-// GET /api/auth/me returns { user: { id, email, name, role, isActive } } — unwrap it (returning
+// GET /api/auth/me returns { user: { id, username, name, role, isActive } } — unwrap it (returning
 // res.data directly leaves role undefined → requireRole bounces every Editor page back to /).
 export async function getSession(): Promise<SessionUser | null> {
   const res = await apiServer<{ user: SessionUser }>("/api/auth/me");

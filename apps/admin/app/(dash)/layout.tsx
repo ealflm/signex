@@ -25,7 +25,7 @@ export default async function DashLayout({
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar canManageUsers={canManageUsers} />
       <SidebarInset className="bg-background">
-        <Topbar email={user.email} role={user.role} themes={themes} activeThemeId={activeThemeId} />
+        <Topbar username={user.username} role={user.role} themes={themes} activeThemeId={activeThemeId} />
         <DashContent>{children}</DashContent>
       </SidebarInset>
     </SidebarProvider>

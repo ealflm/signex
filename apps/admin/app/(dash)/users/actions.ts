@@ -8,7 +8,7 @@ import { createUserSchema } from "@signex/shared";
 export async function createUser(fd: FormData): Promise<void> {
   await requireRole("ADMIN");
   const parsed = createUserSchema.safeParse({
-    email: String(fd.get("email") ?? ""),
+    username: String(fd.get("username") ?? ""),
     name: String(fd.get("name") ?? ""),
     role: String(fd.get("role") ?? "EDITOR"),
     password: String(fd.get("password") ?? ""),
@@ -30,5 +30,14 @@ export async function updateUserRole(fd: FormData): Promise<void> {
 export async function deactivateUser(fd: FormData): Promise<void> {
   await requireRole("ADMIN");
   await apiServer(`/api/users/${String(fd.get("id"))}`, { method: "DELETE" });
+  revalidatePath("/users");
+}
+
+export async function reactivateUser(fd: FormData): Promise<void> {
+  await requireRole("ADMIN");
+  await apiServer(`/api/users/${String(fd.get("id"))}`, {
+    method: "PATCH",
+    body: { isActive: true },
+  });
   revalidatePath("/users");
 }

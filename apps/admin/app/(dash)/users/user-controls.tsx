@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { MoreHorizontal, UserX } from "lucide-react";
+import { MoreHorizontal, UserX, UserCheck } from "lucide-react";
 import type { RoleName } from "@signex/shared";
-import { updateUserRole, deactivateUser } from "./actions";
+import { updateUserRole, deactivateUser, reactivateUser } from "./actions";
+import { deactivateBlockReason } from "./user-policy";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -39,17 +40,25 @@ const ROLES: RoleName[] = ["EDITOR", "PUBLISHER", "ADMIN"];
  */
 export function UserRowMenu({
   userId,
-  email,
+  username,
   role,
   isActive,
+  isSelf,
+  isLastActiveAdmin,
 }: {
   userId: string;
-  email: string;
+  username: string;
   role: RoleName;
   isActive: boolean;
+  isSelf: boolean;
+  isLastActiveAdmin: boolean;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  // Mirror of the api guards: a blocked Deactivate is shown disabled (with the reason) rather
+  // than hidden, so it's clear WHY it's unavailable. The api re-checks regardless.
+  const blockReason = deactivateBlockReason({ isSelf, lastActiveAdmin: isLastActiveAdmin });
 
   function changeRole(next: string) {
     if (next === role) return;
@@ -70,6 +79,14 @@ export function UserRowMenu({
     setConfirmOpen(false);
   }
 
+  function reactivate() {
+    const fd = new FormData();
+    fd.set("id", userId);
+    startTransition(() => {
+      void reactivateUser(fd);
+    });
+  }
+
   return (
     <>
       <DropdownMenu>
@@ -78,7 +95,7 @@ export function UserRowMenu({
             variant="ghost"
             size="icon"
             className="size-8 text-muted-foreground"
-            aria-label={`Actions for ${email}`}
+            aria-label={`Actions for ${username}`}
             disabled={pending}
           >
             <MoreHorizontal className="size-4" />
@@ -90,14 +107,29 @@ export function UserRowMenu({
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup value={role} onValueChange={changeRole}>
             {ROLES.map((r) => (
-              <DropdownMenuRadioItem key={r} value={r}>
+              <DropdownMenuRadioItem
+                key={r}
+                value={r}
+                // Can't demote the last active admin — that would strand the site with no admin.
+                disabled={isLastActiveAdmin && r !== "ADMIN"}
+              >
                 {ROLE_LABEL[r]}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
-          {isActive && (
-            <>
-              <DropdownMenuSeparator />
+          <DropdownMenuSeparator />
+          {isActive ? (
+            blockReason ? (
+              <>
+                <DropdownMenuItem disabled className="text-muted-foreground">
+                  <UserX className="size-4" />
+                  Deactivate
+                </DropdownMenuItem>
+                <p className="px-2 pb-1 text-xs leading-snug text-muted-foreground">
+                  {blockReason}
+                </p>
+              </>
+            ) : (
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onSelect={(e) => {
@@ -108,7 +140,12 @@ export function UserRowMenu({
                 <UserX className="size-4" />
                 Deactivate
               </DropdownMenuItem>
-            </>
+            )
+          ) : (
+            <DropdownMenuItem onSelect={() => reactivate()}>
+              <UserCheck className="size-4" />
+              Reactivate
+            </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
@@ -116,7 +153,7 @@ export function UserRowMenu({
       <AlertDialog open={confirmOpen} onOpenChange={(o) => !pending && setConfirmOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate {email}?</AlertDialogTitle>
+            <AlertDialogTitle>Deactivate {username}?</AlertDialogTitle>
             <AlertDialogDescription>
               They&apos;re signed out immediately and can&apos;t sign in again until an admin
               reactivates them.

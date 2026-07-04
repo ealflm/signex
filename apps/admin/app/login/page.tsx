@@ -28,7 +28,7 @@ function BrandMark() {
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,7 +40,7 @@ export default function LoginPage() {
     const res = await fetch("/admin-api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
     if (res.ok) {
       // Full navigation so the freshly-set cookie is visible to the (dash) server render.
@@ -83,16 +83,16 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-          <Field label="Email" htmlFor="email" required>
+          <Field label="Username" htmlFor="username" required>
             <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
+              id="username"
+              type="text"
+              placeholder="admin"
+              value={username}
               autoComplete="username"
               required
               disabled={busy}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
             />
           </Field>
 

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/app/lib/format";
 import { InviteUserDialog } from "./user-invite-dialog";
 import { UserRowMenu } from "./user-controls";
+import { countActiveAdmins, isLastActiveAdmin } from "./user-policy";
 import { PageHeader } from "@/components/admin/page-header";
 import { SectionCard } from "@/components/admin/section-card";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -23,7 +24,7 @@ import { Users } from "lucide-react";
 
 interface UserRow {
   id: string;
-  email: string;
+  username: string;
   name: string;
   role: RoleName;
   isActive: boolean;
@@ -44,8 +45,8 @@ const ROLE_AVATAR: Record<RoleName, string> = {
   EDITOR: "bg-muted text-muted-foreground",
 };
 
-function initials(name: string, email: string): string {
-  const base = (name || email).trim();
+function initials(name: string, username: string): string {
+  const base = (name || username).trim();
   const parts = base.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0][0]! + parts[1][0]!).toUpperCase();
   return base.slice(0, 2).toUpperCase();
@@ -54,11 +55,12 @@ function initials(name: string, email: string): string {
 const TH = "h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground";
 
 export default async function UsersPage() {
-  await requireRole("ADMIN");
+  const me = await requireRole("ADMIN");
 
   const res = await apiServer<UserRow[]>("/api/users");
   const users = res.ok ? res.data : [];
   const listUnavailable = !res.ok;
+  const activeAdminCount = countActiveAdmins(users);
 
   return (
     <section className="flex flex-col gap-6">
@@ -108,12 +110,12 @@ export default async function UsersPage() {
                     !u.isActive && "opacity-60",
                   )}
                 >
-                  {/* Member — avatar (role-tinted) + name + email */}
+                  {/* Member — avatar (role-tinted) + name + username */}
                   <TableCell className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <Avatar>
                         <AvatarFallback className={cn("font-medium", ROLE_AVATAR[u.role])}>
-                          {initials(u.name, u.email)}
+                          {initials(u.name, u.username)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex min-w-0 flex-col">
@@ -121,7 +123,7 @@ export default async function UsersPage() {
                           {u.name || "—"}
                         </span>
                         <span className="truncate font-mono text-xs text-muted-foreground">
-                          {u.email}
+                          {u.username}
                         </span>
                       </div>
                     </div>
@@ -164,9 +166,11 @@ export default async function UsersPage() {
                   <TableCell className="px-4 py-3 text-right">
                     <UserRowMenu
                       userId={u.id}
-                      email={u.email}
+                      username={u.username}
                       role={u.role}
                       isActive={u.isActive}
+                      isSelf={u.id === me.id}
+                      isLastActiveAdmin={isLastActiveAdmin(u, activeAdminCount)}
                     />
                   </TableCell>
                 </TableRow>

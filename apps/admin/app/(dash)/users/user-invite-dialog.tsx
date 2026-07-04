@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { UserPlus } from "lucide-react";
 import type { RoleName } from "@signex/shared";
@@ -44,9 +44,26 @@ function SubmitButton() {
 
 export function InviteUserDialog() {
   const [open, setOpen] = useState(false);
+  // Timestamp of the last time the role <Select> opened/closed. Used to swallow the
+  // spurious dialog close that a portalled Radix Select triggers on outside-click
+  // (radix-ui/primitives#2961): the pointerdown that dismisses the Select is
+  // misattributed to the dialog one tick later, after the Select has already unmounted.
+  const selectActivityRef = useRef(0);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (
+          !next &&
+          (document.querySelector("[data-slot='select-content']") ||
+            Date.now() - selectActivityRef.current < 400)
+        ) {
+          return; // ignore a close caused by the role Select, not the user
+        }
+        setOpen(next);
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <UserPlus className="size-4" />
@@ -68,15 +85,14 @@ export function InviteUserDialog() {
           }}
           className="flex flex-col gap-4"
         >
-          <Field label="Email" htmlFor="invite-email" required>
+          <Field label="Username" htmlFor="invite-username" required>
             <Input
-              id="invite-email"
-              name="email"
-              type="email"
-              inputMode="email"
+              id="invite-username"
+              name="username"
+              type="text"
               autoComplete="off"
               spellCheck={false}
-              placeholder="person@signex.vn"
+              placeholder="jdoe"
               required
             />
           </Field>
@@ -86,7 +102,13 @@ export function InviteUserDialog() {
           </Field>
 
           <Field label="Role" htmlFor="invite-role">
-            <Select name="role" defaultValue="EDITOR">
+            <Select
+              name="role"
+              defaultValue="EDITOR"
+              onOpenChange={() => {
+                selectActivityRef.current = Date.now();
+              }}
+            >
               <SelectTrigger id="invite-role" className="w-full">
                 <SelectValue />
               </SelectTrigger>
