@@ -192,7 +192,7 @@ services:
     ports:
       - "${BIND_IP:-0.0.0.0}:${ADMIN_PORT:-3061}:3061"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3061/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3061${NEXT_PUBLIC_BASE_PATH:-}/login"]
       interval: 30s
       timeout: 5s
       retries: 3
