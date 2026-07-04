@@ -93,9 +93,17 @@ proxying to the loopback-bound container ports. certbot injects the TLS/443 bloc
 `/etc/nginx/sites-available/signex.conf` (HTTP form; `certbot --nginx` adds 443 + redirect):
 
 ```nginx
+# Canonical redirect: www → apex. www must NOT serve content — a single origin
+# (https://signex.vn) keeps the cookie/CORS/CSP config valid.
 server {
     listen 80;
-    server_name signex.vn;                 # ← real domain
+    server_name www.signex.vn;
+    return 308 https://signex.vn$request_uri;
+}
+
+server {
+    listen 80;
+    server_name signex.vn;
 
     # Forms accept images + PDF up to 50MB; media uploads pass through too.
     client_max_body_size 64m;
@@ -135,8 +143,10 @@ server {
 }
 ```
 
-Operator steps (documented, not automated): symlink to `sites-enabled`, `sudo nginx -t`,
-`sudo systemctl reload nginx`, `sudo certbot --nginx -d signex.vn`.
+Operator steps (documented, not automated): ensure DNS has A records for both `signex.vn` and
+`www.signex.vn` → the VPS; symlink to `sites-enabled`, `sudo nginx -t`,
+`sudo systemctl reload nginx`, `sudo certbot --nginx -d signex.vn -d www.signex.vn` (one SAN cert
+covering both; certbot adds the 443 blocks + HTTP→HTTPS redirect to each server block).
 
 nginx longest-prefix matching guarantees `/signex-media/` and `/admin/` win over `/`.
 
@@ -294,8 +304,9 @@ the importer.
 4. Wait for health: `docker compose ps` (api/web/admin `healthy`).
 5. Seed once: `docker exec signex-api node dist/auth/seed` then
    `docker exec signex-api node dist/importer/importer.command`.
-6. Install nginx site config, `sudo nginx -t && sudo systemctl reload nginx`,
-   `sudo certbot --nginx -d signex.vn`.
+6. Ensure DNS A records for `signex.vn` + `www.signex.vn` point to the VPS. Install nginx site
+   config, `sudo nginx -t && sudo systemctl reload nginx`,
+   `sudo certbot --nginx -d signex.vn -d www.signex.vn`.
 7. Verify (§12).
 
 **Subsequent deploys**
@@ -307,6 +318,7 @@ happen through the admin, not the importer).
 
 ## 12. Verification (end-to-end)
 
+- `https://www.signex.vn/` → `308` redirect to `https://signex.vn/` (www serves no content).
 - `https://signex.vn/en` and `/vi` render with images loading from `https://signex.vn/signex-media/…`.
 - `https://signex.vn/admin` → login works; cookie `sx_session` is set with `Path=/admin`.
 - In admin: open the media manager, **upload an image** (exercises presign PUT through nginx →
