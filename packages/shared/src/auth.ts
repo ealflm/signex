@@ -15,14 +15,20 @@ export const ROLE_RANK: Record<RoleName, number> = {
 export const atLeast = (role: RoleName, min: RoleName): boolean =>
   ROLE_RANK[role] >= ROLE_RANK[min];
 
+export const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9._-]{3,30}$/, "3-30 chars: letters, digits, . _ -");
+
 export const loginSchema = z.object({
-  email: z.string().email(),
+  username: usernameSchema,
   password: z.string().min(1),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
 export const createUserSchema = z.object({
-  email: z.string().email(),
+  username: usernameSchema,
   name: z.string().min(1),
   password: z.string().min(8),
   role: z.enum(ROLE_NAMES).default("EDITOR"),
