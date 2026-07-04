@@ -24,7 +24,7 @@ function makeMockReq(cookies: Record<string, string> = {}) {
 
 const MOCK_USER: AuthedUser = {
   id: 'user-1',
-  email: 'alice@example.com',
+  username: 'admin',
   name: 'Alice',
   role: 'EDITOR',
   isActive: true,
@@ -64,7 +64,7 @@ describe('AuthController', () => {
       const res = makeMockRes();
       const req = makeMockReq();
       const result = await controller.login(
-        { email: 'alice@example.com', password: 'password123' },
+        { username: 'admin', password: 'pw' },
         req as any,
         res as any,
       );
@@ -86,6 +86,11 @@ describe('AuthController', () => {
       // Return public user shape (no passwordHash)
       expect(result).toEqual({ user: MOCK_USER });
       expect((result.user as any).passwordHash).toBeUndefined();
+      expect(authService.login).toHaveBeenCalledWith(
+        'admin',
+        'pw',
+        expect.objectContaining({ ip: req.ip }),
+      );
     });
 
     it('should NOT set cookie on invalid credentials (AuthService throws)', async () => {
@@ -98,7 +103,7 @@ describe('AuthController', () => {
 
       await expect(
         controller.login(
-          { email: 'bad@example.com', password: 'wrong' },
+          { username: 'bad', password: 'wrong' },
           req as any,
           res as any,
         ),

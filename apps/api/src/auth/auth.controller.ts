@@ -19,7 +19,7 @@ import { SESSION_COOKIE } from './guards/origin.guard';
 import type { AuthedUser } from './auth.types';
 
 interface LoginBody {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -37,7 +37,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ user: AuthedUser }> {
     const { user, rawToken, expiresAt } = await this.auth.login(
-      body.email,
+      body.username,
       body.password,
       {
         ip: req.ip,

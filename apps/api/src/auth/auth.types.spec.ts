@@ -5,7 +5,7 @@ describe('publicUser', () => {
     const now = new Date();
     const out = publicUser({
       id: 'u1',
-      email: 'a@b.com',
+      username: 'someuser',
       name: 'Alice',
       passwordHash: 'scrypt$secret',
       role: 'ADMIN',
@@ -16,7 +16,7 @@ describe('publicUser', () => {
     } as any);
     expect(out).toEqual({
       id: 'u1',
-      email: 'a@b.com',
+      username: 'someuser',
       name: 'Alice',
       role: 'ADMIN',
       isActive: true,

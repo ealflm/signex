@@ -30,7 +30,7 @@ describe('AuthService', () => {
       user: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'u1',
-          email: 'a@b.com',
+          username: 'someuser',
           name: 'A',
           passwordHash: pwHash,
           role: 'ADMIN',
@@ -40,11 +40,14 @@ describe('AuthService', () => {
       },
     });
     const svc = new AuthService(prisma);
-    const res = await svc.login('a@b.com', 'hunter2', { ip: '1.2.3.4' });
+    const res = await svc.login('someuser', 'hunter2', { ip: '1.2.3.4' });
     expect(res.user.id).toBe('u1');
     expect(res.user.role).toBe('ADMIN');
     expect((res.user as any).passwordHash).toBeUndefined();
     expect(typeof res.rawToken).toBe('string');
+    expect(prisma.client.user.findUnique).toHaveBeenCalledWith({
+      where: { username: 'someuser' },
+    });
     const arg = prisma.client.session.create.mock.calls[0][0].data;
     expect(arg.tokenHash).toBe(hashToken(res.rawToken));
     expect(arg.userId).toBe('u1');
@@ -56,7 +59,7 @@ describe('AuthService', () => {
       user: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'u1',
-          email: 'a@b.com',
+          username: 'someuser',
           name: 'A',
           passwordHash: pwHash,
           role: 'ADMIN',
@@ -65,24 +68,24 @@ describe('AuthService', () => {
       },
     });
     const svc = new AuthService(prisma);
-    await expect(svc.login('a@b.com', 'WRONG')).rejects.toBeInstanceOf(
+    await expect(svc.login('someuser', 'WRONG')).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
   });
 
-  it('login throws 401 for unknown email and inactive user', async () => {
+  it('login throws 401 for unknown username and inactive user', async () => {
     const prisma = makePrisma({
       user: { findUnique: jest.fn().mockResolvedValue(null) },
     });
     await expect(
-      new AuthService(prisma).login('x@y.com', 'whatever'),
+      new AuthService(prisma).login('nobody', 'whatever'),
     ).rejects.toBeInstanceOf(UnauthorizedException);
 
     const prisma2 = makePrisma({
       user: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'u1',
-          email: 'a@b.com',
+          username: 'someuser',
           name: 'A',
           passwordHash: pwHash,
           role: 'ADMIN',
@@ -91,7 +94,7 @@ describe('AuthService', () => {
       },
     });
     await expect(
-      new AuthService(prisma2).login('a@b.com', 'hunter2'),
+      new AuthService(prisma2).login('someuser', 'hunter2'),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -106,7 +109,7 @@ describe('AuthService', () => {
           revokedAt: null,
           user: {
             id: 'u1',
-            email: 'a@b.com',
+            username: 'someuser',
             name: 'A',
             passwordHash: 'h',
             role: 'EDITOR',

@@ -12,12 +12,12 @@ export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async login(
-    email: string,
+    username: string,
     password: string,
     ctx?: { ip?: string; userAgent?: string },
   ): Promise<{ user: AuthedUser; rawToken: string; expiresAt: Date }> {
     const user = await this.prisma.client.user.findUnique({
-      where: { email },
+      where: { username },
     });
     // Verify even when the user is missing to keep timing ~constant (enum resistance).
     const hash =
