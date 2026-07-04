@@ -58,6 +58,21 @@ COPY --from=build --chown=nestjs:nodejs /app/packages/shared/dist ./packages/sha
 COPY --from=build --chown=nestjs:nodejs /app/packages/db/generated ./packages/db/generated
 # Schema + migrations, needed by `prisma migrate deploy` at start.
 COPY --from=build --chown=nestjs:nodejs /app/packages/db/prisma ./packages/db/prisma
+# The following three items exist solely so the one-time `content:import`
+# (apps/api/dist/importer/importer.command) can run in-container via `docker exec` —
+# it reads dicts + assets from disk and writes the emitted snapshot back to apps/web/app/lib.
+# Dict source read by the importer at runtime (dict-source.ts resolves repoRoot=/app).
+# NOTE: Docker COPY treats [lang] as a glob character class, so the literal opening bracket in
+# the source path must be escaped as [[] (Go filepath.Match: [[] = a class matching literal [).
+# The closing ] does not need escaping (it's only special immediately after an unescaped [, and
+# escaping it as []] is a syntax error under Go's filepath.Match — no POSIX "leading ] is literal"
+# carve-out). The destination path is not a pattern and keeps the literal [lang] segment.
+COPY --from=build --chown=nestjs:nodejs "/app/apps/web/app/[[]lang]/dictionaries" "./apps/web/app/[lang]/dictionaries"
+# Asset source read by the importer at runtime (asset-importer.ts, via ASSET_MANIFEST).
+COPY --from=build --chown=nestjs:nodejs /app/apps/web/public/assets ./apps/web/public/assets
+# Emit target the importer writes at the end of the run; must exist and be writable by nestjs
+# before USER switch, otherwise the importer throws AFTER the release is already committed.
+RUN mkdir -p apps/web/app/lib && chown -R nestjs:nodejs apps/web/app/lib
 USER nestjs
 EXPOSE 3060
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s \
