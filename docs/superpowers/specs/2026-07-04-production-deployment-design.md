@@ -274,12 +274,19 @@ Documented as a known escape hatch; not the default.
 The api container auto-runs `prisma migrate deploy` on start, but **not** the seed or importer.
 On the **first** deploy, after the stack is healthy, run once:
 
-1. `docker exec signex-api node dist/auth/seed` — idempotent SYSTEM/ADMIN user
+1. `docker exec signex-api node apps/api/dist/auth/seed` — idempotent SYSTEM/ADMIN user
    (fixed id `seedsystemadmin0000000000`, role ADMIN, from `SEED_ADMIN_*`). Safe to re-run.
-2. `docker exec signex-api node dist/importer/importer.command` — mints the `Default` theme +
+2. `docker exec signex-api node apps/api/dist/importer/importer.command` — mints the `Default` theme +
    **Release v1** (`schemaVersion 1`) from the committed dicts
    `apps/web/app/[lang]/dictionaries/{en,vi}.json`. Idempotency-guarded (refuses if any Theme
    exists).
+
+> **Why in-container works:** the importer reads the web dicts + `apps/web/public/assets` from
+> disk and re-emits `apps/web/app/lib/initial-snapshot.ts` — none of which the base api runtime
+> image carried. The **api Dockerfile bakes** `apps/web/app/[lang]/dictionaries` + `apps/web/public/assets`
+> into the runtime image and pre-creates a writable `apps/web/app/lib` so `docker exec … importer.command`
+> is self-contained (DB via internal `DATABASE_URL`, uploads via internal `R2_ENDPOINT`). The `docker exec`
+> shell runs at `WORKDIR /app`, so paths are `apps/api/dist/…`, not `dist/…`.
 
 **Content note (verified 2026-07-04):** the Vietnamese content is clean — `vi.json` and the
 emitted `apps/web/app/lib/initial-snapshot.ts` are valid UTF-8, ~1880 precomposed Vietnamese
@@ -302,8 +309,8 @@ the importer.
    `NEXT_PUBLIC_BASE_PATH=/admin`); `chmod 600 .env`.
 3. `docker compose up -d --build` — builds 3 images, starts the stack; api applies migrations.
 4. Wait for health: `docker compose ps` (api/web/admin `healthy`).
-5. Seed once: `docker exec signex-api node dist/auth/seed` then
-   `docker exec signex-api node dist/importer/importer.command`.
+5. Seed once: `docker exec signex-api node apps/api/dist/auth/seed` then
+   `docker exec signex-api node apps/api/dist/importer/importer.command`.
 6. Ensure DNS A records for `signex.vn` + `www.signex.vn` point to the VPS. Install nginx site
    config, `sudo nginx -t && sudo systemctl reload nginx`,
    `sudo certbot --nginx -d signex.vn -d www.signex.vn`.
@@ -347,8 +354,12 @@ happen through the admin, not the importer).
 
 - **New:** `deploy/nginx/signex.conf` (in-repo copy of the nginx site config), and
   `apps/admin/app/lib/base-path.ts`.
-- **Edit:** `docker-compose.yml` (`BIND_IP`-parameterized host bindings),
-  `apps/admin/next.config.ts` (basePath), 13 admin client fetch call sites,
+- **Edit:** `docker-compose.yml` (`BIND_IP`-parameterized host bindings + admin
+  `NEXT_PUBLIC_BASE_PATH` build arg + basePath-aware admin healthcheck),
+  `apps/admin/Dockerfile` (basePath build ARG/ENV + healthcheck),
+  `apps/api/Dockerfile` (bake web dicts + `apps/web/public/assets` + writable `apps/web/app/lib`
+  so in-container `content:import` is self-contained),
+  `apps/admin/next.config.ts` (basePath), 12 admin client fetch call sites,
   admin login/logout route cookie `path`, `.env.example` (prod guidance + `NEXT_PUBLIC_BASE_PATH`,
   `BIND_IP`), `README.md` (production deploy runbook).
 - **No change:** api source (already BFF-internal), web source, Prisma schema, migrations.

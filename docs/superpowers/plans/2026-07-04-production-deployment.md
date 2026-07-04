@@ -535,8 +535,8 @@ docker compose up -d --build
 docker compose ps                      # api / web / admin should be (healthy)
 
 # 4) One-time seed: fixed admin user, then initial content Release v1.
-docker exec signex-api node dist/auth/seed
-docker exec signex-api node dist/importer/importer.command
+docker exec signex-api node apps/api/dist/auth/seed
+docker exec signex-api node apps/api/dist/importer/importer.command
 
 # 5) nginx + TLS (DNS A records for signex.vn AND www.signex.vn must point here first):
 sudo cp deploy/nginx/signex.vn.conf /etc/nginx/sites-available/signex.vn.conf
