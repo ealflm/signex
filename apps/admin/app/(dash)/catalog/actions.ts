@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { slugify } from "@signex/shared";
 import { requireRole } from "@/app/lib/session";
 import { apiServer } from "@/app/lib/api";
 
@@ -65,7 +66,7 @@ export async function createCategory(
       method: "POST",
       body: {
         expectedRevision: await catalogRevision(),
-        slug: String(fd.get("slug") ?? ""),
+        slug: slugify(String(fd.get("slug") ?? "")),
         title: localized(fd, "title"),
         tag: localized(fd, "tag"),
         intro: localized(fd, "intro"),
@@ -95,7 +96,7 @@ export async function updateCategory(
     method: "PATCH",
     body: {
       expectedRevision: await catalogRevision(),
-      slug: String(fd.get("slug") ?? ""),
+      slug: slugify(String(fd.get("slug") ?? "")),
       title: localized(fd, "title"),
       tag: localized(fd, "tag"),
       intro: localized(fd, "intro"),
@@ -149,7 +150,7 @@ export async function createProduct(
       method: "POST",
       body: {
         expectedRevision: await catalogRevision(),
-        slug: String(fd.get("slug") ?? ""),
+        slug: slugify(String(fd.get("slug") ?? "")),
         title: localized(fd, "title"),
         tag: localized(fd, "tag"),
         desc: localized(fd, "desc"),
@@ -181,7 +182,7 @@ export async function updateProduct(
       method: "PATCH",
       body: {
         expectedRevision: await catalogRevision(),
-        slug: String(fd.get("slug") ?? ""),
+        slug: slugify(String(fd.get("slug") ?? "")),
         title: localized(fd, "title"),
         tag: localized(fd, "tag"),
         desc: localized(fd, "desc"),

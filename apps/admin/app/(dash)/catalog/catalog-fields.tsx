@@ -40,12 +40,16 @@ export function LocalizedField({
   value,
   multiline,
   required,
+  onEnInput,
 }: {
   base: string;
   label: string;
   value: Loc;
   multiline?: boolean;
   required?: boolean;
+  /** Fires with the current EN value on every change of the `.en` input.
+   *  Used to auto-derive a slug from the English title (fields stay uncontrolled). */
+  onEnInput?: (value: string) => void;
 }) {
   return (
     <fieldset className="flex min-w-0 flex-col gap-1.5">
@@ -83,6 +87,11 @@ export function LocalizedField({
                 required={required}
                 aria-label={`${label} (${lang.toUpperCase()})`}
                 className="text-sm"
+                onChange={
+                  lang === "en" && onEnInput
+                    ? (e) => onEnInput(e.target.value)
+                    : undefined
+                }
               />
             )}
           </div>

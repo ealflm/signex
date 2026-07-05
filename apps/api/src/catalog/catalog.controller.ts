@@ -7,7 +7,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { z } from '@signex/shared';
+import { z, slugSchema } from '@signex/shared';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -18,7 +18,7 @@ const localizedText = z.object({ en: z.string(), vi: z.string() });
 
 const categoryBody = z.object({
   expectedRevision: z.number().int().min(0),
-  slug: z.string().min(1),
+  slug: slugSchema,
   title: localizedText,
   tag: localizedText,
   intro: localizedText,
@@ -30,7 +30,7 @@ const categoryBody = z.object({
 
 const productBody = z.object({
   expectedRevision: z.number().int().min(0),
-  slug: z.string().min(1),
+  slug: slugSchema,
   title: localizedText,
   tag: localizedText,
   desc: localizedText,

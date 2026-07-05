@@ -1,4 +1,4 @@
-import { z, LocalizedText } from '@signex/shared';
+import { z, LocalizedText, slugify as slugifyBase } from '@signex/shared';
 import type { AssetKind } from '@signex/db';
 
 const MB = 1024 * 1024;
@@ -46,19 +46,11 @@ export function extForMime(mime: string): string {
   return ext;
 }
 
-// Match diacritic marks in the NFD decomposition range
-const DIACRITICS = /[̀-ͯ]/g;
-
+// Reuse the canonical, Vietnamese-aware slugifier from @signex/shared (single
+// source of truth, also used by catalog slug validation). Asset keys need a
+// non-empty segment, so fall back to 'asset' when nothing usable remains.
 export function slugify(name: string): string {
-  const slug = name
-    .normalize('NFD')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'd')
-    .replace(DIACRITICS, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return slug || 'asset';
+  return slugifyBase(name) || 'asset';
 }
 
 export function keyFor(sha256: string, slug: string, ext: string): string {

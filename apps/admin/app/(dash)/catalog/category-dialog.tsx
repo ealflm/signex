@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
+import { slugify } from "@signex/shared";
 import {
   Dialog,
   DialogClose,
@@ -75,6 +76,15 @@ function CategoryForm({
     if (state.success) onSuccess();
   }, [state.success, onSuccess]);
 
+  // Slug is controlled so we can auto-slugify. On create, derive it from the
+  // English title until the user edits the slug themselves; on edit, keep the
+  // existing slug (never clobber it from the title). Always normalize on blur.
+  const [slug, setSlug] = useState(category.slug);
+  const slugEdited = useRef(isEdit);
+  const onTitleEn = (v: string) => {
+    if (!slugEdited.current) setSlug(slugify(v));
+  };
+
   const idBase = `cat-${mode}-${category.id || "new"}`;
 
   return (
@@ -93,18 +103,33 @@ function CategoryForm({
 
         <ActionFeedback state={state} />
 
-        <Field label="Slug" htmlFor={`${idBase}-slug`} required>
+        <Field
+          label="Slug"
+          htmlFor={`${idBase}-slug`}
+          required
+          hint="Lowercase, numbers and hyphens — used in the page URL."
+        >
           <Input
             id={`${idBase}-slug`}
             name="slug"
             required
-            defaultValue={category.slug}
+            value={slug}
+            onChange={(e) => {
+              slugEdited.current = true;
+              setSlug(e.target.value);
+            }}
+            onBlur={() => setSlug((s) => slugify(s))}
             placeholder="e.g. plastic-logos-emblems"
             className="font-mono tabular-nums text-sm"
           />
         </Field>
 
-        <LocalizedField base="title" label="Title" value={category.title} />
+        <LocalizedField
+          base="title"
+          label="Title"
+          value={category.title}
+          onEnInput={onTitleEn}
+        />
         <LocalizedField base="tag" label="Tag" value={category.tag} />
         <LocalizedField base="intro" label="Intro" value={category.intro} multiline />
 

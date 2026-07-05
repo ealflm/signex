@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Id, LocalizedText } from "./primitives";
+import { slugSchema } from "./slug";
 import { FrozenAsset } from "./assets";
 
 // FrozenAsset now lives in the neutral ./assets module (shared by the content
@@ -100,7 +101,7 @@ export type CategoryDTO = z.infer<typeof CategoryDTO>;
 // ===== Input schemas (create/update payloads; no generated fields) =====
 
 export const categoryInputSchema = z.object({
-  slug: z.string().min(1),
+  slug: slugSchema,
   sortOrder: z.number().int(),
   title: LocalizedText,
   tag: LocalizedText,
@@ -114,7 +115,7 @@ export type CategoryInput = z.infer<typeof categoryInputSchema>;
 
 export const productInputSchema = z.object({
   categoryId: z.string().min(1),
-  slug: z.string().min(1),
+  slug: slugSchema,
   sortOrder: z.number().int(),
   title: LocalizedText,
   tag: LocalizedText,

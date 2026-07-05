@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
+import { slugify } from "@signex/shared";
 import {
   Dialog,
   DialogClose,
@@ -83,6 +84,14 @@ function ProductForm({
     if (state.success) onSuccess();
   }, [state.success, onSuccess]);
 
+  // Controlled slug: auto-derive from the English title on create until the user
+  // edits it; keep the existing slug on edit. Always normalize on blur.
+  const [slug, setSlug] = useState(product.slug);
+  const slugEdited = useRef(isEdit);
+  const onTitleEn = (v: string) => {
+    if (!slugEdited.current) setSlug(slugify(v));
+  };
+
   const idBase = `prod-${mode}-${product.id || "new"}`;
 
   return (
@@ -127,14 +136,24 @@ function ProductForm({
               id={`${idBase}-slug`}
               name="slug"
               required
-              defaultValue={product.slug}
+              value={slug}
+              onChange={(e) => {
+                slugEdited.current = true;
+                setSlug(e.target.value);
+              }}
+              onBlur={() => setSlug((s) => slugify(s))}
               placeholder="e.g. soft-pvc-logo-patch"
               className="font-mono tabular-nums text-sm"
             />
           </Field>
         </div>
 
-        <LocalizedField base="title" label="Title" value={product.title} />
+        <LocalizedField
+          base="title"
+          label="Title"
+          value={product.title}
+          onEnInput={onTitleEn}
+        />
         <LocalizedField base="tag" label="Tag" value={product.tag} />
         <LocalizedField base="desc" label="Description" value={product.desc} multiline />
 
