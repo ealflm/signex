@@ -3,7 +3,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { STANDARD_VALUES } from "@/app/lib/standard-options";
 import { editText } from "@/app/lib/edit-attrs";
 import { LeadFormNotice } from "@/app/components/lead-form-notice";
 import { LeadUploadField } from "@/app/components/lead-upload-field";
@@ -227,8 +226,8 @@ export function HeroQuoteForm({
                       defaultValue=""
                     >
                       <option value="">{dict.standardPlaceholder}</option>
-                      {dict.standardOptions.map((label, i) => (
-                        <option key={STANDARD_VALUES[i] ?? label} value={STANDARD_VALUES[i] ?? label}>
+                      {dict.standardOptions.map((label) => (
+                        <option key={label} value={label}>
                           {label}
                         </option>
                       ))}

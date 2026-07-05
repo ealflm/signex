@@ -1,7 +1,6 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { StaticWebflowForm } from "@/app/components/static-webflow-form";
 import { LeadUploadField } from "@/app/components/lead-upload-field";
-import { STANDARD_VALUES } from "@/app/lib/standard-options";
 import { editText } from "@/app/lib/edit-attrs";
 
 // Card title leaf keys, index-aligned with dict.contact.cards (Email / Phone / Address). Used to
@@ -30,7 +29,7 @@ const CARD_TONE = ["is-email", "is-phone", "is-address"];
  * dict-driven fields — Name/Email/Phone (required), Quantity, Standard, Height/Width/
  * Thickness, Upload Sample, Message — sharing the hero's `dict.form` labels,
  * placeholders, submit text, and success message (EN + VI), with the same data-names
- * and STANDARD_VALUES so submissions are shaped identically. Fields sit in a 2-column
+ * and standardOptions labels so submissions are shaped identically. Fields sit in a 2-column
  * grid (the three mm dimensions share one 3-up row; Message spans full width) inside a
  * widened card — scoped `contact-form_*` styles in globals.css; the heading keeps the
  * ref's 8-column width in its own `.master_contact-b`, so the section uses two wrappers
@@ -187,8 +186,8 @@ export function Contact({
                         <option value="">
                           {t.standardPlaceholder}
                         </option>
-                        {t.standardOptions.map((label, i) => (
-                          <option key={STANDARD_VALUES[i] ?? label} value={STANDARD_VALUES[i] ?? label}>
+                        {t.standardOptions.map((label) => (
+                          <option key={label} value={label}>
                             {label}
                           </option>
                         ))}

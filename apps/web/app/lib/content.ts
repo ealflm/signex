@@ -119,6 +119,11 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       quantityPlaceholder: t(fFields.quantity.placeholder, lang),
       standard: t(fFields.standard.label, lang),
       standardPlaceholder: t(fFields.standard.placeholder, lang),
+      // The Standard <select> submits its resolved (per-locale) LABEL as the stored value, so the
+      // admin Leads inbox shows exactly what the visitor picked (e.g. "Tiêu chuẩn xuất khẩu"),
+      // not an opaque config `value`. Earlier the forms used a hardcoded parallel STANDARD_VALUES
+      // array by index for the option value — so CMS-configured options recorded the wrong
+      // (old, index-aligned) standard. The config's per-option `value` is unused by the public form.
       standardOptions: fc.standardOptions.map((o) => t(o.label, lang)),
       height: t(fFields.height.label, lang),
       heightPlaceholder: t(fFields.height.placeholder, lang),
