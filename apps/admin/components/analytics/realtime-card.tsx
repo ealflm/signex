@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import type { RealtimeResponse } from "@signex/shared";
+import { adminApi } from "@/app/lib/base-path";
 
 export function RealtimeCard() {
   const [data, setData] = useState<RealtimeResponse | null>(null);
@@ -10,7 +11,7 @@ export function RealtimeCard() {
     let alive = true;
     const load = async () => {
       try {
-        const res = await fetch("/api/analytics/realtime", { cache: "no-store" });
+        const res = await fetch(adminApi("/api/analytics/realtime"), { cache: "no-store" });
         if (alive && res.ok) setData(await res.json());
       } catch {
         /* keep last */

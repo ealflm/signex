@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { SubmissionDto } from "@/app/lib/forms";
 import { formatIsoDay, formatRelativeTime } from "@/app/lib/format";
+import { adminApi } from "@/app/lib/base-path";
 import { readLead, humanizeKey } from "./lead-utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -132,7 +133,7 @@ function LeadDetailBody({
     setPending(next);
     setError(null);
     try {
-      const res = await fetch(`/admin-api/forms/${lead.id}`, {
+      const res = await fetch(adminApi(`/admin-api/forms/${lead.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: next }),

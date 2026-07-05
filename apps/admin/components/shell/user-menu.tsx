@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut, User as UserIcon } from "lucide-react";
+import { adminApi } from "@/app/lib/base-path";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -45,7 +46,7 @@ export function UserMenu({ username, role }: { username: string; role: string })
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {/* Real HTTP POST → route handler clears the session cookie. */}
-        <form action="/admin-api/auth/logout" method="post">
+        <form action={adminApi("/admin-api/auth/logout")} method="post">
           <DropdownMenuItem asChild variant="destructive">
             <button type="submit" className="w-full cursor-pointer">
               <LogOut className="size-4" />

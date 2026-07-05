@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import type { SubmissionDto } from "@/app/lib/forms";
 import { formatIsoDay, formatRelativeDate } from "@/app/lib/format";
+import { adminApi } from "@/app/lib/base-path";
 import { readLead, previewOf } from "./lead-utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -124,7 +125,7 @@ export function LeadsInbox({
     setClearing(true);
     setClearError(null);
     try {
-      const res = await fetch("/admin-api/forms/spam", { method: "DELETE" });
+      const res = await fetch(adminApi("/admin-api/forms/spam"), { method: "DELETE" });
       if (!res.ok) {
         setClearError(`Could not clear spam (${res.status}).`);
         setClearing(false);
