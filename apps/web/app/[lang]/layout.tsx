@@ -6,12 +6,11 @@ import { WebflowRuntime } from "@/app/components/webflow-runtime";
 import { WebflowPageAttrs } from "@/app/components/webflow-page-attrs";
 import { LOCALES, hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { getSiteContent } from "@/app/lib/content";
-import { getGa4Id } from "@/app/lib/site-config";
 import { PreviewBar } from "@/app/components/preview-bar";
 import { buildMetadata, THEME_COLOR } from "@/app/lib/seo";
 import { siteAttrs } from "@/app/lib/webflow-bundles";
 import { OrgJsonLd } from "@/app/components/org-json-ld";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import { GoogleTagManager } from "@next/third-parties/google";
 import { Analytics } from "@/app/components/analytics";
 
 // Verbatim from legacy/caladan/index.html <head>: the FOUC guard hides animated
@@ -20,6 +19,14 @@ const WF_GUARD_STYLE =
   "html.w-mod-js:not(.w-mod-ix3) :is([marquee-up],[marquee-down],[stagger-text],.master_sales-cta){visibility:hidden !important;}";
 const WF_MOD_SHIM =
   '!function(o,c){var n=c.documentElement,t=" w-mod-";n.className+=t+"js",("ontouchstart"in o||o.DocumentTouch&&c instanceof DocumentTouch)&&(n.className+=t+"touch")}(window,document);';
+
+// Google Tag Manager container — the SINGLE source for all marketing/analytics tags.
+// GA4 (G-HTGYKH7Y2T) and the "Lượt yêu cầu thông tin báo giá" Google Ads conversion
+// (AW-18302102784/…) are configured INSIDE the GTM UI (under core@signex.vn), NOT in code;
+// the site only emits a `quote_submit` dataLayer event (see app/lib/analytics/gtm-events.ts).
+// Production-only so local/dev and the CMS editor (/preview) never load real tags; empty
+// id ⇒ nothing is injected. See docs/superpowers/specs/2026-07-06-gtm-tag-management-migration-design.md.
+const GTM_CONTAINER_ID = process.env.NODE_ENV === "production" ? "GTM-TMHSNCN9" : "";
 
 // Localized site metadata (EN/VI). This is the base for every route; pages like /about and
 // /contact override it with their own generateMetadata. Home (which has no page-level metadata)
@@ -57,19 +64,10 @@ export default async function RootLayout({
   // string to Locale for getSiteContent (unknown locales fall back to DEFAULT_LOCALE in-render).
   const dict = await getSiteContent(hasLocale(lang) ? lang : DEFAULT_LOCALE);
   const { domain, site } = siteAttrs(); // single source for the Webflow site attrs
-  // Configurable GA4: the measurement id comes from the global SiteConfig singleton (admin
-  // Settings page), read via getGa4Id() — a separate 'use cache' + cacheTag('release') loader so
-  // analytics is INDEPENDENT of the published theme (a theme publish OR a site-config PATCH both
-  // refresh it). ONLY inject Google Analytics when an id is actually set — empty string ⇒ render
-  // nothing (no gtag.js, no network).
-  // NOTE (follow-up for production/GDPR): gate tracking behind cookie-consent. GA4 uses
-  // Consent Mode v2 — `gtag('consent','default',{analytics_storage:'denied'})` before the
-  // config call, then update on opt-in — NOT the legacy UA `anonymize_ip`. Out of scope here.
-  const ga4Id = await getGa4Id();
-  // Optional GA4 DebugView: set GA_DEBUG=1 (server env) to flag hits as debug so
-  // they surface in GA4 → Admin → DebugView while testing. OFF in production so
-  // real traffic is never marked debug (and excluded from standard reports).
-  const gaDebug = process.env.GA_DEBUG === "1";
+  // Marketing/analytics tags are managed in GTM now (container GTM_CONTAINER_ID above); GA4 and
+  // the Google Ads quote-request conversion are configured inside the GTM UI, not here.
+  // NOTE (follow-up for production/GDPR): gate tracking behind cookie-consent — GTM supports
+  // Consent Mode v2 (set consent defaults to 'denied', update on opt-in). Out of scope here.
   return (
     // suppressHydrationWarning: the WF_MOD_SHIM script adds w-mod-js/w-mod-touch to <html> before
     // hydration, and WebflowPageAttrs sets data-wf-page on it — both intentionally diverge from SSR.
@@ -102,8 +100,9 @@ export default async function RootLayout({
           </main>
         </div>
         <OrgJsonLd dict={dict} />
-        {/* Google Analytics is injected ONLY when a GA4 id is configured (admin → Settings). */}
-        {ga4Id ? <GoogleAnalytics gaId={ga4Id} debugMode={gaDebug} /> : null}
+        {/* GTM container — single source for GA4 + Google Ads conversion + future pixels.
+            Public site, production only (empty id ⇒ nothing loads). */}
+        {GTM_CONTAINER_ID ? <GoogleTagManager gtmId={GTM_CONTAINER_ID} /> : null}
         {/* First-party analytics — parallel to GA4; reads its own /api/collect. */}
         <Analytics />
         <PreviewBar />
