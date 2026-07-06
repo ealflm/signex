@@ -444,9 +444,9 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       ogImageAlt: t(b.meta.ogImage.alt, lang),
       // meta.ogImage is AssetRef — resolve URL so seo.ts can serve the CDN path in og:image
       ogImageUrl: assetUrl(b.meta.ogImage.assetId),
-      // NOTE: GA4 no longer comes from the snapshot. It moved to the global SiteConfig singleton
-      // (admin Settings) so analytics is independent of the published theme — see
-      // app/lib/site-config.ts (getGa4Id) wired into app/[lang]/layout.tsx.
+      // NOTE: analytics no longer comes from the snapshot. Marketing/analytics tags are managed
+      // in GTM (container GTM_CONTAINER_ID in app/[lang]/layout.tsx); GA4 + the Google Ads
+      // conversion are configured inside the GTM UI, independent of the published theme.
       about: {
         title: t(b.meta.about.title, lang),
         description: t(b.meta.about.description, lang),
