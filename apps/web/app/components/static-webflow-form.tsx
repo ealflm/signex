@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LeadFormNotice } from "./lead-form-notice";
 import { getAnalyticsIds } from "@/app/lib/analytics/tracker";
+import { reportQuoteConversion } from "@/app/lib/analytics/google-ads";
 
 type Props = {
   id: string;
@@ -40,6 +41,7 @@ export function StaticWebflowForm({
         body,
       });
       if (res.ok) {
+        reportQuoteConversion(); // Google Ads: 1 conversion per successful quote request
         formRef.current?.reset(); // clear the fields but keep the form in place
         setState("done");
       } else {

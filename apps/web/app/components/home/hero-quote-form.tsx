@@ -7,6 +7,7 @@ import { editText } from "@/app/lib/edit-attrs";
 import { LeadFormNotice } from "@/app/components/lead-form-notice";
 import { LeadUploadField } from "@/app/components/lead-upload-field";
 import { getAnalyticsIds } from "@/app/lib/analytics/tracker";
+import { reportQuoteConversion } from "@/app/lib/analytics/google-ads";
 
 /**
  * Hero quote form — progressive disclosure, full-width. Text comes from the server-loaded
@@ -112,6 +113,7 @@ export function HeroQuoteForm({
                 body,
               });
               if (res.ok) {
+                reportQuoteConversion(); // Google Ads: 1 conversion per successful quote request
                 formRef.current?.reset();
                 setExpanded(false);
                 setState("done");
