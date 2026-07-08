@@ -39,7 +39,7 @@
 //   Any leaf whose span fails the 3-layer markup-delta gate (CSS-grep + computed-style + screenshot).
 
 export type EditMediaKind = "image" | "video";
-export type EditKind = "image" | "video" | "text";
+export type EditKind = "image" | "video" | "text" | "color";
 
 /** Options for inline text editing (client-side UX only — no schema .max() churn). */
 export interface EditTextOpts {
@@ -85,5 +85,36 @@ export function editText(
     ...(opts?.maxLength != null && { "data-edit-maxlength": opts.maxLength }),
     ...(opts?.multiline && { "data-edit-multiline": "true" }),
     ...(opts?.required && { "data-edit-required": "true" }),
+  };
+}
+
+export type EditColorRole = "bg" | "text" | "border";
+
+export interface EditColorSpec {
+  /** Palette token key (from @signex/shared TOKEN_VARS/PALETTE_VARS) this element paints from.
+   *  Omit for anchors that only support a per-element override (no obvious shared token). */
+  token?: string;
+  /** Which CSS roles on this element are overridable (drives the popover's role chooser). */
+  roles: EditColorRole[];
+}
+
+/**
+ * Stamp a colour-anchored element. Unlike editText/editAttrs, this ALWAYS returns the stable
+ * `data-sx-c` anchor (public + preview) so per-element override CSS ([data-sx-c="…"]) applies on
+ * the live site. The data-edit-* hooks (the click surface + popover metadata) are preview-only.
+ */
+export function editColor(
+  editable: boolean | undefined,
+  anchorId: string,
+  spec: EditColorSpec,
+): Record<string, string> {
+  const anchor = { "data-sx-c": anchorId };
+  if (!editable) return anchor;
+  return {
+    ...anchor,
+    "data-edit-field": anchorId,
+    "data-edit-kind": "color",
+    ...(spec.token ? { "data-edit-color-token": spec.token } : {}),
+    "data-edit-color-roles": spec.roles.join(","),
   };
 }
