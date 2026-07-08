@@ -23,7 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { paletteStyle, type BlockKey, type ReleaseSnapshot } from "@signex/shared";
+import { PALETTE_VARS, paletteStyle, type BlockKey, type ReleaseSnapshot } from "@signex/shared";
 
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -50,6 +50,7 @@ import { Toolbar } from "./toolbar";
 import { SectionsNav } from "./sections-nav";
 import { ContextPanel } from "./context-panel";
 import { PalettePanel } from "./palette-panel";
+import { ColorPopover, type ColorEditTarget } from "./color-popover";
 import {
   DEVICE_MAX_WIDTH,
   SURFACE_PATH_BY_BLOCK,
@@ -66,7 +67,13 @@ import {
   type MediaRef,
 } from "@/app/(dash)/visual/media-picker-dialog";
 import { adminApi, stripBasePath } from "@/app/lib/base-path";
-import { isEmptyPalette, type PalettePatch } from "./_lib/palette-patch";
+import {
+  isEmptyPalette,
+  setOverride,
+  setSeed,
+  setToken,
+  type PalettePatch,
+} from "./_lib/palette-patch";
 
 const SOURCE = "signex-editor";
 
@@ -204,6 +211,9 @@ export function EditorShell(props: EditorShellProps) {
   // Client-held palette working patch (mirrors `pending` for blocks, but is a single small object —
   // seeds/tokens/overrides — not a per-block map). Batched into the SAME save-draft POST as `pending`.
   const [pendingPalette, setPendingPalette] = useState<PalettePatch>({});
+  // Colour-zone click popover target (Task 10) — set by the inbound `colorEdit` message, cleared on
+  // pick/close. Mutually independent of `selection`/`paletteOpen`: it floats over whatever's shown.
+  const [colorTarget, setColorTarget] = useState<ColorEditTarget | null>(null);
   const [draftRevision, setDraftRevision] = useState(initialDraftRevision);
   const [publishedRevision, setPublishedRevision] = useState(initialPublishedRevision);
   const [saving, setSaving] = useState(false);
@@ -689,6 +699,14 @@ export function EditorShell(props: EditorShellProps) {
       if (data.type === "edit" && typeof data.field === "string") {
         const kind = data.mediaKind === "video" ? "video" : "image";
         openMediaPicker(data.field, kind);
+      } else if (data.type === "colorEdit" && typeof data.field === "string") {
+        // A colour-zone click (Task 6) — open the popover. `token` is "" for element-only zones;
+        // `roles` are the CSS custom-property roles ("bg"/"text"/"border") the zone can override.
+        setColorTarget({
+          field: data.field,
+          token: typeof data.token === "string" ? data.token : "",
+          roles: Array.isArray(data.roles) ? data.roles : [],
+        });
       } else if (data.type === "textEdit" && typeof data.field === "string") {
         // A committed inline text edit. `field` is the snapshot path WITHOUT locale; append the live
         // locale so ONLY that leaf is written (the other locale stays untouched). Rides the SAME
@@ -980,6 +998,28 @@ export function EditorShell(props: EditorShellProps) {
           if (!o) setMediaTarget(null);
         }}
       />
+
+      {/* Colour-zone click popover (Task 10) — token mode (site-wide) or element mode (per-anchorId
+          override). anchor is a fixed screen position near the right panel; the trigger itself is an
+          invisible anchor span (see ColorPopover) so it doesn't shift layout. */}
+      {colorTarget && (
+        <ColorPopover
+          target={colorTarget}
+          anchor={{ x: window.innerWidth - 340, y: 120 }}
+          onPickToken={(tokenKey, hex) => {
+            const isSeed = tokenKey in PALETTE_VARS;
+            applyPalette(
+              isSeed
+                ? setSeed(pendingPalette, tokenKey, hex)
+                : setToken(pendingPalette, tokenKey, hex),
+            );
+          }}
+          onPickElement={(anchorId, role, hex) =>
+            applyPalette(setOverride(pendingPalette, anchorId, role, hex))
+          }
+          onClose={() => setColorTarget(null)}
+        />
+      )}
     </>
   );
 }
