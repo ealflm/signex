@@ -23,11 +23,13 @@
 // postMessage protocol (both directions use { source: "signex-editor", ... }):
 //   preview → admin:  { source, type: "edit", field, mediaKind: "image"|"video" }      // open media drawer
 //                     { source, type: "textEdit", field, value }                       // committed inline text edit
+//                     { source, type: "colorEdit", field, token, roles }                // colour zone clicked → open colour popover (Task 6)
 //                     { source, type: "highlight", field }                             // canvas leaf focused (→ flash panel field)
 //                     { source, type: "ready" }                                        // handshake on mount — admin re-applies pending edits
 //   admin   → preview: { source, type: "refresh" }                                     // reload to show the just-saved working state
 //                     { source, type: "highlight", field }                             // panel field focused (→ flash canvas leaf; Task 7)
 //                     { source, type: "applyEdits", edits:[…] }                         // live DOM swap (no reload)
+//                     { source, type: "applyPalette", css }                            // live re-theme of #signex-palette (no reload; Task 6)
 //     applyEdits edit shapes:
 //       { field, kind:"image", url? } | { field, kind:"video", posterUrl?, mp4Url?, webmUrl? }
 //       { field, kind:"text",  text }   // re-apply unsaved pending inline text after a refresh/remount
@@ -93,6 +95,10 @@ export function EditOverlay() {
          outline/box-shadow (paints outside the box) — never border/margin/padding. */
       [data-edit-kind="text"] { cursor: text; }
       [data-edit-kind="text"]:hover { outline: 2px solid #4956e3; outline-offset: 2px; }
+      /* Inline COLOUR editing (Task 5 stamps [data-edit-kind="color"]). Dashed outline distinguishes
+         a colour zone from a text/media zone at a glance. */
+      [data-edit-kind="color"] { cursor: pointer; }
+      [data-edit-kind="color"]:hover { outline: 2px dashed #4956e3; outline-offset: 2px; }
       [data-edit-kind="text"][contenteditable="true"] {
         outline: 2px solid #4956e3; outline-offset: 2px; background: rgba(73,86,227,.06);
       }
@@ -540,6 +546,29 @@ export function EditOverlay() {
         return;
       }
 
+      // Inline COLOUR: a click on a [data-edit-kind="color"] zone opens the admin's colour popover
+      // instead of navigating/editing text. Many colour zones also live inside an <a> (e.g. the nav
+      // CTA button's background) — preventDefault/stopPropagation BEFORE the navigation-interception
+      // logic below so the click never falls through to the anchor's default navigation.
+      const colorEl = (e.target as Element | null)?.closest?.(
+        '[data-edit-kind="color"]',
+      ) as HTMLElement | null;
+      if (colorEl) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.parent.postMessage(
+          {
+            source: SOURCE,
+            type: "colorEdit",
+            field: colorEl.getAttribute("data-edit-field") ?? "",
+            token: colorEl.getAttribute("data-edit-color-token") ?? "",
+            roles: (colorEl.getAttribute("data-edit-color-roles") ?? "").split(",").filter(Boolean),
+          },
+          "*",
+        );
+        return;
+      }
+
       // Honour the media-zone editor clicks (handled above) and modified clicks (new-tab etc.).
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
         return;
@@ -587,6 +616,20 @@ export function EditOverlay() {
 
       if (data.type === "refresh") {
         window.location.reload();
+        return;
+      }
+
+      // applyPalette: live re-theme without reload. Task 3 renders a `#signex-palette` <style> node
+      // at initial SSR when a palette is already set; find-or-create it here since a page rendered
+      // with NO palette yet (first live edit) won't have the node at all.
+      if (data.type === "applyPalette") {
+        let styleEl = document.getElementById("signex-palette") as HTMLStyleElement | null;
+        if (!styleEl) {
+          styleEl = document.createElement("style");
+          styleEl.id = "signex-palette";
+          document.head.appendChild(styleEl);
+        }
+        styleEl.textContent = typeof data.css === "string" ? data.css : "";
         return;
       }
 
