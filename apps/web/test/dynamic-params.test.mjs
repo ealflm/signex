@@ -74,28 +74,33 @@ test("[lang] layout: does NOT export dynamicParams (forbidden under cacheCompone
   );
 });
 
-// Configurable GA4 — Google Analytics must be injected ONLY when an id is configured.
-test("[lang] layout: imports GoogleAnalytics from @next/third-parties/google", () => {
+// GTM tag management — all marketing/analytics tags (GA4 + Google Ads) are managed in a single GTM
+// container, injected ONLY in production (empty id in dev/preview ⇒ nothing). GA4 is configured
+// INSIDE the GTM UI, not in code. See docs/superpowers/specs/2026-07-06-gtm-tag-management-migration-design.md.
+test("[lang] layout: imports GoogleTagManager from @next/third-parties/google", () => {
   assert.match(
     src("[lang]", "layout.tsx"),
-    /import\s*\{\s*GoogleAnalytics\s*\}\s*from\s*["']@next\/third-parties\/google["']/
+    /import\s*\{\s*GoogleTagManager\s*\}\s*from\s*["']@next\/third-parties\/google["']/
   );
 });
 
-test("[lang] layout: renders <GoogleAnalytics> guarded by a non-empty ga4Id from SiteConfig (getGa4Id)", () => {
+test("[lang] layout: renders <GoogleTagManager> guarded by a production-only container id", () => {
   const layout = src("[lang]", "layout.tsx");
-  // id now comes from the global SiteConfig singleton (admin Settings), read via getGa4Id() —
-  // independent of the published theme (GA4 was split out of the theme meta block).
-  assert.match(layout, /const\s+ga4Id\s*=\s*await\s+getGa4Id\(\)/);
-  // conditional render: `ga4Id ? <GoogleAnalytics gaId={ga4Id} ... /> : null` — no id ⇒ nothing.
-  // (allows extra props, e.g. debugMode={gaDebug}, between gaId and the closing tag.)
-  assert.match(layout, /ga4Id\s*\?\s*<GoogleAnalytics\s+gaId=\{ga4Id\}[^>]*\/>\s*:\s*null/);
+  // container id is production-only; empty string in dev/preview ⇒ nothing injected.
+  assert.match(
+    layout,
+    /const\s+GTM_CONTAINER_ID\s*=\s*process\.env\.NODE_ENV\s*===\s*["']production["']\s*\?\s*["']GTM-[A-Z0-9]+["']\s*:\s*["']["']/
+  );
+  // conditional render: `GTM_CONTAINER_ID ? <GoogleTagManager gtmId={GTM_CONTAINER_ID} /> : null` — empty id ⇒ nothing.
+  assert.match(layout, /GTM_CONTAINER_ID\s*\?\s*<GoogleTagManager\s+gtmId=\{GTM_CONTAINER_ID\}[^>]*\/>\s*:\s*null/);
 });
 
-test("GA4 id is sourced from the SiteConfig loader (getGa4Id), not the theme meta block", () => {
+test("marketing tags come from the GTM container constant, not the theme meta block (no GA4 in code)", () => {
   const layout = src("[lang]", "layout.tsx");
-  // getGa4Id is imported from the site-config loader (global SiteConfig), not derived from dict.meta.
-  assert.match(layout, /import\s*\{\s*getGa4Id\s*\}\s*from\s*["']@\/app\/lib\/site-config["']/);
+  // GTM container id is a code constant (tags managed in the GTM UI), not derived from dict.meta,
+  // and the old per-theme/SiteConfig GA4 id path is gone.
+  assert.match(layout, /GTM_CONTAINER_ID/);
+  assert.doesNotMatch(layout, /getGa4Id|GoogleAnalytics/);
   // content.ts no longer resolves a ga4Id off the meta block.
   const content = readFileSync(join(APP, "lib", "content.ts"), "utf8");
   assert.doesNotMatch(content, /ga4Id:\s*b\.meta/);
