@@ -2,7 +2,7 @@
 import { Fragment } from "react";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { LangToggle } from "@/app/components/lang-toggle";
-import { editAttrs, editText } from "@/app/lib/edit-attrs";
+import { editAttrs, editText, editColor } from "@/app/lib/edit-attrs";
 
 export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; editable?: boolean }) {
   return (
@@ -133,6 +133,7 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
                 data-cta="nav-quote"
                 data-wf--cta-primary--variant="primary"
                 href="/contact"
+                {...editColor(editable, "nav.cta.color", { token: "btnPrimaryBg", roles: ["bg", "text"] })}
               >
                 <div className="button_text-mask">
                   <div button-text="" className="text-button">

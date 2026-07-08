@@ -1,6 +1,6 @@
 import { HeroQuoteForm } from "@/app/components/home/hero-quote-form";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editAttrs, editText } from "@/app/lib/edit-attrs";
+import { editAttrs, editText, editColor } from "@/app/lib/edit-attrs";
 
 // Server-rendered per locale, so this never re-renders client-side — a plain object is
 // fine (no IX2-reveal clobbering concern; language changes are a full navigation now).
@@ -23,8 +23,11 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                     <h1 className="heading-style-h0">
                       <span {...editText(editable, "hero.titleTop")}>{t.titleTop}</span>
                       <br />
-                      <span className="tone-medium" {...editText(editable, "hero.titleBottom")}>
-                        {t.titleBottom}
+                      <span
+                        className="tone-medium"
+                        {...editColor(editable, "hero.titleBottom.color", { token: "accentAqua", roles: ["text"] })}
+                      >
+                        <span {...editText(editable, "hero.titleBottom")}>{t.titleBottom}</span>
                       </span>
                     </h1>
                   </div>

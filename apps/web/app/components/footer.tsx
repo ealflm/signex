@@ -1,6 +1,6 @@
 // app/components/footer.tsx
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editAttrs, editText } from "@/app/lib/edit-attrs";
+import { editAttrs, editText, editColor } from "@/app/lib/edit-attrs";
 
 /**
  * Footer — signex content poured into Caladan's master_footer shell. The shell
@@ -48,7 +48,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
 
   return (
     <section className="footer">
-      <div className="master_footer">
+      <div className="master_footer" {...editColor(editable, "footer.bar.color", { token: "baseDark", roles: ["bg"] })}>
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="footer_top-tile footer-signex_top">
