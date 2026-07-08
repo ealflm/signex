@@ -344,4 +344,23 @@ describe("ReleaseSnapshotSchema", () => {
     });
     expect(r.success).toBe(false);
   });
+
+  it("parses a snapshot with NO palette (backward compat)", () => {
+    const base = {
+      schemaVersion: 1,
+      blocks: VALID_BLOCKS,
+      assets: { [CUID]: MIN_ASSET },
+    };
+    expect(ReleaseSnapshotSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("parses a snapshot WITH a palette", () => {
+    const withPalette = {
+      schemaVersion: 1,
+      blocks: VALID_BLOCKS,
+      assets: { [CUID]: MIN_ASSET },
+      palette: { seeds: { accentAqua: "#123456" } },
+    };
+    expect(ReleaseSnapshotSchema.safeParse(withPalette).success).toBe(true);
+  });
 });
