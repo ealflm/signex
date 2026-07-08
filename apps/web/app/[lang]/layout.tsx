@@ -4,6 +4,7 @@ import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { WebflowRuntime } from "@/app/components/webflow-runtime";
 import { WebflowPageAttrs } from "@/app/components/webflow-page-attrs";
+import { PaletteStyle } from "@/app/components/editor/palette-style";
 import { LOCALES, hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { getSiteContent } from "@/app/lib/content";
 import { PreviewBar } from "@/app/components/preview-bar";
@@ -88,6 +89,7 @@ export default async function RootLayout({
         {/* IBM Plex Mono: ibm-plex-mono.css is a plain @font-face stylesheet (the export loads
             it via WebFont.load, but webfont.js isn't available in <head>), so link it directly. */}
         <link rel="stylesheet" href="/assets/fonts/ibm-plex-mono.css" />
+        <PaletteStyle palette={dict.palette} />
       </head>
       <body>
         {/* Skip link — first focusable element, lets keyboard/AT users jump past the navbar. */}

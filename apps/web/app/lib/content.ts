@@ -90,6 +90,7 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
   const fFields = fc.fields;
 
   return {
+    palette: snap.palette, // raw Palette (locale-agnostic); undefined on INITIAL_SNAPSHOT
     businessContact: {
       legalName: t(bc.legalName, lang),
       brand: t(bc.brand, lang),
