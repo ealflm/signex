@@ -11,7 +11,7 @@ import { SEED_KEYS, PALETTE_VARS, TOKEN_KEYS, TOKEN_VARS } from "@signex/shared"
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { PalettePatch } from "./_lib/palette-patch";
-import { resetAll, setSeed, setToken } from "./_lib/palette-patch";
+import { setSeed, setToken } from "./_lib/palette-patch";
 
 // ─── Swatch row ───────────────────────────────────────────────────────────────
 
@@ -51,9 +51,15 @@ function Swatch({
 export interface PalettePanelProps {
   palette: PalettePatch;
   onChange: (next: PalettePatch) => void;
+  /**
+   * Distinct from `onChange(resetAll())`: a plain merge patch can never DELETE a previously-saved
+   * key (see theme.service.ts saveDraft's additive merge), so the reset button needs its own signal
+   * — editor-shell wires this to flag the next save as a full `replacePalette` instead of a merge.
+   */
+  onReset: () => void;
 }
 
-export function PalettePanel({ palette, onChange }: PalettePanelProps) {
+export function PalettePanel({ palette, onChange, onReset }: PalettePanelProps) {
   const seedVal = (k: keyof typeof PALETTE_VARS) => palette.seeds?.[k] ?? PALETTE_VARS[k].default;
   const tokenVal = (k: keyof typeof TOKEN_VARS) => palette.tokens?.[k] ?? "#000000";
 
@@ -84,7 +90,7 @@ export function PalettePanel({ palette, onChange }: PalettePanelProps) {
         </CollapsibleContent>
       </Collapsible>
 
-      <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => onChange(resetAll())}>
+      <Button variant="outline" size="sm" className="mt-4 w-full" onClick={onReset}>
         Đặt lại toàn bộ màu
       </Button>
     </div>

@@ -522,4 +522,55 @@ describe('ThemeService.saveDraft', () => {
       bg: '#222222',
     });
   });
+
+  it('replacePalette:true replaces the whole palette verbatim, discarding stale keys (reset support)', async () => {
+    tx.theme.findUniqueOrThrow.mockReset();
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: {
+        ...BASE_SNAPSHOT,
+        palette: {
+          seeds: { accentAqua: '#111111' },
+          tokens: { inkBase: '#222222' },
+        },
+      },
+    });
+
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      palette: { seeds: { accentOcean: '#333333' } },
+      replacePalette: true,
+    } as any);
+
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    // Old accentAqua AND the whole tokens slice must be gone — this is a full replace, not a merge.
+    expect(updatedSnap.palette).toEqual({ seeds: { accentOcean: '#333333' } });
+  });
+
+  it('replacePalette:true with an absent palette clears the draft palette entirely', async () => {
+    tx.theme.findUniqueOrThrow.mockReset();
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: {
+        ...BASE_SNAPSHOT,
+        palette: { seeds: { accentAqua: '#111111' } },
+      },
+    });
+
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      replacePalette: true,
+    } as any);
+
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    expect(updatedSnap.palette).toEqual({});
+  });
 });

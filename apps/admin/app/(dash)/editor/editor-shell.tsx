@@ -211,6 +211,13 @@ export function EditorShell(props: EditorShellProps) {
   // Client-held palette working patch (mirrors `pending` for blocks, but is a single small object —
   // seeds/tokens/overrides — not a per-block map). Batched into the SAME save-draft POST as `pending`.
   const [pendingPalette, setPendingPalette] = useState<PalettePatch>({});
+  // True after the panel's "Đặt lại toàn bộ màu" reset, until the next successful save. The palette
+  // merge (both API and here) is additive-only — it can never DELETE a persisted key — so a reset
+  // needs an explicit "replace, don't merge" signal sent to the server (`replacePalette: true`), and
+  // must ALSO force the editor dirty (an empty pendingPalette is otherwise indistinguishable from "no
+  // change"). Any subsequent colour edit after a reset keeps this true, so the next save still fully
+  // replaces with the new working set.
+  const [paletteReset, setPaletteReset] = useState(false);
   // Colour-zone click popover target (Task 10) — set by the inbound `colorEdit` message, cleared on
   // pick/close. Mutually independent of `selection`/`paletteOpen`: it floats over whatever's shown.
   const [colorTarget, setColorTarget] = useState<ColorEditTarget | null>(null);
@@ -362,6 +369,14 @@ export function EditorShell(props: EditorShellProps) {
     [webOrigin],
   );
 
+  // "Đặt lại toàn bộ màu" — distinct from a normal `applyPalette({...})` edit: it must mark the save
+  // as a full REPLACE (see `paletteReset` above) so a previously-saved key can actually be removed,
+  // not just merged over with an empty patch (which the additive merge would treat as a no-op).
+  const onResetPalette = useCallback(() => {
+    setPaletteReset(true);
+    applyPalette({});
+  }, [applyPalette]);
+
   // Panel→canvas highlight: flash the canvas leaf matching a focused panel field's snapshot path.
   const postHighlight = useCallback(
     (field: string) => {
@@ -493,7 +508,10 @@ export function EditorShell(props: EditorShellProps) {
   // Returns the new draftRevision on success, or null on failure / conflict.
   const saveDraft = useCallback(async (): Promise<number | null> => {
     if (savingRef.current) return null;
-    if (pending.size === 0 && isEmptyPalette(pendingPalette)) return draftRevision;
+    // A reset-only change (pendingPalette back to {}, but paletteReset flags it as a real change)
+    // must still be saveable — isEmptyPalette alone can't distinguish "nothing changed" from
+    // "user reset everything", so paletteReset is checked independently.
+    if (pending.size === 0 && isEmptyPalette(pendingPalette) && !paletteReset) return draftRevision;
     savingRef.current = true;
     setSaving(true);
     const edits = [...pending.entries()].map(([key, data]) => ({ key, data }));
@@ -505,6 +523,7 @@ export function EditorShell(props: EditorShellProps) {
           edits,
           expectedDraftRevision: draftRevision,
           palette: pendingPalette,
+          replacePalette: paletteReset,
         }),
       });
       if (res.ok) {
@@ -515,12 +534,16 @@ export function EditorShell(props: EditorShellProps) {
           Record<string, unknown>
         >;
         for (const [k, d] of pending) blocks[k] = d;
-        // Shallow-merge per slice — mirrors the server's merge (theme.service.ts saveDraft) — so a
-        // patch that only touched e.g. seeds this session doesn't wipe previously-saved tokens/overrides.
-        // `overrides` is merged one level deeper (per-anchor role merge), byte-identical in shape to
-        // the API's merge: a whole-object replace per anchorId would drop a role saved in an earlier
-        // session (pendingPalette resets to {} across a save boundary).
-        if (!isEmptyPalette(pendingPalette)) {
+        if (paletteReset) {
+          // Mirrors the API's replacePalette branch: adopt pendingPalette VERBATIM (not merged) so a
+          // reset actually removes previously-saved keys instead of the additive merge no-op-ing them.
+          baseRef.current.palette = pendingPalette;
+        } else if (!isEmptyPalette(pendingPalette)) {
+          // Shallow-merge per slice — mirrors the server's merge (theme.service.ts saveDraft) — so a
+          // patch that only touched e.g. seeds this session doesn't wipe previously-saved tokens/overrides.
+          // `overrides` is merged one level deeper (per-anchor role merge), byte-identical in shape to
+          // the API's merge: a whole-object replace per anchorId would drop a role saved in an earlier
+          // session (pendingPalette resets to {} across a save boundary).
           const prevPalette = baseRef.current.palette ?? {};
           const prevOverrides = prevPalette.overrides ?? {};
           const patchOverrides = pendingPalette.overrides ?? {};
@@ -543,6 +566,7 @@ export function EditorShell(props: EditorShellProps) {
         setDraftRevision(body.draftRevision);
         setPending(new Map());
         setPendingPalette({});
+        setPaletteReset(false);
         setMediaPreview(new Map());
         setTextPreview(new Map());
         toast.success("Saved to draft.");
@@ -588,7 +612,7 @@ export function EditorShell(props: EditorShellProps) {
       setSaving(false);
       savingRef.current = false;
     }
-  }, [pending, pendingPalette, themeId, draftRevision, postRefresh]);
+  }, [pending, pendingPalette, paletteReset, themeId, draftRevision, postRefresh]);
 
   // ── Step 5: Publish (save pending first) ──────────────────────────────────────
   const publish = useCallback(
@@ -597,7 +621,7 @@ export function EditorShell(props: EditorShellProps) {
       setPublishing(true);
       try {
         let expected = draftRevision;
-        if (pending.size > 0 || !isEmptyPalette(pendingPalette)) {
+        if (pending.size > 0 || !isEmptyPalette(pendingPalette) || paletteReset) {
           const rev = await saveDraft();
           if (rev == null) return; // save failed / conflicted — abort publish
           expected = rev;
@@ -626,13 +650,15 @@ export function EditorShell(props: EditorShellProps) {
         setPublishing(false);
       }
     },
-    [publishing, pending, pendingPalette, saveDraft, themeId, draftRevision],
+    [publishing, pending, pendingPalette, paletteReset, saveDraft, themeId, draftRevision],
   );
 
   // ── Step 6: status, guards, postMessage bridge ────────────────────────────────
   // A palette-only change (no block edits) counts as unsaved too — it drives the same dirty
-  // indicator, save/publish enablement, and navigation guards as a block edit.
-  const paletteDirty = !isEmptyPalette(pendingPalette);
+  // indicator, save/publish enablement, and navigation guards as a block edit. `paletteReset` alone
+  // (pendingPalette back to {}) must ALSO count as dirty — otherwise a reset-only change looks
+  // "clean" and Save never fires the replacePalette request that's needed to clear a saved palette.
+  const paletteDirty = !isEmptyPalette(pendingPalette) || paletteReset;
   const unsavedCount = pending.size + (paletteDirty ? 1 : 0);
   const status: ToolbarStatus = saving
     ? { kind: "saving" }
@@ -808,6 +834,7 @@ export function EditorShell(props: EditorShellProps) {
     const leaveHref = discardAsk?.kind === "leave" ? discardAsk.href : undefined;
     setPending(new Map());
     setPendingPalette({});
+    setPaletteReset(false);
     setMediaPreview(new Map());
     setTextPreview(new Map());
     setDiscardAsk(null);
@@ -976,7 +1003,11 @@ export function EditorShell(props: EditorShellProps) {
             className="bg-card"
           >
             {paletteOpen ? (
-              <PalettePanel palette={pendingPalette} onChange={applyPalette} />
+              <PalettePanel
+                palette={pendingPalette}
+                onChange={applyPalette}
+                onReset={onResetPalette}
+              />
             ) : (
               <ContextPanel
                 blockKey={selection?.blockKey ?? null}

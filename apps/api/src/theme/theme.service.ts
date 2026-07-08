@@ -264,7 +264,7 @@ export class ThemeService {
     themeId: string,
     body: SaveDraftInput,
   ): Promise<{ draftRevision: number }> {
-    const { edits, expectedDraftRevision, palette } = body;
+    const { edits, expectedDraftRevision, palette, replacePalette } = body;
 
     return this.applyDraftMutation(
       actor,
@@ -292,6 +292,14 @@ export class ThemeService {
               detail: e.message,
             });
           }
+        }
+
+        // `replacePalette` is the explicit "reset" signal: the merge below is additive-only (it can
+        // never DELETE a previously-saved key), so a client-side reset that must remove persisted
+        // keys sends `replacePalette: true` and we set the palette verbatim instead of merging.
+        if (replacePalette) {
+          snap.palette = palette ?? {};
+          return;
         }
 
         // Merge the palette patch, shallow-merged per slice, so a patch that
