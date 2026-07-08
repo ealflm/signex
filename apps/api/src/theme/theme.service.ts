@@ -264,7 +264,7 @@ export class ThemeService {
     themeId: string,
     body: SaveDraftInput,
   ): Promise<{ draftRevision: number }> {
-    const { edits, expectedDraftRevision } = body;
+    const { edits, expectedDraftRevision, palette } = body;
 
     return this.applyDraftMutation(
       actor,
@@ -292,6 +292,23 @@ export class ThemeService {
               detail: e.message,
             });
           }
+        }
+
+        // Merge the palette patch, shallow-merged per slice, so a patch that
+        // only sends e.g. `seeds` doesn't wipe existing `tokens`/`overrides`.
+        if (palette) {
+          const prev = (snap.palette ?? {}) as Record<
+            string,
+            Record<string, unknown>
+          >;
+          snap.palette = {
+            seeds: { ...(prev.seeds ?? {}), ...(palette.seeds ?? {}) },
+            tokens: { ...(prev.tokens ?? {}), ...(palette.tokens ?? {}) },
+            overrides: {
+              ...(prev.overrides ?? {}),
+              ...(palette.overrides ?? {}),
+            },
+          };
         }
       },
       { action: 'theme.savedraft', meta: { keys: edits.map((e) => e.key) } },

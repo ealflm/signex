@@ -1,4 +1,4 @@
-import { z } from '@signex/shared';
+import { z, PaletteSchema } from '@signex/shared';
 
 export const saveDraftSchema = z.object({
   edits: z.array(
@@ -8,6 +8,7 @@ export const saveDraftSchema = z.object({
     }),
   ),
   expectedDraftRevision: z.number().int().min(0),
+  palette: PaletteSchema.optional(),
 });
 
 export type SaveDraftInput = z.infer<typeof saveDraftSchema>;

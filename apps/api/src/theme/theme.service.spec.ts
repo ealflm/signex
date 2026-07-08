@@ -445,4 +445,52 @@ describe('ThemeService.saveDraft', () => {
     expect(updatedSnap.assets).toHaveProperty('new-asset');
     expect(updatedSnap.assets).not.toHaveProperty('orphan-id');
   });
+
+  it('merges a palette patch into draftSnapshot.palette', async () => {
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      palette: { seeds: { accentAqua: '#123456' } },
+    } as any);
+
+    // Same read-back mechanism as the other saveDraft tests: the final
+    // theme.update call's data.draftSnapshot arg (there's no real DB here).
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    expect(updatedSnap.palette.seeds.accentAqua).toBe('#123456');
+  });
+
+  it('shallow-merges palette per slice, preserving an existing slice absent from the patch', async () => {
+    tx.theme.findUniqueOrThrow.mockReset();
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: {
+        ...BASE_SNAPSHOT,
+        palette: {
+          tokens: { inkBase: '#000000' },
+          overrides: { 'hero.title': { bg: '#ffffff', text: '#000000', border: '#cccccc' } },
+        },
+      },
+    });
+
+    // Patch sends only `seeds` — existing tokens/overrides must survive untouched.
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      palette: { seeds: { accentAqua: '#123456' } },
+    } as any);
+
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    expect(updatedSnap.palette.seeds.accentAqua).toBe('#123456');
+    expect(updatedSnap.palette.tokens).toEqual({ inkBase: '#000000' });
+    expect(updatedSnap.palette.overrides).toEqual({
+      'hero.title': { bg: '#ffffff', text: '#000000', border: '#cccccc' },
+    });
+  });
 });
