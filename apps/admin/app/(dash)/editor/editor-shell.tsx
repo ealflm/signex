@@ -23,7 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BlockKey, ReleaseSnapshot } from "@signex/shared";
+import { paletteStyle, type BlockKey, type ReleaseSnapshot } from "@signex/shared";
 
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -65,6 +65,7 @@ import {
   type MediaRef,
 } from "@/app/(dash)/visual/media-picker-dialog";
 import { adminApi, stripBasePath } from "@/app/lib/base-path";
+import { isEmptyPalette, type PalettePatch } from "./_lib/palette-patch";
 
 const SOURCE = "signex-editor";
 
@@ -196,6 +197,9 @@ export function EditorShell(props: EditorShellProps) {
   const [previewPath, setPreviewPath] = useState<string>(""); // "" | "/about" | "/contact"
   const [selection, setSelection] = useState<Selection | null>(null);
   const [pending, setPending] = useState<Map<BlockKey, Record<string, unknown>>>(new Map());
+  // Client-held palette working patch (mirrors `pending` for blocks, but is a single small object —
+  // seeds/tokens/overrides — not a per-block map). Batched into the SAME save-draft POST as `pending`.
+  const [pendingPalette, setPendingPalette] = useState<PalettePatch>({});
   const [draftRevision, setDraftRevision] = useState(initialDraftRevision);
   const [publishedRevision, setPublishedRevision] = useState(initialPublishedRevision);
   const [saving, setSaving] = useState(false);
@@ -253,6 +257,10 @@ export function EditorShell(props: EditorShellProps) {
   // text edits against the working block data) without re-subscribing on every edit.
   const pendingRef = useRef(pending);
   pendingRef.current = pending;
+  // Read the live palette patch inside the once-subscribed message listener (re-post on `ready`)
+  // without re-subscribing on every palette change. Same pattern as pendingRef.
+  const pendingPaletteRef = useRef(pendingPalette);
+  pendingPaletteRef.current = pendingPalette;
   // Live locale for the once-subscribed listener (inbound textEdit appends `.${langRef.current}`;
   // `ready` re-posts only this locale's pending text). Same pattern as mediaPreviewRef.
   const langRef = useRef(lang);
@@ -321,6 +329,19 @@ export function EditorShell(props: EditorShellProps) {
     (edits: ApplyEdit[]) => {
       iframeRef.current?.contentWindow?.postMessage(
         { source: SOURCE, type: "applyEdits", edits },
+        webOrigin,
+      );
+    },
+    [webOrigin],
+  );
+
+  // Updates the palette working patch AND live-applies it to the preview (same postMessage idiom as
+  // postApplyEdits — the overlay listens for both). Called on every palette panel change.
+  const applyPalette = useCallback(
+    (next: PalettePatch) => {
+      setPendingPalette(next);
+      iframeRef.current?.contentWindow?.postMessage(
+        { source: SOURCE, type: "applyPalette", css: paletteStyle(next) ?? "" },
         webOrigin,
       );
     },
@@ -449,7 +470,7 @@ export function EditorShell(props: EditorShellProps) {
   // Returns the new draftRevision on success, or null on failure / conflict.
   const saveDraft = useCallback(async (): Promise<number | null> => {
     if (savingRef.current) return null;
-    if (pending.size === 0) return draftRevision;
+    if (pending.size === 0 && isEmptyPalette(pendingPalette)) return draftRevision;
     savingRef.current = true;
     setSaving(true);
     const edits = [...pending.entries()].map(([key, data]) => ({ key, data }));
@@ -457,18 +478,33 @@ export function EditorShell(props: EditorShellProps) {
       const res = await fetch(adminApi(`/admin-api/themes/${themeId}/save-draft`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ edits, expectedDraftRevision: draftRevision }),
+        body: JSON.stringify({
+          edits,
+          expectedDraftRevision: draftRevision,
+          palette: pendingPalette,
+        }),
       });
       if (res.ok) {
         const body = (await res.json()) as { draftRevision: number };
-        // Adopt the persisted edits into the base snapshot, then clear pending + live swaps.
+        // Adopt the persisted edits + palette into the base snapshot, then clear pending + live swaps.
         const blocks = baseRef.current.blocks as unknown as Record<
           string,
           Record<string, unknown>
         >;
         for (const [k, d] of pending) blocks[k] = d;
+        // Shallow-merge per slice — mirrors the server's merge (theme.service.ts saveDraft) — so a
+        // patch that only touched e.g. seeds this session doesn't wipe previously-saved tokens/overrides.
+        if (!isEmptyPalette(pendingPalette)) {
+          const prevPalette = baseRef.current.palette ?? {};
+          baseRef.current.palette = {
+            seeds: { ...(prevPalette.seeds ?? {}), ...(pendingPalette.seeds ?? {}) },
+            tokens: { ...(prevPalette.tokens ?? {}), ...(pendingPalette.tokens ?? {}) },
+            overrides: { ...(prevPalette.overrides ?? {}), ...(pendingPalette.overrides ?? {}) },
+          };
+        }
         setDraftRevision(body.draftRevision);
         setPending(new Map());
+        setPendingPalette({});
         setMediaPreview(new Map());
         setTextPreview(new Map());
         toast.success("Saved to draft.");
@@ -514,7 +550,7 @@ export function EditorShell(props: EditorShellProps) {
       setSaving(false);
       savingRef.current = false;
     }
-  }, [pending, themeId, draftRevision, postRefresh]);
+  }, [pending, pendingPalette, themeId, draftRevision, postRefresh]);
 
   // ── Step 5: Publish (save pending first) ──────────────────────────────────────
   const publish = useCallback(
@@ -523,7 +559,7 @@ export function EditorShell(props: EditorShellProps) {
       setPublishing(true);
       try {
         let expected = draftRevision;
-        if (pending.size > 0) {
+        if (pending.size > 0 || !isEmptyPalette(pendingPalette)) {
           const rev = await saveDraft();
           if (rev == null) return; // save failed / conflicted — abort publish
           expected = rev;
@@ -552,42 +588,46 @@ export function EditorShell(props: EditorShellProps) {
         setPublishing(false);
       }
     },
-    [publishing, pending, saveDraft, themeId, draftRevision],
+    [publishing, pending, pendingPalette, saveDraft, themeId, draftRevision],
   );
 
   // ── Step 6: status, guards, postMessage bridge ────────────────────────────────
+  // A palette-only change (no block edits) counts as unsaved too — it drives the same dirty
+  // indicator, save/publish enablement, and navigation guards as a block edit.
+  const paletteDirty = !isEmptyPalette(pendingPalette);
+  const unsavedCount = pending.size + (paletteDirty ? 1 : 0);
   const status: ToolbarStatus = saving
     ? { kind: "saving" }
-    : pending.size > 0
-      ? { kind: "unsaved", count: pending.size }
+    : unsavedCount > 0
+      ? { kind: "unsaved", count: unsavedCount }
       : { kind: "saved", revision: draftRevision };
   const draftAhead =
     draftRevision !== publishedRevision ? { draftRevision, publishedRevision } : null;
-  const publishEnabled = pending.size > 0 || draftRevision !== publishedRevision;
-  const saveEnabled = pending.size > 0;
+  const publishEnabled = unsavedCount > 0 || draftRevision !== publishedRevision;
+  const saveEnabled = unsavedCount > 0;
   const busy = saving || publishing;
 
   // beforeunload guard — only while there are unsaved edits. Covers full document unloads
   // (tab close / hard reload). Next App-Router client nav does NOT fire beforeunload, so the
   // capture-phase click guard below handles in-app <a>/<Link> navigation.
   useEffect(() => {
-    if (pending.size === 0) return;
+    if (unsavedCount === 0) return;
     const h = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", h);
     return () => window.removeEventListener("beforeunload", h);
-  }, [pending.size]);
+  }, [unsavedCount]);
 
   // In-app SPA-nav guard — only while there are unsaved edits. Clicking a sidebar <Link>, the
   // Topbar, or the Toolbar's Back <a> would unmount EditorShell and silently drop the pending Map
   // (beforeunload never fires for App-Router client nav). We intercept the click in the CAPTURE
   // phase — before Next's <Link> handler runs — preventDefault the in-app navigation, and route it
   // through the existing discard AlertDialog; router.push(href) fires only on confirm (doDiscard).
-  // The listener is attached ONLY when pending>0, so normal nav is never blocked.
+  // The listener is attached ONLY when there's something unsaved, so normal nav is never blocked.
   useEffect(() => {
-    if (pending.size === 0) return;
+    if (unsavedCount === 0) return;
     const onClick = (e: MouseEvent) => {
       // Let modified/middle clicks (new tab/window) and already-handled events through.
       if (
@@ -625,7 +665,7 @@ export function EditorShell(props: EditorShellProps) {
     // Capture phase so we beat <Link>'s own bubble-phase click handler.
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [pending.size]);
+  }, [unsavedCount]);
 
   // Inbound bridge: preview overlay → admin. Subscribed once; reads live media via a ref.
   useEffect(() => {
@@ -670,6 +710,15 @@ export function EditorShell(props: EditorShellProps) {
           .map((t) => ({ field: t.field, kind: "text" as const, text: t.value }));
         const all: ApplyEdit[] = [...media, ...text];
         if (all.length > 0) postApplyEdits(all);
+        // Re-apply the unsaved palette patch after a (re)load / remount, same as media/text above.
+        iframeRef.current?.contentWindow?.postMessage(
+          {
+            source: SOURCE,
+            type: "applyPalette",
+            css: paletteStyle(pendingPaletteRef.current) ?? "",
+          },
+          webOrigin,
+        );
         // A select that changed the surface remounted the iframe — scroll once it's ready.
         if (scrollOnReadyRef.current) {
           postScrollToBlock(scrollOnReadyRef.current);
@@ -704,14 +753,15 @@ export function EditorShell(props: EditorShellProps) {
   }, [saveDraft]);
 
   const onDiscard = useCallback(() => {
-    if (pending.size > 0) setDiscardAsk({ kind: "discard" });
-  }, [pending.size]);
+    if (unsavedCount > 0) setDiscardAsk({ kind: "discard" });
+  }, [unsavedCount]);
 
   const doDiscard = useCallback(() => {
     // A "leave" ask carries the intercepted in-app destination; navigate there on confirm.
     // A plain "discard" stays put and reverts the preview to the last saved draft.
     const leaveHref = discardAsk?.kind === "leave" ? discardAsk.href : undefined;
     setPending(new Map());
+    setPendingPalette({});
     setMediaPreview(new Map());
     setTextPreview(new Map());
     setDiscardAsk(null);
@@ -737,7 +787,7 @@ export function EditorShell(props: EditorShellProps) {
               {discardAsk?.kind === "leave" ? "Leave with unsaved changes?" : "Discard unsaved changes?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Your {pending.size} unsaved edit{pending.size === 1 ? "" : "s"} will be lost
+              Your {unsavedCount} unsaved edit{unsavedCount === 1 ? "" : "s"} will be lost
               {discardAsk?.kind === "leave"
                 ? " if you leave the editor now."
                 : " and the preview will revert to the last saved draft."}
@@ -756,7 +806,7 @@ export function EditorShell(props: EditorShellProps) {
       <AlertDialog open={publishOpen} onOpenChange={setPublishOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{pending.size > 0 ? "Save & publish" : "Publish"}</AlertDialogTitle>
+            <AlertDialogTitle>{unsavedCount > 0 ? "Save & publish" : "Publish"}</AlertDialogTitle>
             <AlertDialogDescription>
               Visitors will see this theme; the current live theme is kept as a draft.
             </AlertDialogDescription>
@@ -778,7 +828,7 @@ export function EditorShell(props: EditorShellProps) {
                 void publish(note || undefined);
               }}
             >
-              {pending.size > 0 ? "Save & publish" : "Publish"}
+              {unsavedCount > 0 ? "Save & publish" : "Publish"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
