@@ -35,6 +35,7 @@ export * from "./content/blocks";
 export * from "./content/registry";
 export * from "./content/catalog";
 export * from "./content/palette";
+export * from "./content/palette-style";
 export * from "./content/release";
 export * from "./auth";
 export * from "./analytics";
