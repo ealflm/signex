@@ -49,6 +49,7 @@ import {
 import { Toolbar } from "./toolbar";
 import { SectionsNav } from "./sections-nav";
 import { ContextPanel } from "./context-panel";
+import { PalettePanel } from "./palette-panel";
 import {
   DEVICE_MAX_WIDTH,
   SURFACE_PATH_BY_BLOCK,
@@ -196,6 +197,9 @@ export function EditorShell(props: EditorShellProps) {
   const [device, setDevice] = useState<DeviceWidth>("desktop");
   const [previewPath, setPreviewPath] = useState<string>(""); // "" | "/about" | "/contact"
   const [selection, setSelection] = useState<Selection | null>(null);
+  // "Bảng màu" panel is mutually exclusive with a block selection — selecting the palette clears
+  // `selection`; selecting a block (any of the 3 paths below) clears this back to false.
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [pending, setPending] = useState<Map<BlockKey, Record<string, unknown>>>(new Map());
   // Client-held palette working patch (mirrors `pending` for blocks, but is a single small object —
   // seeds/tokens/overrides — not a per-block map). Batched into the SAME save-draft POST as `pending`.
@@ -440,6 +444,7 @@ export function EditorShell(props: EditorShellProps) {
   const onSelect = useCallback(
     (blockKey: BlockKey) => {
       setSelection({ blockKey, fieldPath: null, locale: lang });
+      setPaletteOpen(false);
       const surface = SURFACE_PATH_BY_BLOCK[blockKey];
       if (surface !== null && surface !== previewPath) setPreviewPath(surface);
       // Canvas: scroll+flash now (same surface), and again on the next "ready" (if the surface changed
@@ -452,12 +457,20 @@ export function EditorShell(props: EditorShellProps) {
     [lang, previewPath, postScrollToBlock],
   );
 
+  // "Bảng màu" nav entry → swap the context panel for the palette panel (mutually exclusive with a
+  // block selection: clears `selection` so ContextPanel isn't also "selected").
+  const onSelectPalette = useCallback(() => {
+    setPaletteOpen(true);
+    setSelection(null);
+  }, []);
+
   // Canvas→panel highlight (web→admin {type:"highlight"}): a canvas text-leaf was focused → select
   // its owning block (+ navigate the surface if needed — usually already current), then flash the
   // matching panel field. Stable (reads live locale via langRef + functional setState) so the
   // once-subscribed message listener can call it without re-subscribing.
   const onCanvasHighlight = useCallback((blockKey: BlockKey, fieldPath: string) => {
     setSelection({ blockKey, fieldPath, locale: langRef.current });
+    setPaletteOpen(false);
     const surface = SURFACE_PATH_BY_BLOCK[blockKey];
     if (surface !== null) setPreviewPath((p) => (p !== surface ? surface : p));
     flashNonce.current += 1;
@@ -890,6 +903,8 @@ export function EditorShell(props: EditorShellProps) {
               selectedBlockKey={selection?.blockKey ?? null}
               dirtyKeys={dirtyKeys}
               onSelect={onSelect}
+              paletteSelected={paletteOpen}
+              onSelectPalette={onSelectPalette}
             />
           </ResizablePanel>
 
@@ -927,23 +942,27 @@ export function EditorShell(props: EditorShellProps) {
             onResize={(s) => setRightCollapsed(s.asPercentage < 1)}
             className="bg-card"
           >
-            <ContextPanel
-              blockKey={selection?.blockKey ?? null}
-              blockData={selection ? workingBlockData(selection.blockKey) : {}}
-              assets={initialAssets}
-              onFieldChange={(name, v) => {
-                if (selection) applyFieldEdit(selection.blockKey, name, v);
-              }}
-              onPickMedia={(name, kind) => {
-                if (selection) openMediaPicker(`${selection.blockKey}.${name}`, kind);
-              }}
-              onValidityChange={onValidityChange}
-              onFieldFocus={(name) => {
-                if (selection) postHighlight(`${selection.blockKey}.${name}`);
-              }}
-              flashField={flashField}
-              panelFlash={panelFlash}
-            />
+            {paletteOpen ? (
+              <PalettePanel palette={pendingPalette} onChange={applyPalette} />
+            ) : (
+              <ContextPanel
+                blockKey={selection?.blockKey ?? null}
+                blockData={selection ? workingBlockData(selection.blockKey) : {}}
+                assets={initialAssets}
+                onFieldChange={(name, v) => {
+                  if (selection) applyFieldEdit(selection.blockKey, name, v);
+                }}
+                onPickMedia={(name, kind) => {
+                  if (selection) openMediaPicker(`${selection.blockKey}.${name}`, kind);
+                }}
+                onValidityChange={onValidityChange}
+                onFieldFocus={(name) => {
+                  if (selection) postHighlight(`${selection.blockKey}.${name}`);
+                }}
+                flashField={flashField}
+                panelFlash={panelFlash}
+              />
+            )}
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>

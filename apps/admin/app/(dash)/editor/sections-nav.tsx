@@ -20,6 +20,9 @@ export interface SectionsNavProps {
   /** blockKeys present in the pending map — drives the dirty dot (●) */
   dirtyKeys: Set<BlockKey>;
   onSelect: (blockKey: BlockKey) => void;
+  /** true when the "Bảng màu" panel (not a block) is the active selection */
+  paletteSelected: boolean;
+  onSelectPalette: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -28,6 +31,8 @@ export function SectionsNav({
   selectedBlockKey,
   dirtyKeys,
   onSelect,
+  paletteSelected,
+  onSelectPalette,
 }: SectionsNavProps): React.ReactElement {
   return (
     <ScrollArea className="h-full w-full">
@@ -79,6 +84,20 @@ export function SectionsNav({
             </CollapsibleContent>
           </Collapsible>
         ))}
+
+        {/* Palette — not block-driven, sits outside SURFACE_GROUPS */}
+        <button
+          type="button"
+          onClick={onSelectPalette}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm transition-colors",
+            paletteSelected
+              ? "bg-primary text-primary-foreground"
+              : "text-foreground hover:bg-accent hover:text-accent-foreground",
+          )}
+        >
+          <span className="flex-1 truncate">Bảng màu</span>
+        </button>
       </div>
     </ScrollArea>
   );
