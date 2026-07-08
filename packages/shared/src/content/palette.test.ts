@@ -36,6 +36,20 @@ describe("PaletteSchema", () => {
     });
     expect(r.success).toBe(false);
   });
+
+  it("rejects an override anchorId containing HTML metacharacters (stored-XSS guard)", () => {
+    const r = PaletteSchema.safeParse({
+      overrides: { "</style>": { bg: "#000000" } },
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("still accepts a normal anchorId of the real convention (dots, letters, digits, hyphen)", () => {
+    const r = PaletteSchema.safeParse({
+      overrides: { "nav.cta.color": { bg: "#000000" } },
+    });
+    expect(r.success).toBe(true);
+  });
 });
 
 describe("PALETTE_VARS / TOKEN_VARS", () => {

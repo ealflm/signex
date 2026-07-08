@@ -50,8 +50,18 @@ export const PaletteOverrideRolesSchema = z
   .object({ bg: Hex, text: Hex, border: Hex })
   .partial()
   .strict();
-/** Keyed by anchorId = the same "<blockKey>.<path>" string used by data-edit-field. */
-export const PaletteOverridesSchema = z.record(z.string(), PaletteOverrideRolesSchema);
+/**
+ * Keyed by anchorId = the same "<blockKey>.<path>" string used by data-edit-field, e.g.
+ * "nav.cta.color". Constrained to the real anchorId charset (letters, digits, dot, hyphen, colon,
+ * underscore) — this is also a stored-XSS guard: anchorId is emitted into a `<style>` element via
+ * dangerouslySetInnerHTML (see palette-style.ts), and `<style>` is an HTML raw-text element, so an
+ * unconstrained key like `</style><script>…` could break out and execute for every visitor.
+ */
+export const PALETTE_ANCHOR_ID_RE = /^[A-Za-z0-9._:-]+$/;
+export const PaletteOverridesSchema = z.record(
+  z.string().regex(PALETTE_ANCHOR_ID_RE),
+  PaletteOverrideRolesSchema,
+);
 
 export const PaletteSchema = z
   .object({
