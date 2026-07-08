@@ -296,18 +296,36 @@ export class ThemeService {
 
         // Merge the palette patch, shallow-merged per slice, so a patch that
         // only sends e.g. `seeds` doesn't wipe existing `tokens`/`overrides`.
+        // `overrides` is merged one level deeper (per-anchor role merge): a whole-object replace per
+        // anchorId would drop a role saved in an earlier session (e.g. `text` saved now, `bg` saved
+        // later on the same anchor) since `pendingPalette` resets to {} across a save boundary.
         if (palette) {
           const prev = (snap.palette ?? {}) as Record<
             string,
             Record<string, unknown>
           >;
+          const prevOverrides = (prev.overrides ?? {}) as Record<
+            string,
+            Record<string, unknown>
+          >;
+          const patchOverrides = (palette.overrides ?? {}) as Record<
+            string,
+            Record<string, unknown>
+          >;
+          const overrides: Record<string, Record<string, unknown>> = {};
+          for (const anchor of new Set([
+            ...Object.keys(prevOverrides),
+            ...Object.keys(patchOverrides),
+          ])) {
+            overrides[anchor] = {
+              ...(prevOverrides[anchor] ?? {}),
+              ...(patchOverrides[anchor] ?? {}),
+            };
+          }
           snap.palette = {
             seeds: { ...(prev.seeds ?? {}), ...(palette.seeds ?? {}) },
             tokens: { ...(prev.tokens ?? {}), ...(palette.tokens ?? {}) },
-            overrides: {
-              ...(prev.overrides ?? {}),
-              ...(palette.overrides ?? {}),
-            },
+            overrides,
           };
         }
       },

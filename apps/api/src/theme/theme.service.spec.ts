@@ -493,4 +493,33 @@ describe('ThemeService.saveDraft', () => {
       'hero.title': { bg: '#ffffff', text: '#000000', border: '#cccccc' },
     });
   });
+
+  it('deep-merges override roles for the same anchorId across saves (no cross-save role loss)', async () => {
+    tx.theme.findUniqueOrThrow.mockReset();
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: {
+        ...BASE_SNAPSHOT,
+        palette: {
+          overrides: { 'nav.cta.color': { text: '#111111' } },
+        },
+      },
+    });
+
+    // A later save only touches `bg` on the same anchor — `text` from the earlier save must survive.
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      palette: { overrides: { 'nav.cta.color': { bg: '#222222' } } },
+    } as any);
+
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    expect(updatedSnap.palette.overrides['nav.cta.color']).toEqual({
+      text: '#111111',
+      bg: '#222222',
+    });
+  });
 });

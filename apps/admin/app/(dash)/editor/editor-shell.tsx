@@ -517,12 +517,27 @@ export function EditorShell(props: EditorShellProps) {
         for (const [k, d] of pending) blocks[k] = d;
         // Shallow-merge per slice — mirrors the server's merge (theme.service.ts saveDraft) — so a
         // patch that only touched e.g. seeds this session doesn't wipe previously-saved tokens/overrides.
+        // `overrides` is merged one level deeper (per-anchor role merge), byte-identical in shape to
+        // the API's merge: a whole-object replace per anchorId would drop a role saved in an earlier
+        // session (pendingPalette resets to {} across a save boundary).
         if (!isEmptyPalette(pendingPalette)) {
           const prevPalette = baseRef.current.palette ?? {};
+          const prevOverrides = prevPalette.overrides ?? {};
+          const patchOverrides = pendingPalette.overrides ?? {};
+          const overrides: Record<string, Record<string, unknown>> = {};
+          for (const anchor of new Set([
+            ...Object.keys(prevOverrides),
+            ...Object.keys(patchOverrides),
+          ])) {
+            overrides[anchor] = {
+              ...(prevOverrides[anchor] ?? {}),
+              ...(patchOverrides[anchor] ?? {}),
+            };
+          }
           baseRef.current.palette = {
             seeds: { ...(prevPalette.seeds ?? {}), ...(pendingPalette.seeds ?? {}) },
             tokens: { ...(prevPalette.tokens ?? {}), ...(pendingPalette.tokens ?? {}) },
-            overrides: { ...(prevPalette.overrides ?? {}), ...(pendingPalette.overrides ?? {}) },
+            overrides,
           };
         }
         setDraftRevision(body.draftRevision);
