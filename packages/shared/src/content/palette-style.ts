@@ -1,12 +1,12 @@
-import { PALETTE_VARS, TOKEN_VARS } from "./palette";
+import { PALETTE_VARS, TOKEN_VARS, Hex } from "./palette";
 import type { Palette } from "./palette";
 
-const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-const isHex = (v: unknown): v is string => typeof v === "string" && HEX.test(v);
+/** Reuse the exported Hex schema as the single source of truth (avoids regex drift). */
+const isHex = (v: unknown): v is string => typeof v === "string" && Hex.safeParse(v).success;
 
 /** CSS.escape is browser-only; this covers the attribute-selector metacharacters we care about. */
 function escapeAttr(v: string): string {
-  return v.replace(/["\\{}\]]/g, (c) => "\\" + c);
+  return v.replace(/["\\{}\]\n\r]/g, (c) => "\\" + c);
 }
 
 /**

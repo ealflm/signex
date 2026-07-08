@@ -34,4 +34,12 @@ describe("paletteStyle", () => {
     const css = paletteStyle({ overrides: { 'a"]{}': { bg: "#000000" } } })!;
     expect(css).not.toMatch(/\]\{\}/);
   });
+
+  it("escapes newline/CR in anchorId", () => {
+    const css = paletteStyle({ overrides: { "a\nb": { bg: "#000000" } } })!;
+    // the newline must be backslash-escaped (valid CSS line-continuation), never left raw…
+    expect(css).toContain('data-sx-c="a\\\nb"');
+    // …and no newline may appear unescaped (i.e. not preceded by a backslash).
+    expect(css).not.toMatch(/[^\\]\n/);
+  });
 });
