@@ -116,8 +116,14 @@ test("marketing tags come from the GTM container constant, not the theme meta bl
 // and missed that about-sections.tsx's 7th sibling `<section>` (the "Manufacturing Approach"
 // process section) had no stamp at all (code-review finding #1). To make that class of bug
 // non-vacuously detectable, `SECTION_ROOT_FILES` below asserts the count of top-level `<section`
-// opens in the file equals the count of `data-sx-block="<key>"` occurrences — a file with an
-// unstamped sibling section fails on the count mismatch, not just a presence check.
+// opens in the file equals the count of `data-sx-block="<key>"` occurrences.
+//
+// That file-wide count comparison has its own blind spot though: it passes even if a stamp is
+// moved OFF a `<section>` root onto a nested inner element, because the totals still balance
+// (code-review finding on this test itself). So the check below is anchored PER opening tag —
+// each `<section ...>` match is inspected for its own `data-sx-block="<key>"` attribute — rather
+// than comparing two file-wide totals. A stamp that lands on an inner `<div>` instead of its
+// `<section>` root now fails the count of *self-carrying* opens, not just a loose file total.
 const SECTION_ROOT_FILES = [
   // [pathPartsFromApp, blockKey, expectedTopLevelSectionCount]
   [["components", "home", "hero.tsx"], "hero", 1],
@@ -148,17 +154,22 @@ test("block roots are stamped with data-sx-block, unconditionally", () => {
   for (const [pathParts, key, expectedSectionCount] of SECTION_ROOT_FILES) {
     const file = pathParts.join("/");
     const s = src(...pathParts);
-    const sectionOpens = s.match(/<section\b/g) ?? [];
-    const stamped = s.match(new RegExp(`data-sx-block="${key}"`, "g")) ?? [];
+    // `[^>]*` matches newlines too (it excludes only `>`), so this survives a formatter splitting
+    // a `<section>`'s attributes across multiple lines.
+    const sectionOpens = s.match(/<section\b[^>]*>/g) ?? [];
     assert.equal(
       sectionOpens.length,
       expectedSectionCount,
       `${file}: expected ${expectedSectionCount} top-level <section> root(s), found ${sectionOpens.length} — update this test's expected count if the markup intentionally changed`,
     );
+    // Anchor the stamp to each <section>'s OWN opening tag — not a file-wide occurrence count —
+    // so a stamp moved onto a nested inner element cannot masquerade as covering its root.
+    const stampRe = new RegExp(`data-sx-block="${key}"`);
+    const stampedOnRoot = sectionOpens.filter((tag) => stampRe.test(tag));
     assert.equal(
-      stamped.length,
+      stampedOnRoot.length,
       sectionOpens.length,
-      `${file}: ${sectionOpens.length - stamped.length} <section> root(s) missing data-sx-block="${key}"`,
+      `${file}: ${sectionOpens.length - stampedOnRoot.length} <section> root(s) missing data-sx-block="${key}" on the opening tag itself`,
     );
     // It must NOT be gated on `editable` — generated override selectors are scoped to this
     // attribute, so it has to exist on the public site, not just in preview.
