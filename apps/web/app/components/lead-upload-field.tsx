@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import type { EditAttrs } from "@/app/lib/edit-attrs";
 import { DEFAULT_LOCALE, hasLocale, type Locale } from "@/app/lib/i18n-config";
 
 /**
@@ -137,8 +136,8 @@ export interface LeadUploadFieldProps {
   accept?: string;
   /** Format hint shown in the empty state, e.g. "JPG, PNG, hoặc PDF (tối đa 50MB)". */
   hint: string;
-  /** Inline-edit attributes from editText() for the hint (visual editor). */
-  hintEditAttrs?: EditAttrs;
+  /** Inline-edit attributes from editable(…, { text }) for the hint (visual editor). */
+  hintEditAttrs?: Record<string, string>;
   /** Reject files larger than this on the client (defaults to 50 MB). */
   maxBytes?: number;
   tabIndex?: number;

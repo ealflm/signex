@@ -3,9 +3,9 @@
 // BOTH the public cached/SSG route AND the /preview editor route (single source — no fork). The
 // only addition over the original inline markup is the optional `editable` prop, which stamps the
 // visual-editor data-* hooks on the two media zones (aboutPage.hero.video, aboutPage.testimonial.image)
-// via editAttrs() — a no-op on public renders (editable=false), so the static HTML is unchanged.
+// via editable() — a no-op on public renders (editable=false), so the static HTML is unchanged.
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editAttrs, editText } from "@/app/lib/edit-attrs";
+import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
 // lucide line icons for the manufacturing-approach cards (index-aligned with aboutPage.approach),
 // chosen per card content: factory (direct/in-house), badge-check (brand standards), lock
@@ -60,7 +60,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           data-poster-url={heroPoster}
           data-video-urls={[heroMp4, heroWebm].filter(Boolean).join(",")}
           data-wf-ignore="true"
-          {...editAttrs(editable, "aboutPage.hero.video", "video")}
+          {...editableAttrs(editable, "aboutPage.hero.video", { video: true })}
         >
           <video
             autoPlay
@@ -80,15 +80,15 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
               <div className="heading_hero-home-c">
                 <div className="title_home-c">
                   <h1 className="heading-style-h0">
-                    <span {...editText(editable, "aboutPage.hero.title.lead", { maxLength: 80 })}>{dict.aboutPage.hero.title}</span>
-                    <span className="tone-medium" {...editText(editable, "aboutPage.hero.title.accent", { maxLength: 80 })}>
+                    <span {...editableAttrs(editable, "aboutPage.hero.title.lead", { text: { maxLength: 80 } })}>{dict.aboutPage.hero.title}</span>
+                    <span className="tone-medium" {...editableAttrs(editable, "aboutPage.hero.title.accent", { text: { maxLength: 80 } })}>
                       {dict.aboutPage.hero.titleAccent}
                     </span>
                   </h1>
                 </div>
                 <div className="p_hero-home-c">
                   <p className="margin-0">
-                    <span {...editText(editable, "aboutPage.hero.subtitle", { maxLength: 200 })}>{dict.aboutPage.hero.subtitle}</span>
+                    <span {...editableAttrs(editable, "aboutPage.hero.subtitle", { text: { maxLength: 200 } })}>{dict.aboutPage.hero.subtitle}</span>
                   </p>
                 </div>
               </div>
@@ -153,12 +153,12 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
               <div className="heading_testimonials-v2">
                 <div className="master_label" data-wf--tag--variant="base">
                   <div className="label-small">
-                    <span {...editText(editable, "aboutPage.testimonial.eyebrow", { maxLength: 80 })}>{dict.aboutPage.testimonial.eyebrow}</span>
+                    <span {...editableAttrs(editable, "aboutPage.testimonial.eyebrow", { text: { maxLength: 80 } })}>{dict.aboutPage.testimonial.eyebrow}</span>
                   </div>
                 </div>
                 <h2 className="margin-0">
-                  <span {...editText(editable, "aboutPage.testimonial.title.lead", { maxLength: 80 })}>{dict.aboutPage.testimonial.title}</span>
-                  <span className="tone-medium" {...editText(editable, "aboutPage.testimonial.title.accent", { maxLength: 80 })}>
+                  <span {...editableAttrs(editable, "aboutPage.testimonial.title.lead", { text: { maxLength: 80 } })}>{dict.aboutPage.testimonial.title}</span>
+                  <span className="tone-medium" {...editableAttrs(editable, "aboutPage.testimonial.title.accent", { text: { maxLength: 80 } })}>
                     {dict.aboutPage.testimonial.titleAccent}
                   </span>
                 </h2>
@@ -178,14 +178,14 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
                       <div className="testimonial-signex_body">
                         {dict.aboutPage.testimonial.body.map((para, i) => (
                           <p key={i} className="text-size-regular margin-0">
-                            <span {...editText(editable, `aboutPage.testimonial.body.${i}`, { maxLength: 400 })}>{para}</span>
+                            <span {...editableAttrs(editable, `aboutPage.testimonial.body.${i}`, { text: { maxLength: 400 } })}>{para}</span>
                           </p>
                         ))}
                       </div>
                     </div>
                     <div className="right_testimonial-v2" id="w-node-af30d5d7-8441-26c7-d69a-89a24d922243-4d92222b">
                       {/* testimonial image: configurable AssetRef (aboutPage.testimonial.image); literal fallback */}
-                      <img alt={dict.aboutPage.testimonial.imageAlt || "Pexels stephanlouis 19119918"} className="image_cover" loading="lazy" src={dict.aboutPage.testimonial.imageUrl || "/assets/images/69ac691927961ac98c560fe2_pexels-stephanlouis-19119918.avif"} {...editAttrs(editable, "aboutPage.testimonial.image", "image")} />
+                      <img alt={dict.aboutPage.testimonial.imageAlt || "Pexels stephanlouis 19119918"} className="image_cover" loading="lazy" src={dict.aboutPage.testimonial.imageUrl || "/assets/images/69ac691927961ac98c560fe2_pexels-stephanlouis-19119918.avif"} {...editableAttrs(editable, "aboutPage.testimonial.image", { image: true })} />
                       {/* Gradient scrim kept (height:100%/inset:0 in Caladan CSS renders the full
                           gradient even when empty); the Daniel Novak / Adventure Seeker name was removed. */}
                       <div className="overlay_image-testimonial-v2" />
@@ -211,18 +211,18 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  <span {...editText(editable, "aboutPage.intro.eyebrow", { maxLength: 80 })}>{dict.aboutPage.intro.eyebrow}</span>
+                  <span {...editableAttrs(editable, "aboutPage.intro.eyebrow", { text: { maxLength: 80 } })}>{dict.aboutPage.intro.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                <span {...editText(editable, "aboutPage.intro.title.lead", { maxLength: 80 })}>{dict.aboutPage.intro.title}</span>
-                <span className="tone-medium" {...editText(editable, "aboutPage.intro.title.accent", { maxLength: 80 })}>
+                <span {...editableAttrs(editable, "aboutPage.intro.title.lead", { text: { maxLength: 80 } })}>{dict.aboutPage.intro.title}</span>
+                <span className="tone-medium" {...editableAttrs(editable, "aboutPage.intro.title.accent", { text: { maxLength: 80 } })}>
                   {dict.aboutPage.intro.titleAccent}
                 </span>
               </h2>
               <div className="home_about-p">
                 <p className="tone-medium">
-                  <span {...editText(editable, "aboutPage.intro.body", { maxLength: 200 })}>{dict.aboutPage.intro.body}</span>
+                  <span {...editableAttrs(editable, "aboutPage.intro.body", { text: { maxLength: 200 } })}>{dict.aboutPage.intro.body}</span>
                 </p>
               </div>
             </div>
@@ -233,11 +233,11 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
                     {APPROACH_ICONS[i]}
                   </div>
                   <h3 className="about-values_title">
-                    <span {...editText(editable, `aboutPage.approach.${i}.title`, { maxLength: 80 })}>{c.title}</span>
+                    <span {...editableAttrs(editable, `aboutPage.approach.${i}.title`, { text: { maxLength: 80 } })}>{c.title}</span>
                   </h3>
                   {c.body.map((para, j) => (
                     <p className="tone-medium about-values_body" key={j}>
-                      <span {...editText(editable, `aboutPage.approach.${i}.body.${j}`, { maxLength: 400 })}>{para}</span>
+                      <span {...editableAttrs(editable, `aboutPage.approach.${i}.body.${j}`, { text: { maxLength: 400 } })}>{para}</span>
                     </p>
                   ))}
                 </div>
@@ -257,18 +257,18 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  <span {...editText(editable, "aboutPage.capability.eyebrow", { maxLength: 80 })}>{dict.aboutPage.capability.eyebrow}</span>
+                  <span {...editableAttrs(editable, "aboutPage.capability.eyebrow", { text: { maxLength: 80 } })}>{dict.aboutPage.capability.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                <span {...editText(editable, "aboutPage.capability.title.lead", { maxLength: 80 })}>{dict.aboutPage.capability.title}</span>
-                <span className="tone-medium" {...editText(editable, "aboutPage.capability.title.accent", { maxLength: 80 })}>
+                <span {...editableAttrs(editable, "aboutPage.capability.title.lead", { text: { maxLength: 80 } })}>{dict.aboutPage.capability.title}</span>
+                <span className="tone-medium" {...editableAttrs(editable, "aboutPage.capability.title.accent", { text: { maxLength: 80 } })}>
                   {dict.aboutPage.capability.titleAccent}
                 </span>
               </h2>
               <div className="home_about-p">
                 <p className="tone-medium">
-                  <span {...editText(editable, "aboutPage.capability.body", { maxLength: 200 })}>{dict.aboutPage.capability.body}</span>
+                  <span {...editableAttrs(editable, "aboutPage.capability.body", { text: { maxLength: 200 } })}>{dict.aboutPage.capability.body}</span>
                 </p>
               </div>
             </div>
@@ -276,12 +276,12 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
               {dict.aboutPage.capability.groups.map((g, i) => (
                 <div className="about-values_card" key={i}>
                   <h3 className="about-values_title">
-                    <span {...editText(editable, `aboutPage.capability.groups.${i}.title`, { maxLength: 80 })}>{g.title}</span>
+                    <span {...editableAttrs(editable, `aboutPage.capability.groups.${i}.title`, { text: { maxLength: 80 } })}>{g.title}</span>
                   </h3>
                   <ul className="about-cap_list" role="list">
                     {g.items.map((item, j) => (
                       <li className="about-cap_item tone-medium" key={j}>
-                        <span {...editText(editable, `aboutPage.capability.groups.${i}.items.${j}`, { maxLength: 200 })}>{item}</span>
+                        <span {...editableAttrs(editable, `aboutPage.capability.groups.${i}.items.${j}`, { text: { maxLength: 200 } })}>{item}</span>
                       </li>
                     ))}
                   </ul>
@@ -291,7 +291,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="about-cap_closing">
               {dict.aboutPage.capability.closing.map((line, i) => (
                 <p className="tone-medium" key={i}>
-                  <span {...editText(editable, `aboutPage.capability.closing.${i}`, { maxLength: 400 })}>{line}</span>
+                  <span {...editableAttrs(editable, `aboutPage.capability.closing.${i}`, { text: { maxLength: 400 } })}>{line}</span>
                 </p>
               ))}
             </div>
@@ -309,18 +309,18 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  <span {...editText(editable, "aboutPage.process.eyebrow", { maxLength: 80 })}>{dict.aboutPage.process.eyebrow}</span>
+                  <span {...editableAttrs(editable, "aboutPage.process.eyebrow", { text: { maxLength: 80 } })}>{dict.aboutPage.process.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                <span {...editText(editable, "aboutPage.process.title.lead", { maxLength: 80 })}>{dict.aboutPage.process.title}</span>
-                <span className="tone-medium" {...editText(editable, "aboutPage.process.title.accent", { maxLength: 80 })}>
+                <span {...editableAttrs(editable, "aboutPage.process.title.lead", { text: { maxLength: 80 } })}>{dict.aboutPage.process.title}</span>
+                <span className="tone-medium" {...editableAttrs(editable, "aboutPage.process.title.accent", { text: { maxLength: 80 } })}>
                   {dict.aboutPage.process.titleAccent}
                 </span>
               </h2>
               <div className="home_about-p">
                 <p className="tone-medium">
-                  <span {...editText(editable, "aboutPage.process.body", { maxLength: 200 })}>{dict.aboutPage.process.body}</span>
+                  <span {...editableAttrs(editable, "aboutPage.process.body", { text: { maxLength: 200 } })}>{dict.aboutPage.process.body}</span>
                 </p>
               </div>
             </div>
@@ -331,10 +331,10 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
                     {i + 1}
                   </div>
                   <h3 className="about-steps_title">
-                    <span {...editText(editable, `aboutPage.process.steps.${i}.title`, { maxLength: 80 })}>{s.title}</span>
+                    <span {...editableAttrs(editable, `aboutPage.process.steps.${i}.title`, { text: { maxLength: 80 } })}>{s.title}</span>
                   </h3>
                   <p className="about-steps_body tone-medium">
-                    <span {...editText(editable, `aboutPage.process.steps.${i}.body`, { maxLength: 300 })}>{s.body}</span>
+                    <span {...editableAttrs(editable, `aboutPage.process.steps.${i}.body`, { text: { maxLength: 300 } })}>{s.body}</span>
                   </p>
                 </div>
               ))}
@@ -355,25 +355,25 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  <span {...editText(editable, "aboutPage.timeline.eyebrow", { maxLength: 80 })}>{dict.aboutPage.timeline.eyebrow}</span>
+                  <span {...editableAttrs(editable, "aboutPage.timeline.eyebrow", { text: { maxLength: 80 } })}>{dict.aboutPage.timeline.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                <span {...editText(editable, "aboutPage.timeline.title.lead", { maxLength: 80 })}>{dict.aboutPage.timeline.title}</span>
-                <span className="tone-medium" {...editText(editable, "aboutPage.timeline.title.accent", { maxLength: 80 })}>
+                <span {...editableAttrs(editable, "aboutPage.timeline.title.lead", { text: { maxLength: 80 } })}>{dict.aboutPage.timeline.title}</span>
+                <span className="tone-medium" {...editableAttrs(editable, "aboutPage.timeline.title.accent", { text: { maxLength: 80 } })}>
                   {dict.aboutPage.timeline.titleAccent}
                 </span>
               </h2>
               <div className="home_about-p">
                 <p className="tone-medium">
-                  <span {...editText(editable, "aboutPage.timeline.body", { maxLength: 200 })}>{dict.aboutPage.timeline.body}</span>
+                  <span {...editableAttrs(editable, "aboutPage.timeline.body", { text: { maxLength: 200 } })}>{dict.aboutPage.timeline.body}</span>
                 </p>
               </div>
             </div>
             <div className="about-process_intro">
               {dict.aboutPage.timeline.intro.map((line, i) => (
                 <p className="tone-medium" key={i}>
-                  <span {...editText(editable, `aboutPage.timeline.intro.${i}`, { maxLength: 400 })}>{line}</span>
+                  <span {...editableAttrs(editable, `aboutPage.timeline.intro.${i}`, { text: { maxLength: 400 } })}>{line}</span>
                 </p>
               ))}
             </div>
@@ -391,27 +391,27 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
                       <div className="item_timeline">
                         <div className="title_timeline-card">
                           <h3 className="heading-style-h4 margin-0">
-                            <span {...editText(editable, `aboutPage.timeline.milestones.${i}.title`, { maxLength: 120 })}>{m.title}</span>
+                            <span {...editableAttrs(editable, `aboutPage.timeline.milestones.${i}.title`, { text: { maxLength: 120 } })}>{m.title}</span>
                           </h3>
                           <div className="label-large">
-                            <span {...editText(editable, `aboutPage.timeline.milestones.${i}.num`, { maxLength: 40 })}>{m.num}</span>
+                            <span {...editableAttrs(editable, `aboutPage.timeline.milestones.${i}.num`, { text: { maxLength: 40 } })}>{m.num}</span>
                           </div>
                         </div>
                         <p className="tone-medium">
-                          <span {...editText(editable, `aboutPage.timeline.milestones.${i}.body`, { maxLength: 400 })}>{m.body}</span>
+                          <span {...editableAttrs(editable, `aboutPage.timeline.milestones.${i}.body`, { text: { maxLength: 400 } })}>{m.body}</span>
                         </p>
                         {m.items && (
                           <ul className="about-cap_list" role="list">
                             {m.items.map((it, j) => (
                               <li className="about-cap_item tone-medium" key={j}>
-                                <span {...editText(editable, `aboutPage.timeline.milestones.${i}.items.${j}`, { maxLength: 200 })}>{it}</span>
+                                <span {...editableAttrs(editable, `aboutPage.timeline.milestones.${i}.items.${j}`, { text: { maxLength: 200 } })}>{it}</span>
                               </li>
                             ))}
                           </ul>
                         )}
                         {m.note && (
                           <p className="tone-medium">
-                            <span {...editText(editable, `aboutPage.timeline.milestones.${i}.note`, { maxLength: 400 })}>{m.note}</span>
+                            <span {...editableAttrs(editable, `aboutPage.timeline.milestones.${i}.note`, { text: { maxLength: 400 } })}>{m.note}</span>
                           </p>
                         )}
                       </div>

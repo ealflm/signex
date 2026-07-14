@@ -1,5 +1,5 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editText } from "@/app/lib/edit-attrs";
+import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
 /**
  * HomeAbout — Caladan's "section_home-about" (an eyebrow + headline + paragraph), ported
@@ -47,18 +47,18 @@ export function HomeAbout({
           <div className="headline_home-about" data-w-id={headlineWid} style={{ opacity: 0, filter: 'blur(5px)' }}>
             <div className="master_label" data-wf--tag--variant="base">
               <div className="label-small">
-                <span {...editText(editable, "about.eyebrow", { maxLength: 80 })}>{t.eyebrow}</span>
+                <span {...editableAttrs(editable, "about.eyebrow", { text: { maxLength: 80 } })}>{t.eyebrow}</span>
               </div>
             </div>
             <h2 className="margin-0">
-              <span {...editText(editable, "about.title.lead", { maxLength: 80 })}>{t.title}</span>
-              <span className="tone-medium" {...editText(editable, "about.title.accent", { maxLength: 80 })}>
+              <span {...editableAttrs(editable, "about.title.lead", { text: { maxLength: 80 } })}>{t.title}</span>
+              <span className="tone-medium" {...editableAttrs(editable, "about.title.accent", { text: { maxLength: 80 } })}>
                 {t.titleAccent}
               </span>
             </h2>
             <div className="home_about-p">
               <p className="tone-medium">
-                <span {...editText(editable, "about.body", { maxLength: 200 })}>{t.body}</span>
+                <span {...editableAttrs(editable, "about.body", { text: { maxLength: 200 } })}>{t.body}</span>
               </p>
             </div>
           </div>
@@ -66,10 +66,10 @@ export function HomeAbout({
           <div className="about-mvv_grid" data-w-id={gridWid} style={{ opacity: 0, filter: 'blur(5px)' }}>
             <div className="about-mvv_mission">
               <h3 className="about-mvv_title">
-                <span {...editText(editable, "about.mission.title", { maxLength: 80 })}>{t.mission.title}</span>
+                <span {...editableAttrs(editable, "about.mission.title", { text: { maxLength: 80 } })}>{t.mission.title}</span>
               </h3>
               <p className="tone-medium about-mvv_body">
-                <span {...editText(editable, "about.mission.body", { maxLength: 200 })}>{t.mission.body}</span>
+                <span {...editableAttrs(editable, "about.mission.body", { text: { maxLength: 200 } })}>{t.mission.body}</span>
               </p>
               <ul className="about-mvv_list" role="list">
                 {t.mission.items.map((item, i) => (
@@ -81,7 +81,7 @@ export function HomeAbout({
                       </svg>
                     </div>
                     <div>
-                      <span {...editText(editable, `about.mission.items.${i}`, { maxLength: 160 })}>{item}</span>
+                      <span {...editableAttrs(editable, `about.mission.items.${i}`, { text: { maxLength: 160 } })}>{item}</span>
                     </div>
                   </li>
                 ))}
@@ -98,11 +98,11 @@ export function HomeAbout({
                     </svg>
                   </div>
                   <h3 className="about-mvv_card-title">
-                    <span {...editText(editable, "about.vision.title", { maxLength: 80 })}>{t.vision.title}</span>
+                    <span {...editableAttrs(editable, "about.vision.title", { text: { maxLength: 80 } })}>{t.vision.title}</span>
                   </h3>
                 </div>
                 <p className="tone-medium about-mvv_body">
-                  <span {...editText(editable, "about.vision.body", { maxLength: 200 })}>{t.vision.body}</span>
+                  <span {...editableAttrs(editable, "about.vision.body", { text: { maxLength: 200 } })}>{t.vision.body}</span>
                 </p>
               </div>
               <div className="about-mvv_card is-values">
@@ -114,11 +114,11 @@ export function HomeAbout({
                     </svg>
                   </div>
                   <h3 className="about-mvv_card-title">
-                    <span {...editText(editable, "about.values.title", { maxLength: 80 })}>{t.values.title}</span>
+                    <span {...editableAttrs(editable, "about.values.title", { text: { maxLength: 80 } })}>{t.values.title}</span>
                   </h3>
                 </div>
                 <p className="tone-medium about-mvv_body">
-                  <span {...editText(editable, "about.values.body", { maxLength: 200 })}>{t.values.body}</span>
+                  <span {...editableAttrs(editable, "about.values.body", { text: { maxLength: 200 } })}>{t.values.body}</span>
                 </p>
               </div>
             </div>

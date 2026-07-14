@@ -2,7 +2,7 @@
 import { Fragment } from "react";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { LangToggle } from "@/app/components/lang-toggle";
-import { editAttrs, editText, editColor } from "@/app/lib/edit-attrs";
+import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
 export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; editable?: boolean }) {
   return (
@@ -66,7 +66,7 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
                         <div className="divider_mobile-menu" />
                         <a className="link_nav w-inline-block" href={l.href} nav-link="">
                           <div>
-                            <span {...editText(editable, `nav.links.${i}.label`, { maxLength: 80 })}>{l.label}</span>
+                            <span {...editableAttrs(editable, `nav.links.${i}.label`, { text: { maxLength: 80 } })}>{l.label}</span>
                           </div>
                         </a>
                       </Fragment>
@@ -100,7 +100,7 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
                     ? { WebkitMaskImage: `url("${dict.logoUrl}")`, maskImage: `url("${dict.logoUrl}")` }
                     : undefined
                 }
-                {...editAttrs(editable, "nav.logo", "image")}
+                {...editableAttrs(editable, "nav.logo", { image: true })}
               />
             </a>
             <div className="nav_corners-wrap">
@@ -135,11 +135,17 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
                 data-cta="nav-quote"
                 data-wf--cta-primary--variant="primary"
                 href="/contact"
-                {...editColor(editable, "nav.cta.color", { token: "btnPrimaryBg", roles: ["bg", "text"] })}
+                /* `token` VERIFIED against the stylesheet: the .btn-bg child that paints this pill
+                   declares background-color: var(--_🎨-color--tokens---button--primary--default--background),
+                   which is exactly TOKEN_VARS.btnPrimaryBg. Kept because it is true, though
+                   detectToken() now derives the same answer at click time. */
+                {...editableAttrs(editable, "nav.cta.color", {
+                  color: { token: "btnPrimaryBg", roles: ["bg", "text"] },
+                })}
               >
                 <div className="button_text-mask">
                   <div button-text="" className="text-button">
-                    <span {...editText(editable, "nav.cta.label", { maxLength: 80 })}>{dict.cta}</span>
+                    <span {...editableAttrs(editable, "nav.cta.label", { text: { maxLength: 80 } })}>{dict.cta}</span>
                   </div>
                 </div>
                 <div button-bg="" className="btn-bg" />

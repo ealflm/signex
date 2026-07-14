@@ -6,7 +6,7 @@
 // closing the notFound.image media-stamp gap.
 import type { SiteContent } from "@/app/lib/content";
 import type { Locale } from "@/app/lib/i18n-config";
-import { editAttrs, editText } from "@/app/lib/edit-attrs";
+import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
 export function NotFoundPreview({
   dict,
@@ -30,22 +30,22 @@ export function NotFoundPreview({
             <div className="headline_404">
               <div className="heading_404">
                 <h1 className="margin-0">
-                  <span {...editText(editable, "notFound.title.lead", { maxLength: 80 })}>{t.title}</span>
-                  <span className="tone-medium" {...editText(editable, "notFound.title.accent", { maxLength: 80 })}>
+                  <span {...editableAttrs(editable, "notFound.title.lead", { text: { maxLength: 80 } })}>{t.title}</span>
+                  <span className="tone-medium" {...editableAttrs(editable, "notFound.title.accent", { text: { maxLength: 80 } })}>
                     {t.titleAccent}
                   </span>
                 </h1>
               </div>
               <div className="_404_p">
                 <p className="tone-medium margin-0">
-                  <span {...editText(editable, "notFound.body", { maxLength: 200 })}>{t.body}</span>
+                  <span {...editableAttrs(editable, "notFound.body", { text: { maxLength: 200 } })}>{t.body}</span>
                 </p>
               </div>
             </div>
             <a button="" className="cta_primary w-inline-block" data-wf--cta-primary--variant="primary" href={`/${locale}`}>
               <div className="button_text-mask">
                 <div button-text="" className="text-button">
-                  <span {...editText(editable, "notFound.cta.label", { maxLength: 80 })}>{t.cta}</span>
+                  <span {...editableAttrs(editable, "notFound.cta.label", { text: { maxLength: 80 } })}>{t.cta}</span>
                 </div>
               </div>
               <div button-bg="" className="btn-bg" />
@@ -59,7 +59,7 @@ export function NotFoundPreview({
               className="image_cover"
               loading="lazy"
               src={t.imageUrl || "/assets/images/69ac691927961ac98c560fe2_pexels-stephanlouis-19119918.avif"}
-              {...editAttrs(editable, "notFound.image", "image")}
+              {...editableAttrs(editable, "notFound.image", { image: true })}
             />
           </div>
         </div>

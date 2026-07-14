@@ -2,12 +2,18 @@
 
 // app/components/editor/edit-overlay.tsx
 // Visual-editor overlay — rendered ONLY inside the /preview editor route (never on public pages).
-// On mount it scans the DOM for [data-edit-field] zones (stamped by editAttrs()/editText() in the
-// shared section components when editable=1) and wires two kinds of inline editing:
-//   • MEDIA ([data-edit-kind=image|video]) — a floating "hotspot" layer is the hover + click surface
-//     for the media (it may be covered by content, so it lives above the page; click → admin drawer).
-//   • TEXT  ([data-edit-kind=text])        — the span itself becomes contentEditable IN PLACE; the
-//     committed value is postMessage'd back to the admin (no hotspot for text — Plan-4 gate (a)).
+// On mount it scans the DOM for [data-edit-field] zones (stamped by editable() in the shared section
+// components when editable=1) and wires two kinds of inline editing:
+//   • MEDIA (caps image|video) — a floating "hotspot" layer is the hover + click surface for the
+//     media (it may be covered by content, so it lives above the page; click → admin drawer).
+//   • TEXT  (cap text)         — the span itself becomes contentEditable IN PLACE; the committed
+//     value is postMessage'd back to the admin (no hotspot for text — Plan-4 gate (a)).
+//
+// CAPABILITIES: an element declares what it CAN do via `data-edit-caps` (a comma-joined list), not
+// a single `data-edit-kind`. Dispatch below is keyed off capabilities but otherwise unchanged — the
+// active-MODE gate that decides which capability a click invokes is a separate task. Because text is
+// still tested before colour, an element carrying both (hero.titleBottom) edits text on click, which
+// is what the old nested-span arrangement already did.
 //
 // WHY A FLOATING HOTSPOT LAYER FOR MEDIA (not listeners + a badge ON the media element):
 //   1. Many media are visually COVERED by content — the home hero image sits behind the headline +
@@ -50,6 +56,35 @@ const SOURCE = "signex-editor";
 const LOCALES = ["en", "vi"] as const;
 
 type MediaEntry = { el: HTMLElement; hot: HTMLDivElement; onScreen: boolean };
+
+type EditCap = "image" | "video" | "text" | "color";
+
+/**
+ * `data-edit-caps` is COMMA-joined ("text,color"), so CSS's `~=` (space-separated word match) does
+ * not apply and `*=` would be a substring match — it happens not to false-positive on today's four
+ * cap names, but it silently would the day a cap contains another as a substring. These four
+ * matchers pin the value's boundaries, so they match a whole cap and nothing else.
+ */
+const capSel = (cap: EditCap, suffix = "") =>
+  [`="${cap}"`, `^="${cap},"`, `$=",${cap}"`, `*=",${cap},"`]
+    .map((m) => `[data-edit-caps${m}]${suffix}`)
+    .join(",");
+
+/** JS-side equivalent: split on "," and compare whole values (never `includes()` on the string). */
+const hasCap = (el: Element, cap: EditCap): boolean =>
+  (el.getAttribute("data-edit-caps") ?? "").split(",").includes(cap);
+
+/** The capability-aware `closest()`: nearest ancestor-or-self DECLARING `cap`. A plain
+ *  `closest("[data-edit-caps]")` would stop at the first stamped element even when it lacks `cap`,
+ *  so keep walking past those rather than giving up. */
+function closestCap(start: Element | null | undefined, cap: EditCap): HTMLElement | null {
+  let node = start?.closest?.("[data-edit-caps]") as HTMLElement | null;
+  while (node) {
+    if (hasCap(node, cap)) return node;
+    node = node.parentElement?.closest("[data-edit-caps]") as HTMLElement | null;
+  }
+  return null;
+}
 
 /**
  * getComputedStyle always resolves a colour to `rgb(…)`/`rgba(…)` — convert to the `#rrggbb` an
@@ -132,15 +167,19 @@ export function EditOverlay() {
       }
       .sx-edit-hotspot:hover .sx-edit-badge { opacity: 1; }
 
+      /* Inline COLOUR editing. Dashed outline distinguishes a colour zone from a text/media zone at
+         a glance. */
+      ${capSel("color")} { cursor: pointer; }
+      ${capSel("color", ":hover")} { outline: 2px dashed #4956e3; outline-offset: 2px; }
       /* Inline TEXT editing. The affordance must NOT reflow the byte-faithful layout, so we use
-         outline/box-shadow (paints outside the box) — never border/margin/padding. */
-      [data-edit-kind="text"] { cursor: text; }
-      [data-edit-kind="text"]:hover { outline: 2px solid #4956e3; outline-offset: 2px; }
-      /* Inline COLOUR editing (Task 5 stamps [data-edit-kind="color"]). Dashed outline distinguishes
-         a colour zone from a text/media zone at a glance. */
-      [data-edit-kind="color"] { cursor: pointer; }
-      [data-edit-kind="color"]:hover { outline: 2px dashed #4956e3; outline-offset: 2px; }
-      [data-edit-kind="text"][contenteditable="true"] {
+         outline/box-shadow (paints outside the box) — never border/margin/padding.
+         ORDER IS LOAD-BEARING: these carry the same specificity as the colour rules above, so being
+         listed later is what makes TEXT win on an element declaring both caps — matching the click
+         dispatch (text is tested first), so the affordance never advertises an edit you won't get.
+         Previously this fell out of the nesting: the text span was a child of the colour wrapper. */
+      ${capSel("text")} { cursor: text; }
+      ${capSel("text", ":hover")} { outline: 2px solid #4956e3; outline-offset: 2px; }
+      ${capSel("text", '[contenteditable="true"]')} {
         outline: 2px solid #4956e3; outline-offset: 2px; background: rgba(73,86,227,.06);
       }
       /* A media hotspot hovering OVER a text leaf defers to the text: text cursor, no media chrome,
@@ -148,7 +187,7 @@ export function EditOverlay() {
       .sx-edit-hotspot.sx-on-text { cursor: text; border-color: transparent !important; background: transparent !important; }
       .sx-edit-hotspot.sx-on-text .sx-edit-badge { opacity: 0 !important; }
       /* Text hovered THROUGH a media hotspot (the element's own :hover can't fire) gets the outline. */
-      [data-edit-kind="text"].sx-text-hover { outline: 2px solid #4956e3; outline-offset: 2px; }
+      ${capSel("text", ".sx-text-hover")} { outline: 2px solid #4956e3; outline-offset: 2px; }
       .sx-flash { animation: sx-flash .9s ease; }
       @keyframes sx-flash {
         0%,100% { outline-color: transparent; }
@@ -402,16 +441,16 @@ export function EditOverlay() {
       window.parent.postMessage({ source: SOURCE, type: "highlight", field }, "*");
     };
 
-    // ---- media zones only (data-edit-kind="image"|"video"). TEXT zones get NO hotspot — Plan-4
-    // gate (a): the scan selector excludes [data-edit-kind="text"], so a text leaf never gets an
-    // "Edit image" badge (text is edited in place by the contentEditable path above).
+    // ---- media zones only (caps image|video). TEXT zones get NO hotspot — Plan-4 gate (a): the
+    // scan matches only the media caps, so a text leaf never gets an "Edit image" badge (text is
+    // edited in place by the contentEditable path above).
     const fields = Array.from(
-      document.querySelectorAll<HTMLElement>('[data-edit-kind="image"],[data-edit-kind="video"]'),
+      document.querySelectorAll<HTMLElement>(`${capSel("image")},${capSel("video")}`),
     );
 
     for (const el of fields) {
       const field = el.getAttribute("data-edit-field") ?? "";
-      const mediaKind = (el.getAttribute("data-edit-kind") as "image" | "video") ?? "image";
+      const mediaKind: "image" | "video" = hasCap(el, "image") ? "image" : "video";
 
       const hot = document.createElement("div");
       hot.className = "sx-edit-hotspot";
@@ -431,9 +470,7 @@ export function EditOverlay() {
         const content = stack.filter((n) => !n.closest(".sx-edit-layer"));
         return {
           topmost: content[0] ?? null,
-          text: (content
-            .map((n) => n.closest('[data-edit-kind="text"]'))
-            .find(Boolean) ?? null) as HTMLElement | null,
+          text: content.map((n) => closestCap(n, "text")).find(Boolean) ?? null,
         };
       };
 
@@ -571,14 +608,14 @@ export function EditOverlay() {
     // on inline-text leaves here (capture phase) so they enter edit mode before the anchor/Webflow
     // runtime can act on them.
     const onDocClick = (e: MouseEvent) => {
-      // Inline TEXT: a click on a [data-edit-kind="text"] span enters edit mode in place. Many text
-      // leaves live inside an <a> (nav/footer labels, the features CTA) — preventDefault/stopProp so
-      // clicking to edit never navigates. (Media hotspots cover media, not text, so text clicks reach
-      // this capture-phase handler; the hero title covered by the hero image is handled in the hotspot
-      // onClick passthrough above.)
-      const textLeaf = (e.target as Element | null)?.closest?.('[data-edit-kind="text"]') as
-        | HTMLElement
-        | null;
+      // Inline TEXT: a click on an element declaring the "text" cap enters edit mode in place. Many
+      // text leaves live inside an <a> (nav/footer labels, the features CTA) — preventDefault/stopProp
+      // so clicking to edit never navigates. (Media hotspots cover media, not text, so text clicks
+      // reach this capture-phase handler; the hero title covered by the hero image is handled in the
+      // hotspot onClick passthrough above.)
+      // Tested BEFORE colour, so an element declaring both (hero.titleBottom) edits text — the same
+      // outcome the old nested spans produced, where the inner text span was always the click target.
+      const textLeaf = closestCap(e.target as Element | null, "text");
       if (textLeaf) {
         e.preventDefault();
         e.stopPropagation();
@@ -587,13 +624,12 @@ export function EditOverlay() {
         return;
       }
 
-      // Inline COLOUR: a click on a [data-edit-kind="color"] zone opens the admin's colour popover
-      // instead of navigating/editing text. Many colour zones also live inside an <a> (e.g. the nav
-      // CTA button's background) — preventDefault/stopPropagation BEFORE the navigation-interception
-      // logic below so the click never falls through to the anchor's default navigation.
-      const colorEl = (e.target as Element | null)?.closest?.(
-        '[data-edit-kind="color"]',
-      ) as HTMLElement | null;
+      // Inline COLOUR: a click on an element declaring the "color" cap opens the admin's colour
+      // popover instead of navigating/editing text. Many colour zones also live inside an <a> (e.g.
+      // the nav CTA button's background) — preventDefault/stopPropagation BEFORE the
+      // navigation-interception logic below so the click never falls through to the anchor's default
+      // navigation.
+      const colorEl = closestCap(e.target as Element | null, "color");
       if (colorEl) {
         e.preventDefault();
         e.stopPropagation();

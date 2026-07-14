@@ -2,19 +2,21 @@
 // Visual-editor annotation helper. Shared section components (Navbar, Footer, Hero, …) are
 // rendered BOTH on the public cached/SSG pages AND inside the /preview editor route. The
 // public render must stay byte-identical (no editor attributes leaking into the static HTML),
-// so each media zone calls `editAttrs(editable, "<block>.<field>", "image"|"video")` and spreads
-// the result onto the element. When `editable` is false (the public default) it returns an empty
-// object — nothing is emitted. When true (preview route only) it stamps the data-* hooks the
+// so each zone calls `editable(flag, "<block>.<field>", { image: true } | { text: … } | …)` and
+// spreads the result onto the element. When the flag is false (the public default) it returns an
+// empty object — nothing is emitted. When true (preview route only) it stamps the data-* hooks the
 // client overlay (app/components/editor/edit-overlay.tsx) scans for.
+//
+// The one exception is `data-sx-c` (colour anchors), which is returned on BOTH renders: it is the
+// per-element override's CSS target, so it has to match on the live site. See editable() below.
 //
 // The field string is "<blockKey>.<path>" (e.g. "hero.image", "features.video.media"); the admin
 // controller maps the blockKey → BlockKind via BLOCK_KIND_BY_KEY and walks the nested path.
 //
 // TEXT EDITING (Plan 4) — inline scope v1:
-//   `editText(editable, "<snapshot.path>")` stamps data-edit-kind="text" on any in-scope leaf.
-//   The <span> itself is rendered UNCONDITIONALLY by the component; this helper only adds the
-//   conditional data-edit-* hooks (same contract as editAttrs for media). Full EditTextOpts and
-//   EditKind type formalised in Task 2.
+//   `editable(flag, "<snapshot.path>", { text: {} })` declares the "text" capability on any
+//   in-scope leaf. The <span> itself is rendered UNCONDITIONALLY by the component; this helper only
+//   adds the conditional data-edit-* hooks (same contract as the media capability).
 //
 // INCLUDE (inline-editable in v1):
 //   hero.titleTop, hero.titleBottom, hero.subtitle
@@ -38,8 +40,7 @@
 //   [count-up]/[stagger-text] targets (confirmed absent from markup; still excluded by policy).
 //   Any leaf whose span fails the 3-layer markup-delta gate (CSS-grep + computed-style + screenshot).
 
-export type EditMediaKind = "image" | "video";
-export type EditKind = "image" | "video" | "text" | "color";
+export type EditCap = "image" | "video" | "text" | "color";
 
 /** Options for inline text editing (client-side UX only — no schema .max() churn). */
 export interface EditTextOpts {
@@ -51,70 +52,63 @@ export interface EditTextOpts {
   required?: boolean;
 }
 
-export interface EditAttrs {
-  "data-edit-field"?: string;
-  "data-edit-kind"?: EditKind;
-  "data-edit-maxlength"?: number;
-  "data-edit-multiline"?: "true";
-  "data-edit-required"?: "true";
-}
-
-export function editAttrs(
-  editable: boolean | undefined,
-  field: string,
-  kind: EditMediaKind,
-): EditAttrs {
-  if (!editable) return {};
-  return { "data-edit-field": field, "data-edit-kind": kind };
-}
-
-// The <span> wrapping each leaf is rendered UNCONDITIONALLY by the component; this helper
-// only adds the conditional data-edit-* hooks (same contract as editAttrs for media).
-// Returns {} when editable is false/undefined — public and preview both render <span>text</span>;
-// only the data-* hooks are conditional. This is load-bearing: the public faithful-clone
-// appearance must not change.
-export function editText(
-  editable: boolean | undefined,
-  field: string,
-  opts?: EditTextOpts,
-): EditAttrs {
-  if (!editable) return {};
-  return {
-    "data-edit-field": field,
-    "data-edit-kind": "text",
-    ...(opts?.maxLength != null && { "data-edit-maxlength": opts.maxLength }),
-    ...(opts?.multiline && { "data-edit-multiline": "true" }),
-    ...(opts?.required && { "data-edit-required": "true" }),
-  };
-}
-
 export type EditColorRole = "bg" | "text" | "border";
 
 export interface EditColorSpec {
   /** Palette token key (from @signex/shared TOKEN_VARS/PALETTE_VARS) this element paints from.
-   *  Omit for anchors that only support a per-element override (no obvious shared token). */
+   *  Now REDUNDANT: color-engine.ts's detectToken() reads the winning CSS rule at click time and
+   *  resolves the driving var() back to a seed/token key, which is both more accurate and immune to
+   *  drift. Declare one only when it has been verified against the CSS that actually paints the
+   *  role — a hand-declared token that disagrees with the stylesheet is worse than none, because
+   *  nothing downstream can tell it is lying. Omit to let the engine answer. */
   token?: string;
   /** Which CSS roles on this element are overridable (drives the popover's role chooser). */
   roles: EditColorRole[];
 }
 
+export interface EditableOpts {
+  image?: true;
+  video?: true;
+  text?: EditTextOpts;
+  color?: EditColorSpec;
+}
+
 /**
- * Stamp a colour-anchored element. Unlike editText/editAttrs, this ALWAYS returns the stable
- * `data-sx-c` anchor (public + preview) so per-element override CSS ([data-sx-c="…"]) applies on
- * the live site. The data-edit-* hooks (the click surface + popover metadata) are preview-only.
+ * Stamp an element with the edit CAPABILITIES it supports. The active editor mode decides which
+ * one a click invokes.
+ *
+ * This replaces the single-valued `data-edit-kind`, which could not express an element that is
+ * both text- and colour-editable — that limitation is why hero.titleBottom needed two nested spans
+ * (an inner editText span inside an outer editColor wrapper) and why only 3 elements had colour.
+ *
+ * `data-sx-c` is returned even when not editable: it is the per-element override's target and the
+ * override CSS has to match on the public site. Every `data-edit-*` is preview-only.
  */
-export function editColor(
-  editable: boolean | undefined,
-  anchorId: string,
-  spec: EditColorSpec,
+export function editable(
+  flag: boolean | undefined,
+  field: string,
+  opts: EditableOpts,
 ): Record<string, string> {
-  const anchor = { "data-sx-c": anchorId };
-  if (!editable) return anchor;
+  // Annotated, not inferred: the ternary would otherwise widen to
+  // `{ "data-sx-c": string } | { "data-sx-c"?: undefined }`, and that `undefined` is not assignable
+  // to this function's Record<string, string> index signature.
+  const anchor: Record<string, string> = opts.color ? { "data-sx-c": field } : {};
+  if (!flag) return anchor;
+
+  const caps: EditCap[] = [];
+  if (opts.image) caps.push("image");
+  if (opts.video) caps.push("video");
+  if (opts.text) caps.push("text");
+  if (opts.color) caps.push("color");
+
   return {
     ...anchor,
-    "data-edit-field": anchorId,
-    "data-edit-kind": "color",
-    ...(spec.token ? { "data-edit-color-token": spec.token } : {}),
-    "data-edit-color-roles": spec.roles.join(","),
+    "data-edit-field": field,
+    "data-edit-caps": caps.join(","),
+    ...(opts.text?.maxLength != null && { "data-edit-maxlength": String(opts.text.maxLength) }),
+    ...(opts.text?.multiline && { "data-edit-multiline": "true" }),
+    ...(opts.text?.required && { "data-edit-required": "true" }),
+    ...(opts.color?.token && { "data-edit-color-token": opts.color.token }),
+    ...(opts.color && { "data-edit-color-roles": opts.color.roles.join(",") }),
   };
 }

@@ -1,6 +1,6 @@
 // app/components/footer.tsx
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editAttrs, editText, editColor } from "@/app/lib/edit-attrs";
+import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
 /**
  * Footer — signex content poured into Caladan's master_footer shell. The shell
@@ -48,7 +48,14 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
 
   return (
     <section className="footer" data-sx-block="footer">
-      <div className="master_footer" {...editColor(editable, "footer.bar.color", { token: "baseDark", roles: ["bg"] })}>
+      {/* roles is ["bg"] only, and that is correct: .master_footer's glyph bearers re-declare a
+          translucent colour, so a `text` override on this block would not reach them. No `token`:
+          the old `baseDark` was false — .master_footer paints
+          background-color: var(--_🎨-color--base---accent--deep-navy) i.e. the accentDeepNavy
+          SEED. (The base--dark-100 nearby is a re-declaration of the ink--base token for
+          descendants, not this element's own background — likely what the wrong token was read off.)
+          detectToken() resolves seeds as well as tokens, so it answers this correctly. */}
+      <div className="master_footer" {...editableAttrs(editable, "footer.bar.color", { color: { roles: ["bg"] } })}>
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="footer_top-tile footer-signex_top">
@@ -59,17 +66,17 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                 {/* Signex logo (replaces the "SIGNEX" text label). Same user SVG as the
                     navbar, but rendered white (brightness(0) invert(1)) so it reads on the
                     dark footer like the wordmark/lotus do. */}
-                <img alt="Signex" className="footer-signex_logo" loading="lazy" src={t.logoUrl || "/assets/images/signex-logo.svg"} {...editAttrs(editable, "footer.logo", "image")} />
+                <img alt="Signex" className="footer-signex_logo" loading="lazy" src={t.logoUrl || "/assets/images/signex-logo.svg"} {...editableAttrs(editable, "footer.logo", { image: true })} />
                 <div className="footer-signex_brand">
                   <div className="text-size-regular text_body-bold">
                     {/* Brand line "<brand> – <suffix>": only the suffix is editable, rendered as its
                         own (unconditional, inert-on-public) span; the "<brand> – " prefix stays plain. */}
-                    {t.brandPrefix}<span {...editText(editable, "footer.brandSuffix", { maxLength: 80 })}>{t.brandSuffix}</span>
+                    {t.brandPrefix}<span {...editableAttrs(editable, "footer.brandSuffix", { text: { maxLength: 80 } })}>{t.brandSuffix}</span>
                   </div>
                   <div className="footer-signex_tagline text-size-small tone-medium">
                     {t.tagline.map((line, i) => (
                       <div key={i}>
-                        <span {...editText(editable, `footer.tagline.${i}`, { maxLength: 120 })}>{line}</span>
+                        <span {...editableAttrs(editable, `footer.tagline.${i}`, { text: { maxLength: 120 } })}>{line}</span>
                       </div>
                     ))}
                   </div>
@@ -89,34 +96,34 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                   matching the Quick links column. */}
               <div className="footer-signex_col">
                 <div className="label-large tone-medium">
-                  <span {...editText(editable, "footer.contactHeading", { maxLength: 80 })}>{t.contactHeading}</span>
+                  <span {...editableAttrs(editable, "footer.contactHeading", { text: { maxLength: 80 } })}>{t.contactHeading}</span>
                 </div>
                 <div className="footer-signex_contact">
                   {/* Field labels (Email:/Tel:/…) stay literal by design (locale-invariant); only the
                       VALUES are stamped, so each NAP value is click-to-edit (routes to Business contact).
                       Labels themselves remain editable in the Business contact panel. */}
                   <div className="text-size-small text_body-bold footer-signex_company">
-                    <span {...editText(editable, t.nap.legalName.field, { maxLength: 120 })}>{t.nap.legalName.text}</span>
+                    <span {...editableAttrs(editable, t.nap.legalName.field, { text: { maxLength: 120 } })}>{t.nap.legalName.text}</span>
                   </div>
                   <div className="text-size-small">
                     <span className="text_body-bold">Email:</span>{" "}
-                    <span className="tone-medium" {...editText(editable, t.nap.email.field, { maxLength: 120 })}>{t.nap.email.text}</span>
+                    <span className="tone-medium" {...editableAttrs(editable, t.nap.email.field, { text: { maxLength: 120 } })}>{t.nap.email.text}</span>
                   </div>
                   {t.nap.tel && (
                     <div className="text-size-small">
                       <span className="text_body-bold">Tel:</span>{" "}
-                      <span className="tone-medium" {...editText(editable, t.nap.tel.value.field, { maxLength: 80 })}>{t.nap.tel.value.text}</span>
+                      <span className="tone-medium" {...editableAttrs(editable, t.nap.tel.value.field, { text: { maxLength: 80 } })}>{t.nap.tel.value.text}</span>
                     </div>
                   )}
                   {t.nap.zalo && (
                     <div className="text-size-small">
                       <span className="text_body-bold">Zalo:</span>{" "}
-                      <span className="tone-medium" {...editText(editable, t.nap.zalo.value.field, { maxLength: 80 })}>{t.nap.zalo.value.text}</span>
+                      <span className="tone-medium" {...editableAttrs(editable, t.nap.zalo.value.field, { text: { maxLength: 80 } })}>{t.nap.zalo.value.text}</span>
                     </div>
                   )}
                   <div className="text-size-small">
                     <span className="text_body-bold">Tax:</span>{" "}
-                    <span className="tone-medium" {...editText(editable, t.nap.tax.value.field, { maxLength: 80 })}>{t.nap.tax.value.text}</span>
+                    <span className="tone-medium" {...editableAttrs(editable, t.nap.tax.value.field, { text: { maxLength: 80 } })}>{t.nap.tax.value.text}</span>
                   </div>
                   {t.nap.office && (
                     <div className="footer-signex_address">
@@ -124,7 +131,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                         Office:
                       </div>
                       <div className="text-size-small tone-medium">
-                        <span {...editText(editable, t.nap.office.value.field, { maxLength: 160 })}>{t.nap.office.value.text}</span>
+                        <span {...editableAttrs(editable, t.nap.office.value.field, { text: { maxLength: 160 } })}>{t.nap.office.value.text}</span>
                       </div>
                     </div>
                   )}
@@ -134,7 +141,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                         Factory:
                       </div>
                       <div className="text-size-small tone-medium">
-                        <span {...editText(editable, t.nap.factory.value.field, { maxLength: 160 })}>{t.nap.factory.value.text}</span>
+                        <span {...editableAttrs(editable, t.nap.factory.value.field, { text: { maxLength: 160 } })}>{t.nap.factory.value.text}</span>
                       </div>
                     </div>
                   )}
@@ -147,12 +154,12 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                   bold-white heading the brand/contact columns use. */}
               <div className="footer-signex_col">
                 <div className="label-large tone-medium">
-                  <span {...editText(editable, "footer.quickHeading", { maxLength: 80 })}>{t.quickHeading}</span>
+                  <span {...editableAttrs(editable, "footer.quickHeading", { text: { maxLength: 80 } })}>{t.quickHeading}</span>
                 </div>
                 <div className="column_footer-links">
                   {t.links.map((l, i) => (
                     <a className="link_footer" href={l.href} key={l.label}>
-                      <span {...editText(editable, `footer.links.${i}.label`, { maxLength: 80 })}>{l.label}</span>
+                      <span {...editableAttrs(editable, `footer.links.${i}.label`, { text: { maxLength: 80 } })}>{l.label}</span>
                     </a>
                   ))}
                 </div>
@@ -163,7 +170,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
             <div className="footer_mid-tile footer-signex_utility">
               <div className="footer-signex_badges">
                 <span className="text-size-small tone-medium">
-                  <span {...editText(editable, "footer.shipLabel", { maxLength: 80 })}>{t.shipLabel}</span>
+                  <span {...editableAttrs(editable, "footer.shipLabel", { text: { maxLength: 80 } })}>{t.shipLabel}</span>
                 </span>
                 {t.shipping.map((name, i) => (
                   <span className={`footer-signex_badge is-${badgeSlug(name)}`} key={i}>
@@ -173,7 +180,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
               </div>
               <div className="footer-signex_badges">
                 <span className="text-size-small tone-medium">
-                  <span {...editText(editable, "footer.payLabel", { maxLength: 80 })}>{t.payLabel}</span>
+                  <span {...editableAttrs(editable, "footer.payLabel", { text: { maxLength: 80 } })}>{t.payLabel}</span>
                 </span>
                 {t.payments.map((p, i) => (
                   <span className={`footer-signex_badge footer-signex_pay ${PAY_TONE[p] ?? "is-blue"}`} key={i}>
@@ -199,7 +206,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                 black source art to a faint white silhouette (brightness(0) invert(1)) so it
                 reads on the dark footer like the cream palm did. alt="" — decorative.
                 Configurable AssetRef (footer.watermark); falls back to the literal lotus.svg. */}
-            <img alt={t.watermarkAlt || ""} className="palm-footer footer-signex_lotus" loading="lazy" src={t.watermarkUrl || "/assets/images/lotus.svg"} {...editAttrs(editable, "footer.watermark", "image")} />
+            <img alt={t.watermarkAlt || ""} className="palm-footer footer-signex_lotus" loading="lazy" src={t.watermarkUrl || "/assets/images/lotus.svg"} {...editableAttrs(editable, "footer.watermark", { image: true })} />
           </div>
         </div>
         <div className="progressive_blur">
