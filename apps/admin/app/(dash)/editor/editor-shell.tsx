@@ -55,12 +55,13 @@ import { readColorTarget, type ColorTarget } from "./_lib/color-target";
 import {
   DEVICE_MAX_WIDTH,
   SURFACE_PATH_BY_BLOCK,
+  isBlockKey,
   type DeviceWidth,
   type Locale,
   type Selection,
   type ToolbarStatus,
 } from "./_lib/blocks";
-import { DEFAULT_MODE, type EditMode } from "./_lib/modes";
+import { DEFAULT_MODE, MODE_LENS, type EditMode } from "./_lib/modes";
 import {
   usePreviewBridge,
   type ApplyEdit,
@@ -497,6 +498,31 @@ export function EditorShell(props: EditorShellProps) {
     [lang, previewPath, bridge],
   );
 
+  // Selection follows the click (spec §1): a canvas click selects the block it landed in, whatever
+  // the mode, so the panel is always describing the thing you just clicked. Without it a Media click
+  // opens the picker and a Colour click fills the colour panel while the rail — and the section form
+  // behind it — keep pointing at an unrelated section. The Text path gets this from `highlight`,
+  // which carries a field; the other two have only a blockKey, which is why their messages have one.
+  //
+  // Guarded on change, by the updater's own bail-out: re-selecting the block already open returns
+  // `cur` unchanged, React skips the re-render, and the panel's flash effect (keyed on blockKey)
+  // never re-fires — so clicking around inside the section you are already editing does not strobe
+  // the panel on every click. No panelFlash bump for the same reason it isn't needed: a canvas click
+  // can only ever select a DIFFERENT block here, and that alone re-runs the effect. (The rail's
+  // onSelect bumps it because re-picking the current section there must still flash.)
+  //
+  // No surface navigation here, unlike onSelect: the click came FROM the document the preview is
+  // showing, so its surface IS the current one by construction — setting previewPath could only ever
+  // remount the iframe and throw away the click that asked for it. Stable (live locale read through
+  // langRef) so the once-subscribed message listener can call it.
+  const selectFromCanvas = useCallback((blockKey: unknown) => {
+    if (!isBlockKey(blockKey)) return; // an unknown key would crash deriveFields — see isBlockKey
+    const locale = langRef.current;
+    setSelection((cur) =>
+      cur?.blockKey === blockKey ? cur : { blockKey, fieldPath: null, locale },
+    );
+  }, []);
+
   // Canvas→panel highlight (web→admin {type:"highlight"}): a canvas text-leaf was focused → select
   // its owning block (+ navigate the surface if needed — usually already current), then flash the
   // matching panel field. Stable (reads live locale via langRef + functional setState) so the
@@ -748,6 +774,10 @@ export function EditorShell(props: EditorShellProps) {
   function handleBridgeMessage(data: BridgeMessage) {
     if (data.type === "edit" && typeof data.field === "string") {
       const kind = data.mediaKind === "video" ? "video" : "image";
+      // Selection follows the click: `field` is "<blockKey>.<path>", so the media hotspot names its
+      // own block. Do this BEFORE opening the picker, so closing it leaves the Media form showing
+      // the section you clicked rather than whatever was selected beforehand.
+      selectFromCanvas(data.field.split(".")[0]);
       openMediaPicker(data.field, kind);
     } else if (data.type === "colorTarget") {
       // A colour-mode click. The preview has already done the only part that needs a DOM: it
@@ -756,7 +786,13 @@ export function EditorShell(props: EditorShellProps) {
       // adds nothing of its own except the parse (readColorTarget — every field is untrusted, and
       // each one ends up in a persisted palette).
       const target = readColorTarget(data);
-      if (target) setColorTarget(target);
+      if (target) {
+        setColorTarget(target);
+        // Selection follows the click. A colour click can land on an element with no
+        // data-edit-field, so the highlight path cannot carry it — `blockKey` is exactly why the
+        // message has that field. "" (an element outside any block) fails isBlockKey and is a no-op.
+        selectFromCanvas(target.blockKey);
+      }
     } else if (data.type === "selectorAudit" && Array.isArray(data.broken)) {
       // The overlay's answer to postAuditSelectors: stored override selectors that no longer match
       // exactly one element on this page. Shown, never auto-removed (see the panel).
@@ -1032,7 +1068,12 @@ export function EditorShell(props: EditorShellProps) {
             className="bg-card"
           >
             {/* The panel is MODE-dynamic: colour mode owns this zone, every other mode leaves the
-                section form in it. Not a third, independent selection — that was the old "Bảng màu"
+                section form in it — under that mode's LENS (MODE_LENS: Media lists the section's
+                media, Text its strings, Content everything, as before modes existed). One
+                ContextPanel with a filter, not one copy per mode: the header, the ScrollArea, the
+                FieldEditor loop and the flash wiring are identical in all three, and three copies of
+                them would be three places to fix the next flash bug.
+                Not a third, independent selection — that was the old "Bảng màu"
                 rail item, and having two routes to the same colours meant the rail and the toolbar
                 could each claim to be showing you the editor. */}
             {mode === "color" ? (
@@ -1048,6 +1089,7 @@ export function EditorShell(props: EditorShellProps) {
               />
             ) : (
               <ContextPanel
+                {...(MODE_LENS[mode] ?? {})}
                 blockKey={selection?.blockKey ?? null}
                 blockData={selection ? workingBlockData(selection.blockKey) : {}}
                 assets={initialAssets}

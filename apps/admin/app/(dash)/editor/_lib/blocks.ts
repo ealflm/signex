@@ -1,4 +1,4 @@
-import type { BlockKey } from "@signex/shared";
+import { BLOCK_REGISTRY, type BlockKey } from "@signex/shared";
 
 // ─── Locale ──────────────────────────────────────────────────────────────────
 export type Locale = "vi" | "en";
@@ -18,6 +18,19 @@ export interface Selection {
   fieldPath: string | null;
   locale: Locale;
 }
+
+/**
+ * Is this a block we have a schema for? A blockKey the CANVAS reported (the overlay reads it off
+ * `data-sx-block`, and the bridge proves origin and nothing else) is a string until checked —
+ * selecting an unknown one hands `BLOCK_REGISTRY[k]` → undefined to deriveFields, which throws
+ * while reading `_def` off it and takes the whole editor down with it.
+ *
+ * The REGISTRY, not BLOCK_LABELS: the registry is what ContextPanel actually indexes. And
+ * Object.hasOwn, never `in` — `"toString" in BLOCK_REGISTRY` is true (same trap as color-target's
+ * isTokenKey).
+ */
+export const isBlockKey = (v: unknown): v is BlockKey =>
+  typeof v === "string" && Object.hasOwn(BLOCK_REGISTRY, v);
 
 // ─── ToolbarStatus ────────────────────────────────────────────────────────────
 export type ToolbarStatus =
