@@ -42,8 +42,6 @@
 | `apps/admin/app/(dash)/editor/_lib/modes.test.ts` | Mode metadata + routing |
 | `apps/admin/app/(dash)/editor/_lib/preview-bridge.ts` | postMessage listener + posters, lifted out of the shell |
 | `apps/admin/app/(dash)/editor/_panels/color-panel.tsx` | Role rows + brand seeds (Colour mode) |
-| `apps/admin/app/(dash)/editor/_panels/media-panel.tsx` | Section media list (Media mode) |
-| `apps/admin/app/(dash)/editor/_panels/text-panel.tsx` | Section text list (Text mode) |
 
 **Modify**
 | File | Change |
@@ -61,6 +59,7 @@
 | `apps/admin/app/(dash)/editor/editor-shell.tsx` | Mode state; panel routing; use the bridge |
 | `apps/admin/app/(dash)/editor/_lib/palette-patch.ts` | `setOverride` keyed by selector |
 | `apps/admin/app/(dash)/editor/sections-nav.tsx` | Remove the GIAO DIỆN / "Bảng màu" group |
+| `apps/admin/app/(dash)/editor/context-panel.tsx` | `filter` + `title` props — Media/Text modes are this panel with a lens, not copies of it |
 
 **Delete**
 | File | Why |
@@ -505,25 +504,36 @@ Map each `BlockKey` to its component's outermost element. Expect ~10–15 (`hero
 
 - [ ] **Step 2: Write the failing test**
 
-Add to `apps/web/test/dynamic-params.test.mjs`:
+Add to `apps/web/test/dynamic-params.test.mjs` (it already has a `src(...)` helper that reads a
+component's source):
 
 ```js
-test("public page carries block roots but no editor attributes", async () => {
-  const html = await (await fetch("http://localhost:3062/vi")).text();
-  // data-sx-block is the ONE deliberate public addition — generated override selectors are
-  // scoped to it, so it must exist on the live site, not just in preview.
-  assert.ok(/data-sx-block="hero"/.test(html), "hero block root missing");
-  assert.ok(/data-sx-block="nav"/.test(html), "nav block root missing");
-  assert.ok(/data-sx-block="footer"/.test(html), "footer block root missing");
-  // The public render must never leak editor hooks.
-  assert.equal(html.match(/data-edit-/g), null, "data-edit-* leaked to public");
+test("block roots are stamped with data-sx-block, unconditionally", () => {
+  // STATIC, like every other test in this file: the web suite must keep running with the docker
+  // stack down. The runtime HTML assertion (and the data-edit-* leak check, which needs a rendered
+  // page) lives in the E2E task, where the stack is up by definition.
+  for (const [file, key] of [
+    ["navbar.tsx", "nav"],
+    ["hero.tsx", "hero"],
+    ["footer.tsx", "footer"],
+  ]) {
+    const s = src("components", file);
+    assert.match(s, new RegExp(`data-sx-block="${key}"`), `${file}: block root not stamped`);
+    // It must NOT be gated on `editable` — generated override selectors are scoped to this
+    // attribute, so it has to exist on the public site, not just in preview.
+    assert.doesNotMatch(
+      s,
+      new RegExp(`editable[^\\n]*data-sx-block="${key}"`),
+      `${file}: data-sx-block must not be conditional on editable`,
+    );
+  }
 });
 ```
 
 - [ ] **Step 3: Run it to verify it fails**
 
-Run: `docker compose up -d web && node --test apps/web/test/dynamic-params.test.mjs`
-Expected: FAIL — "hero block root missing".
+Run: `node --test apps/web/test/dynamic-params.test.mjs`
+Expected: FAIL — "navbar.tsx: block root not stamped". (No docker needed.)
 
 - [ ] **Step 4: Add the attribute**
 
@@ -548,11 +558,8 @@ Add the same one-line comment above the first one you touch:
 
 - [ ] **Step 5: Run it to verify it passes**
 
-```bash
-docker compose up -d --build web
-node --test apps/web/test/dynamic-params.test.mjs
-```
-Expected: PASS.
+Run: `npm run test -w @signex/web`
+Expected: PASS, exit 0 — with the stack down.
 
 - [ ] **Step 6: Commit**
 
@@ -1583,11 +1590,19 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## Task 11: Admin — Media / Text panels + routing
+## Task 11: Admin — field filtering + mode routing
+
+> **Deviation from spec §6, deliberate.** The spec's file table lists `_panels/media-panel.tsx` and
+> `_panels/text-panel.tsx`. Both would have been `ContextPanel` with one different `filter` — same
+> header, same `ScrollArea`, same `FieldEditor` loop, same empty state. That is verbatim
+> duplication of a component three ways, and it would rightly be flagged in review. A `filter` prop
+> on `ContextPanel` delivers the same mode-driven panel with none of the copies. If a panel ever
+> genuinely diverges (thumbnail grid for media, say), split it then — not now.
 
 **Files:**
-- Create: `apps/admin/app/(dash)/editor/_panels/media-panel.tsx`
-- Create: `apps/admin/app/(dash)/editor/_panels/text-panel.tsx`
+- Modify: `apps/admin/app/(dash)/editor/_lib/modes.ts`
+- Modify: `apps/admin/app/(dash)/editor/_lib/modes.test.ts`
+- Modify: `apps/admin/app/(dash)/editor/context-panel.tsx`
 - Modify: `apps/admin/app/(dash)/editor/editor-shell.tsx`
 
 **Interfaces:**
@@ -1595,7 +1610,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Produces:
   - `isMediaField(f: FieldPlan): boolean`, `isTextField(f: FieldPlan): boolean` in `_lib/modes.ts`
     (`FieldPlan` is `deriveFields`' element type — `apps/admin/app/lib/zodform-fields.ts:20`)
-  - `MediaPanel`/`TextPanel` with props `{ blockKey, blockData, assets, onFieldChange, onPickMedia, onValidityChange, onFieldFocus, flashField }`
+  - `ContextPanelProps` gains `filter?: (f: FieldPlan) => boolean` and `title?: string`
 
 - [ ] **Step 1: Write the failing test for the field classifiers**
 
@@ -1674,15 +1689,37 @@ export function isTextField(f: FieldPlan): boolean {
 neither predicate claims them. Recursing is out of scope — a container's leaves stay reachable in
 Content mode, which is exactly what that mode is for.
 
-- [ ] **Step 4: Build both panels**
+- [ ] **Step 4: Add the filter to ContextPanel**
 
-Each is `ContextPanel` with the field list filtered by its classifier:
+In `context-panel.tsx`, extend the props and apply the filter at the one place fields are derived
+(`context-panel.tsx:72`):
 
 ```tsx
-const fields = deriveFields(BLOCK_REGISTRY[blockKey]).filter(isMediaField); // TextPanel: isTextField
+export interface ContextPanelProps {
+  // …existing props unchanged…
+  /** Mode's field lens. Omitted (Content mode) = every field. */
+  filter?: (f: FieldPlan) => boolean;
+  /** Overrides the block label in the header, so Media/Text modes can name what's listed. */
+  title?: string;
+}
 ```
 
-Everything else — header, `ScrollArea`, `FieldEditor`, the empty state — matches `context-panel.tsx`.
+```tsx
+  const all = deriveFields(BLOCK_REGISTRY[blockKey]);
+  const fields = filter ? all.filter(filter) : all;
+  const label = title ?? BLOCK_LABELS[blockKey] ?? blockKey;
+```
+
+Make the empty state say which lens is empty, since "No editable fields for this section" is now
+misleading when a filter is on:
+
+```tsx
+          {fields.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              {filter ? "Mục này không có nội dung thuộc chế độ đang chọn." : "No editable fields for this section."}
+            </p>
+          )}
+```
 
 Clicking a zone on the canvas already posts `highlight`, which the shell turns into `flashField` —
 so the click scrolls + rings the matching row. Keep that wiring; do not add a second mechanism.
@@ -1692,8 +1729,8 @@ so the click scrolls + rings the matching row. Keep that wiring; do not add a se
 In `editor-shell.tsx`:
 
 ```tsx
-{mode === "media" && <MediaPanel {...common} />}
-{mode === "text" && <TextPanel {...common} />}
+{mode === "media" && <ContextPanel {...common} filter={isMediaField} title="Hình ảnh & video" />}
+{mode === "text" && <ContextPanel {...common} filter={isTextField} title="Nội dung chữ" />}
 {mode === "color" && <ColorPanel target={colorTarget} palette={pendingPalette} onChange={applyPalette} onReset={onResetPalette} />}
 {mode === "content" && <ContextPanel {...common} />}
 ```
