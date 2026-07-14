@@ -425,10 +425,16 @@ const declaresProp = (style: CSSStyleDeclaration, prop: RoleProp): boolean => {
  * Save button, for a border that is actually transparent. Hovering an element is not evidence that
  * hovering it changes anything.
  *
- * `inherited` is for the properties INHERITANCE spreads. `background-color`/`border-color` do not:
- * only a rule matching `el` itself can move them. `color` does — a child of a hovered element is not
- * itself `:hover`, yet it inherits the hovered colour — so there a rule matching any ANCESTOR
- * contaminates `el` too, which is what `closest` (which starts at `el`) asks.
+ * `inherited` is for the properties INHERITANCE spreads. `background-color` does not: only a rule
+ * matching `el` itself can move it. `color` does — a child of a hovered element is not itself
+ * `:hover`, yet it inherits the hovered colour — so there a rule matching any ANCESTOR contaminates
+ * `el` too, which is what `closest` (which starts at `el`) asks.
+ *
+ * `border-color` is treated as un-inherited, which is a KNOWN under-approximation rather than a
+ * truth: its initial value is `currentColor`, so an ancestor's hovered `color` can reach it. The
+ * template does this in exactly one family (`.hero-quote_upload`), and all of those measure
+ * `borderTopWidth: 0px`, which painterFor tests before reading any colour — so it is unreachable
+ * today. Widening it would gate every hovered chain on a property most rules never touch.
  *
  * TRANSIENT_SEL is a cheap pre-filter, not the answer: painterFor reads a colour off every element
  * in the block's subtree, and a CSSOM walk each is ~600 walks of a 1300-rule sheet per click. Nothing
