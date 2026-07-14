@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   CLASS_COLOR_HOVER,
@@ -19,6 +20,9 @@ const read = (rel) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)),
 // ---------------------------------------------------------------------------------------------
 
 test("every page-stamped overlay class carries the reserved prefix", () => {
+  // Anchor the loop: every for..of assertion below passes vacuously over an empty list, which is
+  // exactly the shape that let an earlier bug through here.
+  assert.ok(OVERLAY_PAGE_CLASSES.length > 0, "no page-stamped classes declared — nothing asserted");
   for (const cls of OVERLAY_PAGE_CLASSES) {
     assert.ok(cls.startsWith(OVERLAY_CLASS_PREFIX), `${cls} escapes the reserved prefix`);
     assert.ok(isOverlayClass(cls), `${cls} is not recognised as an overlay class`);
@@ -50,10 +54,25 @@ test("the overlay stamps page elements via the constants, never a class literal"
   );
 });
 
-test("the reserved prefix is unused by the public site's own stylesheet", () => {
+test("the reserved prefix is unused by the page itself", () => {
   // If the page ever shipped a real `sx-ov-*` class, asSegment would silently refuse to anchor it.
-  // `sx-` itself is NOT reservable — globals.css legitimately defines .sx-notice*/.sx-upload*.
-  assert.ok(!read("../../../globals.css").includes(OVERLAY_CLASS_PREFIX));
+  // `sx-` itself is NOT reservable — the page legitimately owns .sx-notice*/.sx-upload*.
+  // Scan the whole page tree, not just globals.css: page classes are also written inline in TSX
+  // (lead-form-notice.tsx, lead-upload-field.tsx), so a stylesheet-only check would miss them.
+  const appDir = fileURLToPath(new URL("../../..", import.meta.url));
+  const offenders = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) {
+        if (e.name !== "node_modules" && e.name !== "editor") walk(full); // editor/ owns the prefix
+      } else if (/\.(tsx?|css|mjs)$/.test(e.name) && readFileSync(full, "utf8").includes(OVERLAY_CLASS_PREFIX)) {
+        offenders.push(relative(appDir, full));
+      }
+    }
+  };
+  walk(appDir);
+  assert.deepEqual(offenders, [], `page source claims the overlay-reserved \`${OVERLAY_CLASS_PREFIX}\` namespace`);
 });
 
 test("the colour-hover affordance CSS targets the constant it is written for", () => {
@@ -78,5 +97,8 @@ test("no stale pre-fix class names survive anywhere in the editor", () => {
 
 test("the constants are distinct and non-empty", () => {
   assert.notEqual(CLASS_COLOR_HOVER, CLASS_FLASH);
+  // Both halves need the length floor: an empty list is trivially duplicate-free, so the Set check
+  // alone would keep passing after someone emptied the very list it exists to police.
+  assert.ok(OVERLAY_PAGE_CLASSES.length > 0);
   assert.equal(new Set(OVERLAY_PAGE_CLASSES).size, OVERLAY_PAGE_CLASSES.length);
 });

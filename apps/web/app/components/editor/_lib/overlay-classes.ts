@@ -4,7 +4,9 @@
 // ---------------------------------------------------------------------------------------------
 //  THE RULE: every class the overlay adds to an element it does not own MUST be declared here and
 //  MUST carry OVERLAY_CLASS_PREFIX. asSegment (color-engine.ts) drops every class matching that
-//  prefix before a selector segment is built.
+//  prefix before a selector segment is built. The overlay must likewise never insert, remove, or
+//  reorder the children of a page element: buildSelector reads child structure too, so mutating it
+//  would poison a selector by the same route a stray class does — and nothing filters that.
 // ---------------------------------------------------------------------------------------------
 //
 // Why this is not a style preference. Colour mode turns a click into a CSS selector for the clicked
