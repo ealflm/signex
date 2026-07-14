@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { asSegment } from "./color-engine.ts";
+import { asSegment, rgbToHex } from "./color-engine.ts";
 import { pickSegment } from "./selector-path.ts";
 import { CLASS_COLOR_HOVER, CLASS_FLASH } from "./overlay-classes.ts";
 
@@ -70,4 +70,60 @@ test("the page's own sx- classes are NOT mistaken for overlay marks", () => {
     segmentFor(notice, [notice, el("div", "sx-notice__msg")]),
     ".sx-notice__close",
   );
+});
+
+// ── rgbToHex ──────────────────────────────────────────────────────────────────
+// The other half of the resolution that needs no DOM. It decides, for every role of every click,
+// between "here is the colour, edit it" and the read-only empty state — so what it can and cannot
+// read IS the feature's surface.
+
+test("reads the rgb()/rgba() forms getComputedStyle serialises an ordinary colour to", () => {
+  assert.equal(rgbToHex("rgb(13, 43, 68)"), "#0d2b44");
+  assert.equal(rgbToHex("rgb(255 255 255)"), "#ffffff");
+  assert.equal(rgbToHex("rgba(13, 43, 68, 1)"), "#0d2b44");
+});
+
+// THE nav CTA case. `.btn-bg:hover` reads --base--dark-88 = color-mix(… 88%, transparent), which
+// Chrome serialises like this. The old parser matched only /^rgba?\(/, so this read as "no colour
+// at all" — and that verdict, used as a CANDIDACY gate, deleted the whole bg role rather than
+// showing it read-only. The alpha still makes it unstorable; being READ is what makes it honest.
+test("reads Chrome's color(srgb …) serialisation of a color-mix()", () => {
+  assert.equal(rgbToHex("color(srgb 0.0509804 0.168627 0.266667)"), "#0d2b44");
+  assert.equal(rgbToHex("color(srgb 1 1 1 / 1)"), "#ffffff");
+});
+
+test("refuses alpha in EVERY form — Hex is #rgb/#rrggbb, and a lying hex is worse than a blank", () => {
+  // hero.titleBottom's real case: .tone-medium → --base--light-64 → color-mix(… 64%, transparent).
+  assert.equal(rgbToHex("color(srgb 1 1 1 / 0.64)"), undefined);
+  assert.equal(rgbToHex("color(srgb 0.05 0.17 0.27 / 0.88)"), undefined);
+  assert.equal(rgbToHex("rgba(13, 43, 68, 0.5)"), undefined);
+  assert.equal(rgbToHex("rgba(0, 0, 0, 0)"), undefined);
+  assert.equal(rgbToHex("#0d2b4480"), undefined);
+});
+
+test("reads a custom property's value as AUTHORED — hex is what defaultStateColor gets back", () => {
+  // getComputedStyle(el).getPropertyValue("--…") returns the substituted token stream, not a
+  // browser-normalised colour: the template authors its seeds as hex, so hex is what arrives.
+  assert.equal(rgbToHex("#0d2b44"), "#0d2b44");
+  assert.equal(rgbToHex("  #0d2b44  "), "#0d2b44"); // decls come back whitespace-padded
+  assert.equal(rgbToHex("#FFF"), "#ffffff");
+  assert.equal(rgbToHex("#0D2B44"), "#0d2b44");
+});
+
+test("refuses what it cannot read rather than guessing at it", () => {
+  // A var left unresolved, an unresolved color-mix, a gradient, a named colour (the computed-style
+  // path normalises those before we ever see them), and another colour space — whose numbers read
+  // as sRGB would be exactly the lying hex the whole parser exists to refuse.
+  for (const v of [
+    "var(--_🎨-color--base---accent--dark-ocean)",
+    "color-mix(in srgb, #ffffff 64%, transparent)",
+    "linear-gradient(#fff, #000)",
+    "white",
+    "transparent",
+    "",
+    "color(display-p3 0.05 0.17 0.27)",
+    "rgb(nope, x, y)",
+  ]) {
+    assert.equal(rgbToHex(v), undefined, `expected no hex for ${v}`);
+  }
 });

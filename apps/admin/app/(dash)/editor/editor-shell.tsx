@@ -75,7 +75,8 @@ import {
   type MediaRef,
 } from "@/app/(dash)/visual/media-picker-dialog";
 import { adminApi, stripBasePath } from "@/app/lib/base-path";
-import { type PalettePatch } from "./_lib/palette-patch";
+import { rebasePalette, type PalettePatch } from "./_lib/palette-patch";
+import { createPaletteAuditor } from "./_lib/palette-audit";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -385,6 +386,10 @@ export function EditorShell(props: EditorShellProps) {
     [bridge],
   );
 
+  // Asks the preview which stored override selectors are dead. Stable (the bridge is), and it owns
+  // the "don't re-ask an unchanged question" rule itself — see palette-audit.ts for WHEN and why.
+  const auditPalette = useMemo(() => createPaletteAuditor(bridge.postAuditSelectors), [bridge]);
+
   // Adopts a new complete palette AND live-applies it to the preview (same bridge idiom as
   // postApplyEdits — the overlay listens for both). Called on every colour panel change.
   //
@@ -397,8 +402,12 @@ export function EditorShell(props: EditorShellProps) {
       setPendingPalette(next);
       setPaletteTouched(true);
       bridge.postApplyPalette(paletteStyle(next) ?? "");
+      // Re-audit here, not only on `ready`: whether a stored selector still matches is a property of
+      // the WORKING SET, not of the document. Auditing only on load left a cleared override's row on
+      // screen until the next reload, and its "Xoá" live to re-dirty the palette on every click.
+      auditPalette(next);
     },
-    [bridge],
+    [bridge, auditPalette],
   );
 
   // "Đặt lại toàn bộ màu" — the empty palette is a real, complete working set, not "no change":
@@ -525,6 +534,11 @@ export function EditorShell(props: EditorShellProps) {
           // from `effectivePalette`), so `replacePalette` is not the special "reset" signal it was:
           // it is simply the truthful verb for a complete value, and the only one under which a
           // removed seed/token/override can actually reach the server.
+          //
+          // Replace is only HONEST while the working set was derived from what the server actually
+          // holds — otherwise it silently overwrites whoever wrote in between. `expectedDraftRevision`
+          // is what makes that true: the server 409s instead of accepting a stale replace, and the
+          // 409 branch below rebases the working set onto theirs before the retry.
           palette: paletteTouched ? pendingPalette : undefined,
           replacePalette: paletteTouched,
         }),
@@ -564,12 +578,23 @@ export function EditorShell(props: EditorShellProps) {
             draftSnapshot: ReleaseSnapshot;
             draftRevision: number;
           };
+          // The base `pendingPalette` was derived from — read BEFORE baseRef is overwritten with
+          // theirs. It is `savedPalette` seen from here (saveDraft writes the two together), and it
+          // is what makes `ours vs base` mean this session's edits rather than its whole palette.
+          const oldBase = baseRef.current.palette ?? {};
+          const theirs = t.draftSnapshot.palette ?? {};
           baseRef.current = t.draftSnapshot;
           // Adopt the other session's palette as the new base. An UNTOUCHED palette therefore shows
-          // and renders theirs; a touched one keeps the user's complete working set and will
-          // replace theirs on the retry — the same trade the pre-existing reset path made, and the
-          // reason expectedDraftRevision exists at all.
-          setSavedPalette(t.draftSnapshot.palette ?? {});
+          // and renders theirs, and there is nothing to rebase.
+          setSavedPalette(theirs);
+          // A TOUCHED one is re-derived onto theirs — the palette half of what this branch already
+          // does for block edits, which stay layered on the new base via workingBlockData. Without
+          // it the retry's `replacePalette: true` would hand the server a working set built on a
+          // base that no longer exists and wipe every colour the other session saved, including the
+          // ones this session never looked at — which is not the "re-applying your edits on the
+          // latest" the toast below promises. applyPalette (not a bare setState) because the canvas
+          // must re-theme to what the panel now shows, and the rebase can change the override set.
+          if (paletteTouched) applyPalette(rebasePalette(pendingPalette, oldBase, theirs));
           setDraftRevision(t.draftRevision);
           toast.message(
             "Draft changed elsewhere — re-applying your edits on the latest. Save again to retry.",
@@ -599,7 +624,7 @@ export function EditorShell(props: EditorShellProps) {
       setSaving(false);
       savingRef.current = false;
     }
-  }, [pending, pendingPalette, paletteTouched, themeId, draftRevision, bridge]);
+  }, [pending, pendingPalette, paletteTouched, themeId, draftRevision, bridge, applyPalette]);
 
   // ── Step 5: Publish (save pending first) ──────────────────────────────────────
   const publish = useCallback(
@@ -788,9 +813,11 @@ export function EditorShell(props: EditorShellProps) {
       }
       // Re-audit the working set's override selectors against the fresh DOM. Unconditional, unlike
       // the palette: the audit is a QUESTION, not an assertion, so asking it costs the preview
-      // nothing and never overwrites anything. It runs here rather than on save because a save
-      // refreshes the iframe — this IS "after each save" — and because the page a selector must
-      // match changes with the surface and the locale too, not only with the palette.
+      // nothing and never overwrites anything. This is no longer the ONLY asker (applyPalette asks
+      // whenever the set of targets changes) — it is the asker for the case a changed set cannot
+      // see: a DIFFERENT DOM, which is a new answer to the same question. Hence `force`, and hence
+      // still asking on every load: a save refreshes the iframe, and the page a selector must match
+      // changes with the surface and the locale too, not only with the palette.
       // A fresh document also invalidates the last click's resolution (its hexes were measured in
       // the previous one), so the panel goes back to asking for a click rather than quoting a
       // measurement that no longer holds.
@@ -802,7 +829,7 @@ export function EditorShell(props: EditorShellProps) {
       // the snapshot is the one this once-subscribed listener can read without a mirror ref.
       const saved = baseRef.current.palette ?? {};
       const working = paletteTouchedRef.current ? pendingPaletteRef.current : saved;
-      bridge.postAuditSelectors((working.overrides ?? []).map((o) => o.selector));
+      auditPalette(working, { force: true });
       // A select that changed the surface remounted the iframe — scroll once it's ready.
       if (scrollOnReadyRef.current) {
         bridge.postScrollToBlock(scrollOnReadyRef.current);

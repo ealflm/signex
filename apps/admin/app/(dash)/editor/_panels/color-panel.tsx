@@ -25,7 +25,10 @@
 //     used token === "" to HIDE its site-wide mode; this is the same fact, without the pretence.)
 //   • no hex       → the colour has alpha (the template derives most tokens via color-mix) or is a
 //     gradient. Hex carries neither, so the row says so instead of showing a colour the element
-//     does not have.
+//     does not have. This is the ONLY thing that sentence may mean: a role the element does not
+//     have at all (no border on a borderless box) is not in `roles` and gets no row — resolveRoles
+//     omits it. The two used to be one row saying the same words, which is how the nav CTA's
+//     background could vanish and still look like a designed read-only state.
 //   • no selector  → buildSelector could not PROVE a unique target, so we refuse to anchor. A
 //     selector that isn't provably unique is never stored.
 
@@ -41,6 +44,7 @@ import {
   setTokenColor,
   setOverride,
   clearOverride,
+  clearOverrideRole,
   type PalettePatch,
 } from "../_lib/palette-patch";
 import { ROLE_LABEL, tokenLabel, type ColorRole, type ColorTarget, type RoleInfo } from "../_lib/color-target";
@@ -344,7 +348,10 @@ export function ColorPanel({ target, palette, broken, onChange, onReset }: Color
                     // skips anything hard-overridden.
                     onPickToken={(hex) => onChange(setTokenColor(palette, r.tokenKey!, hex))}
                     onPickElement={(hex) => onChange(setOverride(palette, r.selector!, r.role, hex))}
-                    onClearElement={() => onChange(clearOverride(palette, r.selector!))}
+                    // This ROLE's ×, not this element's: one selector routinely carries several
+                    // roles (the same painter answers `bg` and `border` on any element with both),
+                    // and clearing the entry would take the siblings with it.
+                    onClearElement={() => onChange(clearOverrideRole(palette, r.selector!, r.role))}
                   />
                 ))
               )}
