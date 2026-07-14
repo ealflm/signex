@@ -16,6 +16,7 @@
 // dispatch half stays in the overlay, where it needs the live DOM.
 
 import { capSel } from "./edit-caps";
+import { CLASS_COLOR_HOVER } from "./overlay-classes";
 
 export type EditMode = "media" | "text" | "color" | "content";
 
@@ -56,7 +57,7 @@ export const MODE_AFFORDANCE_CSS = `
          text-capable element, and then the rule above matches it too — at identical specificity
          ((0,2,1) each). Later wins, so this must stay after it, or a dual-cap element would read
          "not clickable" in the mode where clicking it is the whole interaction. */
-      body[data-sx-mode="color"] .sx-color-hover {
+      body[data-sx-mode="color"] .${CLASS_COLOR_HOVER} {
         outline: 2px dashed ${HL}; outline-offset: 2px; cursor: pointer;
       }
       ${capSel("text", "", modeScope("text"))} { cursor: text; }

@@ -5,6 +5,7 @@
 // jsdom, so it is verified in the browser (see the plan's Task 12).
 
 import { PALETTE_VARS, TOKEN_VARS, isSafeSelector } from "@signex/shared";
+import { isOverlayClass } from "./overlay-classes";
 import { pickSegment, type SegmentInput } from "./selector-path";
 
 export type ColorRole = "bg" | "text" | "border";
@@ -19,9 +20,23 @@ export type RoleInfo = {
   selector?: string;
 };
 
-const asSegment = (el: Element): SegmentInput => ({
+/**
+ * An element's selector-relevant shape, read LIVE off the class attribute — which during an editing
+ * session also carries the overlay's own marks (the hover outline, the jump-to flash). Those are
+ * dropped here, at the single point where the live attribute enters selector generation, so neither
+ * pickSegment nor verify can be fooled by one: an overlay mark is always sibling-unique, so it would
+ * be preferred over the page's real class and would verify clean on the preview page while matching
+ * nothing on the public site. See overlay-classes.ts for the rule and the full failure mode.
+ *
+ * Exported for color-engine.test.mjs: this and pickSegment are the whole of what buildSelector's
+ * block walk does per node, and apps/web has no jsdom to drive buildSelector itself.
+ */
+export const asSegment = (el: Element): SegmentInput => ({
   tag: el.tagName,
-  classes: (el.getAttribute("class") ?? "").split(/\s+/).filter(Boolean),
+  classes: (el.getAttribute("class") ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((c) => !isOverlayClass(c)),
 });
 
 /** rgb()/rgba() → #rrggbb. Undefined unless fully opaque: hex cannot carry the template's

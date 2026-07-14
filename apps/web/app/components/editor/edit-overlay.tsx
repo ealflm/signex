@@ -55,6 +55,10 @@ import { useEffect } from "react";
 import { resolveMeaningfulBlock, resolveRoles } from "./_lib/color-engine";
 import { capSel, hasCap, type EditCap } from "./_lib/edit-caps";
 import { MODE_AFFORDANCE_CSS, isEditMode, modeScope, type EditMode } from "./_lib/edit-mode";
+// Page-stamped marks come from overlay-classes.ts as CONSTANTS, never as literals here: the class
+// names and the selector-generation filter that must ignore them are one decision, and a literal
+// spelled at the point of use is how they drift apart. See the rule stated there.
+import { CLASS_COLOR_HOVER, CLASS_FLASH } from "./_lib/overlay-classes";
 
 const SOURCE = "signex-editor";
 
@@ -136,7 +140,7 @@ export function EditOverlay() {
       ${capSel("text", '[contenteditable="true"]', modeScope("text"))} {
         outline: 2px solid #4956e3; outline-offset: 2px; background: rgba(73,86,227,.06);
       }
-      .sx-flash { animation: sx-flash .9s ease; }
+      .${CLASS_FLASH} { animation: sx-flash .9s ease; }
       @keyframes sx-flash {
         0%,100% { outline-color: transparent; }
         25% { outline: 2px solid #4956e3; outline-offset: 2px; }
@@ -537,9 +541,9 @@ export function EditOverlay() {
     let colorHover: HTMLElement | null = null;
     const setColorHover = (el: HTMLElement | null) => {
       if (el === colorHover) return;
-      colorHover?.classList.remove("sx-color-hover");
+      colorHover?.classList.remove(CLASS_COLOR_HOVER);
       colorHover = el;
-      el?.classList.add("sx-color-hover");
+      el?.classList.add(CLASS_COLOR_HOVER);
     };
     // Coalesce to one hit-test per frame: mousemove fires far faster, and each resolve forces layout
     // on a page already running GSAP + Lenis every frame.
@@ -702,7 +706,7 @@ export function EditOverlay() {
 
       // highlight (panel→canvas half of the two-way highlight; Task 7). The admin posts the focused
       // panel field's snapshot path (locale-agnostic — matches data-edit-field). Find the matching
-      // leaf and flash it with the pre-shipped .sx-flash class (~900ms). scrollIntoView uses "auto"
+      // leaf and flash it with the pre-shipped CLASS_FLASH class (~900ms). scrollIntoView uses "auto"
       // when Lenis is present so the instant jump isn't fought by the smooth-scroll engine.
       if (data.type === "highlight" && typeof data.field === "string") {
         const el = document.querySelector<HTMLElement>(
@@ -710,11 +714,11 @@ export function EditOverlay() {
         );
         if (el) {
           el.scrollIntoView({ block: "center", behavior: window.__lenis ? "auto" : "smooth" });
-          el.classList.remove("sx-flash"); // restart the animation if it's mid-flight
+          el.classList.remove(CLASS_FLASH); // restart the animation if it's mid-flight
           // Force reflow so re-adding the class re-triggers the keyframe.
           void el.offsetWidth;
-          el.classList.add("sx-flash");
-          window.setTimeout(() => el.classList.remove("sx-flash"), 900);
+          el.classList.add(CLASS_FLASH);
+          window.setTimeout(() => el.classList.remove(CLASS_FLASH), 900);
         }
         return;
       }
@@ -734,10 +738,10 @@ export function EditOverlay() {
             behavior: window.__lenis ? "auto" : "smooth",
           });
           for (const el of els) {
-            el.classList.remove("sx-flash");
+            el.classList.remove(CLASS_FLASH);
             void el.offsetWidth; // reflow → restart the keyframe
-            el.classList.add("sx-flash");
-            window.setTimeout(() => el.classList.remove("sx-flash"), 900);
+            el.classList.add(CLASS_FLASH);
+            window.setTimeout(() => el.classList.remove(CLASS_FLASH), 900);
           }
         }
         return;
