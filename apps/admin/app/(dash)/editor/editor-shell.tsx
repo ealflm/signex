@@ -5,6 +5,9 @@
 // composes the three presentational zones (Toolbar / SectionsNav / ContextPanel) inside a resizable
 // 3-zone layout around a cross-origin /preview iframe.
 //
+// The right zone is MODE-dynamic: ContextPanel (the section form) in every mode but colour, and
+// ColorPanel in colour mode, driven by what the preview resolved from the click.
+//
 // State model:
 //   • selection {blockKey,fieldPath,locale} — which section the panel edits.
 //   • pending  Map<BlockKey, fullBlockData> — the client-held draft. Panel edits and media picks
@@ -21,15 +24,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  PALETTE_VARS,
-  TOKEN_VARS,
-  paletteStyle,
-  type BlockKey,
-  type ReleaseSnapshot,
-  type SeedKey,
-  type TokenKey,
-} from "@signex/shared";
+import { paletteStyle, type BlockKey, type ReleaseSnapshot } from "@signex/shared";
 
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -55,8 +50,8 @@ import {
 import { Toolbar } from "./toolbar";
 import { SectionsNav } from "./sections-nav";
 import { ContextPanel } from "./context-panel";
-import { PalettePanel } from "./palette-panel";
-import { ColorPopover, type ColorEditTarget, type ColorRole } from "./color-popover";
+import { ColorPanel } from "./_panels/color-panel";
+import { readColorTarget, type ColorTarget } from "./_lib/color-target";
 import {
   DEVICE_MAX_WIDTH,
   SURFACE_PATH_BY_BLOCK,
@@ -80,28 +75,7 @@ import {
   type MediaRef,
 } from "@/app/(dash)/visual/media-picker-dialog";
 import { adminApi, stripBasePath } from "@/app/lib/base-path";
-import {
-  isEmptyPalette,
-  setOverride,
-  setSeed,
-  setToken,
-  type PalettePatch,
-} from "./_lib/palette-patch";
-import { ANCHOR_PAINT_TARGETS, type PaletteOverride } from "@signex/shared";
-
-/**
- * TEMPORARY (removed in Task 10, with ANCHOR_PAINT_TARGETS itself).
- * The colour popover still speaks anchorIds. Overrides are now selector-keyed, so translate — and
- * keep honouring the paint-target redirect, or the nav CTA's background would regress: its pill is
- * painted by a `.btn-bg` child that covers the transparent <a>, so a declaration on the anchor is
- * invisible. Task 5's auto-resolve supplies the full selector and makes this obsolete.
- */
-function anchorSelector(anchorId: string, role: "bg" | "text" | "border"): string {
-  const paint = Object.hasOwn(ANCHOR_PAINT_TARGETS, anchorId)
-    ? ANCHOR_PAINT_TARGETS[anchorId][role]
-    : undefined;
-  return paint ? `[data-sx-c="${anchorId}"] ${paint}` : `[data-sx-c="${anchorId}"]`;
-}
+import { type PalettePatch } from "./_lib/palette-patch";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -217,23 +191,32 @@ export function EditorShell(props: EditorShellProps) {
   const [device, setDevice] = useState<DeviceWidth>("desktop");
   const [previewPath, setPreviewPath] = useState<string>(""); // "" | "/about" | "/contact"
   const [selection, setSelection] = useState<Selection | null>(null);
-  // "Bảng màu" panel is mutually exclusive with a block selection — selecting the palette clears
-  // `selection`; selecting a block (any of the 3 paths below) clears this back to false.
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const [pending, setPending] = useState<Map<BlockKey, Record<string, unknown>>>(new Map());
-  // Client-held palette working patch (mirrors `pending` for blocks, but is a single small object —
-  // seeds/tokens/overrides — not a per-block map). Batched into the SAME save-draft POST as `pending`.
+  // ── The palette working set ──────────────────────────────────────────────────
+  // Unlike `pending` (a PATCH layered on baseRef per block), the palette is held as TWO values that
+  // compose into ONE the panel and the preview both read: `savedPalette` (what the server has) and
+  // `pendingPalette` (the COMPLETE palette the user is working on, once they've touched it).
+  //
+  // Why complete rather than a patch: a patch cannot express a DELETION (both merges — here and in
+  // theme.service.ts — are additive-only), and it cannot be shown. The old palette rail panel bound
+  // straight to the patch and so, the moment a save cleared it, displayed the TEMPLATE defaults
+  // (#2ec4b6) while the preview correctly rendered the saved #ff0000 — the panel disagreeing with
+  // the canvas about what colour the site is. Same defect, one layer down, is why `applyPalette`
+  // must post the COMPLETE css: it REPLACES #signex-palette wholesale, so posting a patch after a
+  // save would blank every colour the patch didn't mention.
+  const [savedPalette, setSavedPalette] = useState<PalettePatch>(initialSnapshot.palette ?? {});
   const [pendingPalette, setPendingPalette] = useState<PalettePatch>({});
-  // True after the panel's "Đặt lại toàn bộ màu" reset, until the next successful save. The palette
-  // merge (both API and here) is additive-only — it can never DELETE a persisted key — so a reset
-  // needs an explicit "replace, don't merge" signal sent to the server (`replacePalette: true`), and
-  // must ALSO force the editor dirty (an empty pendingPalette is otherwise indistinguishable from "no
-  // change"). Any subsequent colour edit after a reset keeps this true, so the next save still fully
-  // replaces with the new working set.
-  const [paletteReset, setPaletteReset] = useState(false);
-  // Colour-zone click popover target (Task 10) — set by the inbound `colorEdit` message, cleared on
-  // pick/close. Mutually independent of `selection`/`paletteOpen`: it floats over whatever's shown.
-  const [colorTarget, setColorTarget] = useState<ColorEditTarget | null>(null);
+  // Has the user touched the palette this session? An empty `pendingPalette` is ambiguous on its own
+  // — it is both "nothing changed" and "reset everything" — so the flag is what distinguishes them,
+  // and what makes a reset-only change dirty, saveable, and re-postable. It also says pendingPalette
+  // is COMPLETE, which is exactly the condition under which `replacePalette: true` is correct.
+  const [paletteTouched, setPaletteTouched] = useState(false);
+  // The last colour-mode click, as resolved by the preview's color-engine (inbound `colorTarget`).
+  // Cleared on every `ready`: a (re)loaded document makes the previous resolution stale.
+  const [colorTarget, setColorTarget] = useState<ColorTarget | null>(null);
+  // Stored override selectors the preview reports as matching 0 or >1 elements (inbound
+  // `selectorAudit`). Reported, never auto-removed — the user decides.
+  const [broken, setBroken] = useState<string[]>([]);
   // Which capability a canvas click invokes. Admin-side UI state, never persisted; the preview only
   // learns it from the `setMode` messages posted below (onModeChange + the `ready` handshake).
   const [mode, setMode] = useState<EditMode>(DEFAULT_MODE);
@@ -294,14 +277,14 @@ export function EditorShell(props: EditorShellProps) {
   // text edits against the working block data) without re-subscribing on every edit.
   const pendingRef = useRef(pending);
   pendingRef.current = pending;
-  // Read the live palette patch inside the once-subscribed message listener (re-post on `ready`)
-  // without re-subscribing on every palette change. Same pattern as pendingRef.
+  // Read the live palette working set inside the once-subscribed message listener (re-post + audit
+  // on `ready`) without re-subscribing on every palette change. Same pattern as pendingRef.
   const pendingPaletteRef = useRef(pendingPalette);
   pendingPaletteRef.current = pendingPalette;
-  // A staged reset is an unsaved change whose patch is EMPTY, so the `ready` handler can't infer it
-  // from pendingPalette alone (same reason saveDraft/paletteDirty check it separately).
-  const paletteResetRef = useRef(paletteReset);
-  paletteResetRef.current = paletteReset;
+  // A staged reset is an unsaved change whose palette is EMPTY, so the `ready` handler can't infer
+  // it from pendingPalette alone (same reason saveDraft/unsavedCount check it separately).
+  const paletteTouchedRef = useRef(paletteTouched);
+  paletteTouchedRef.current = paletteTouched;
   // Live locale for the once-subscribed listener (inbound textEdit appends `.${langRef.current}`;
   // `ready` re-posts only this locale's pending text). Same pattern as mediaPreviewRef.
   const langRef = useRef(lang);
@@ -310,6 +293,18 @@ export function EditorShell(props: EditorShellProps) {
   // NOW — not the one captured when the listener subscribed. Same pattern as langRef.
   const modeRef = useRef(mode);
   modeRef.current = mode;
+
+  /**
+   * The palette AS IT IS RIGHT NOW: the user's complete working set once they've touched it, else
+   * whatever the server last saved. This single value is what the panel displays, what the preview
+   * is re-themed with, and what every panel edit is computed FROM — which is what keeps
+   * `pendingPalette` complete (each edit is `f(effectivePalette)`) and what keeps the panel showing
+   * the site's real colours across a save boundary.
+   */
+  const effectivePalette = useMemo(
+    () => (paletteTouched ? pendingPalette : savedPalette),
+    [paletteTouched, pendingPalette, savedPalette],
+  );
 
   const workingBlockData = useCallback(
     (key: BlockKey): Record<string, unknown> => {
@@ -390,23 +385,26 @@ export function EditorShell(props: EditorShellProps) {
     [bridge],
   );
 
-  // Updates the palette working patch AND live-applies it to the preview (same bridge idiom as
-  // postApplyEdits — the overlay listens for both). Called on every palette panel change.
+  // Adopts a new complete palette AND live-applies it to the preview (same bridge idiom as
+  // postApplyEdits — the overlay listens for both). Called on every colour panel change.
+  //
+  // `next` is always the WHOLE palette, because the panel computes it from `effectivePalette` (see
+  // there). That is what lets the css posted here be complete — applyPalette REPLACES the
+  // #signex-palette node, so anything missing from `next` would vanish from the canvas — and what
+  // lets the save be a `replacePalette`, which is the only way a removal can ever reach the server.
   const applyPalette = useCallback(
     (next: PalettePatch) => {
       setPendingPalette(next);
+      setPaletteTouched(true);
       bridge.postApplyPalette(paletteStyle(next) ?? "");
     },
     [bridge],
   );
 
-  // "Đặt lại toàn bộ màu" — distinct from a normal `applyPalette({...})` edit: it must mark the save
-  // as a full REPLACE (see `paletteReset` above) so a previously-saved key can actually be removed,
-  // not just merged over with an empty patch (which the additive merge would treat as a no-op).
-  const onResetPalette = useCallback(() => {
-    setPaletteReset(true);
-    applyPalette({});
-  }, [applyPalette]);
+  // "Đặt lại toàn bộ màu" — the empty palette is a real, complete working set, not "no change":
+  // `paletteTouched` is what tells Save to send it as a replace, so previously-saved keys are
+  // actually removed rather than merged over with nothing (which the additive merge treats as a no-op).
+  const onResetPalette = useCallback(() => applyPalette({}), [applyPalette]);
 
   // ── Media picker open / apply ─────────────────────────────────────────────────
   const openMediaPicker = useCallback(
@@ -478,7 +476,6 @@ export function EditorShell(props: EditorShellProps) {
   const onSelect = useCallback(
     (blockKey: BlockKey) => {
       setSelection({ blockKey, fieldPath: null, locale: lang });
-      setPaletteOpen(false);
       const surface = SURFACE_PATH_BY_BLOCK[blockKey];
       if (surface !== null && surface !== previewPath) setPreviewPath(surface);
       // Canvas: scroll+flash now (same surface), and again on the next "ready" (if the surface changed
@@ -491,20 +488,12 @@ export function EditorShell(props: EditorShellProps) {
     [lang, previewPath, bridge],
   );
 
-  // "Bảng màu" nav entry → swap the context panel for the palette panel (mutually exclusive with a
-  // block selection: clears `selection` so ContextPanel isn't also "selected").
-  const onSelectPalette = useCallback(() => {
-    setPaletteOpen(true);
-    setSelection(null);
-  }, []);
-
   // Canvas→panel highlight (web→admin {type:"highlight"}): a canvas text-leaf was focused → select
   // its owning block (+ navigate the surface if needed — usually already current), then flash the
   // matching panel field. Stable (reads live locale via langRef + functional setState) so the
   // once-subscribed message listener can call it without re-subscribing.
   const onCanvasHighlight = useCallback((blockKey: BlockKey, fieldPath: string) => {
     setSelection({ blockKey, fieldPath, locale: langRef.current });
-    setPaletteOpen(false);
     const surface = SURFACE_PATH_BY_BLOCK[blockKey];
     if (surface !== null) setPreviewPath((p) => (p !== surface ? surface : p));
     flashNonce.current += 1;
@@ -517,10 +506,10 @@ export function EditorShell(props: EditorShellProps) {
   // Returns the new draftRevision on success, or null on failure / conflict.
   const saveDraft = useCallback(async (): Promise<number | null> => {
     if (savingRef.current) return null;
-    // A reset-only change (pendingPalette back to {}, but paletteReset flags it as a real change)
-    // must still be saveable — isEmptyPalette alone can't distinguish "nothing changed" from
-    // "user reset everything", so paletteReset is checked independently.
-    if (pending.size === 0 && isEmptyPalette(pendingPalette) && !paletteReset) return draftRevision;
+    // A reset-only change (pendingPalette back to {}) must still be saveable — an empty palette
+    // can't distinguish "nothing changed" from "user reset everything", so `paletteTouched` is
+    // what says a change happened.
+    if (pending.size === 0 && !paletteTouched) return draftRevision;
     savingRef.current = true;
     setSaving(true);
     const edits = [...pending.entries()].map(([key, data]) => ({ key, data }));
@@ -531,8 +520,13 @@ export function EditorShell(props: EditorShellProps) {
         body: JSON.stringify({
           edits,
           expectedDraftRevision: draftRevision,
-          palette: pendingPalette,
-          replacePalette: paletteReset,
+          // Only speak about the palette when the user touched it — and when they did, say the
+          // whole thing. `pendingPalette` is the COMPLETE working set (every panel edit is computed
+          // from `effectivePalette`), so `replacePalette` is not the special "reset" signal it was:
+          // it is simply the truthful verb for a complete value, and the only one under which a
+          // removed seed/token/override can actually reach the server.
+          palette: paletteTouched ? pendingPalette : undefined,
+          replacePalette: paletteTouched,
         }),
       });
       if (res.ok) {
@@ -543,34 +537,18 @@ export function EditorShell(props: EditorShellProps) {
           Record<string, unknown>
         >;
         for (const [k, d] of pending) blocks[k] = d;
-        if (paletteReset) {
-          // Mirrors the API's replacePalette branch: adopt pendingPalette VERBATIM (not merged) so a
-          // reset actually removes previously-saved keys instead of the additive merge no-op-ing them.
+        if (paletteTouched) {
+          // Mirrors what the server just did with `replacePalette` — adopt the working set VERBATIM.
+          // `savedPalette` is the state the panel reads once `pendingPalette` is cleared below, so
+          // these two must be set together or the panel snaps back to the template defaults while
+          // the canvas keeps rendering the colours that were saved.
           baseRef.current.palette = pendingPalette;
-        } else if (!isEmptyPalette(pendingPalette)) {
-          // Shallow-merge per slice — mirrors the server's merge (theme.service.ts saveDraft) — so a
-          // patch that only touched e.g. seeds this session doesn't wipe previously-saved tokens/overrides.
-          // `overrides` is a LIST keyed by `selector`, merged role-wise per selector, byte-identical
-          // in shape to the API's merge: a whole-entry replace would drop a role saved in an earlier
-          // session (pendingPalette resets to {} across a save boundary).
-          const prevPalette = baseRef.current.palette ?? {};
-          const bySelector = new Map<string, PaletteOverride>();
-          for (const ov of prevPalette.overrides ?? []) {
-            if (ov?.selector) bySelector.set(ov.selector, { ...ov });
-          }
-          for (const ov of pendingPalette.overrides ?? []) {
-            bySelector.set(ov.selector, { ...(bySelector.get(ov.selector) ?? {}), ...ov });
-          }
-          baseRef.current.palette = {
-            seeds: { ...(prevPalette.seeds ?? {}), ...(pendingPalette.seeds ?? {}) },
-            tokens: { ...(prevPalette.tokens ?? {}), ...(pendingPalette.tokens ?? {}) },
-            overrides: [...bySelector.values()],
-          };
+          setSavedPalette(pendingPalette);
         }
         setDraftRevision(body.draftRevision);
         setPending(new Map());
         setPendingPalette({});
-        setPaletteReset(false);
+        setPaletteTouched(false);
         setMediaPreview(new Map());
         setTextPreview(new Map());
         toast.success("Saved to draft.");
@@ -587,6 +565,11 @@ export function EditorShell(props: EditorShellProps) {
             draftRevision: number;
           };
           baseRef.current = t.draftSnapshot;
+          // Adopt the other session's palette as the new base. An UNTOUCHED palette therefore shows
+          // and renders theirs; a touched one keeps the user's complete working set and will
+          // replace theirs on the retry — the same trade the pre-existing reset path made, and the
+          // reason expectedDraftRevision exists at all.
+          setSavedPalette(t.draftSnapshot.palette ?? {});
           setDraftRevision(t.draftRevision);
           toast.message(
             "Draft changed elsewhere — re-applying your edits on the latest. Save again to retry.",
@@ -616,7 +599,7 @@ export function EditorShell(props: EditorShellProps) {
       setSaving(false);
       savingRef.current = false;
     }
-  }, [pending, pendingPalette, paletteReset, themeId, draftRevision, bridge]);
+  }, [pending, pendingPalette, paletteTouched, themeId, draftRevision, bridge]);
 
   // ── Step 5: Publish (save pending first) ──────────────────────────────────────
   const publish = useCallback(
@@ -625,7 +608,7 @@ export function EditorShell(props: EditorShellProps) {
       setPublishing(true);
       try {
         let expected = draftRevision;
-        if (pending.size > 0 || !isEmptyPalette(pendingPalette) || paletteReset) {
+        if (pending.size > 0 || paletteTouched) {
           const rev = await saveDraft();
           if (rev == null) return; // save failed / conflicted — abort publish
           expected = rev;
@@ -654,16 +637,15 @@ export function EditorShell(props: EditorShellProps) {
         setPublishing(false);
       }
     },
-    [publishing, pending, pendingPalette, paletteReset, saveDraft, themeId, draftRevision],
+    [publishing, pending, paletteTouched, saveDraft, themeId, draftRevision],
   );
 
   // ── Step 6: status and guards (the bridge itself now lives in _lib/preview-bridge) ──
   // A palette-only change (no block edits) counts as unsaved too — it drives the same dirty
-  // indicator, save/publish enablement, and navigation guards as a block edit. `paletteReset` alone
-  // (pendingPalette back to {}) must ALSO count as dirty — otherwise a reset-only change looks
-  // "clean" and Save never fires the replacePalette request that's needed to clear a saved palette.
-  const paletteDirty = !isEmptyPalette(pendingPalette) || paletteReset;
-  const unsavedCount = pending.size + (paletteDirty ? 1 : 0);
+  // indicator, save/publish enablement, and navigation guards as a block edit. A reset counts too,
+  // even though it leaves the palette EMPTY — otherwise a reset-only change looks "clean" and Save
+  // never fires the request that clears the saved palette. `paletteTouched` is exactly that fact.
+  const unsavedCount = pending.size + (paletteTouched ? 1 : 0);
   const status: ToolbarStatus = saving
     ? { kind: "saving" }
     : unsavedCount > 0
@@ -742,32 +724,18 @@ export function EditorShell(props: EditorShellProps) {
     if (data.type === "edit" && typeof data.field === "string") {
       const kind = data.mediaKind === "video" ? "video" : "image";
       openMediaPicker(data.field, kind);
-    } else if (data.type === "colorEdit" && typeof data.field === "string") {
-      // A colour-zone click (Task 6) — open the popover. `token` is "" for element-only zones;
-      // `roles` are the CSS custom-property roles ("bg"/"text"/"border") the zone can override.
-      // `rect` is the zone's box in the IFRAME's viewport; add the iframe's own offset so the
-      // popover can anchor to the real element (the iframe is width-capped, never scaled, so the
-      // translation is a plain offset). Falls back to a zero box at the iframe's origin if an
-      // older preview build sends no rect.
-      const ir = iframeRef.current?.getBoundingClientRect();
-      const r = (data.rect ?? null) as
-        | { x: number; y: number; width: number; height: number }
-        | null;
-      setColorTarget({
-        field: data.field,
-        token: typeof data.token === "string" ? data.token : "",
-        roles: Array.isArray(data.roles) ? data.roles : [],
-        rect: {
-          x: (ir?.left ?? 0) + (r?.x ?? 0),
-          y: (ir?.top ?? 0) + (r?.y ?? 0),
-          width: r?.width ?? 0,
-          height: r?.height ?? 0,
-        },
-        // The zone's rendered colour per role, straight from the preview's computed style. Most
-        // tokens carry no stored value (they derive from a seed), so this is the only thing that
-        // can show what the clicked element actually looks like right now.
-        computed: (data.computed ?? {}) as Partial<Record<ColorRole, string>>,
-      });
+    } else if (data.type === "colorTarget") {
+      // A colour-mode click. The preview has already done the only part that needs a DOM: it
+      // resolved which element PAINTS each colour role, what that role renders as, which seed/token
+      // drives it, and a provably-unique selector for it. The panel offers exactly that; the admin
+      // adds nothing of its own except the parse (readColorTarget — every field is untrusted, and
+      // each one ends up in a persisted palette).
+      const target = readColorTarget(data);
+      if (target) setColorTarget(target);
+    } else if (data.type === "selectorAudit" && Array.isArray(data.broken)) {
+      // The overlay's answer to postAuditSelectors: stored override selectors that no longer match
+      // exactly one element on this page. Shown, never auto-removed (see the panel).
+      setBroken((data.broken as unknown[]).filter((s): s is string => typeof s === "string"));
     } else if (data.type === "textEdit" && typeof data.field === "string") {
       // A committed inline text edit. `field` is the snapshot path WITHOUT locale; append the live
       // locale so ONLY that leaf is written (the other locale stays untouched). Rides the SAME
@@ -808,17 +776,33 @@ export function EditorShell(props: EditorShellProps) {
         .map((t) => ({ field: t.field, kind: "text" as const, text: t.value }));
       const all: ApplyEdit[] = [...media, ...text];
       if (all.length > 0) bridge.postApplyEdits(all);
-      // Re-apply the unsaved palette patch after a (re)load / remount, same as media/text above —
-      // and note the `all.length > 0` guard those get. The palette needs the same guard: the
-      // preview SERVER-RENDERS the saved palette into #signex-palette, and posting
-      // unconditionally sent `css: ""` on every clean load (pending is empty whenever there's
-      // nothing unsaved — including right after a save), which blanked that node and showed the
-      // site WITHOUT its own saved colours. Only speak when we have something to say.
-      // A staged reset is the one empty patch that IS a change: it must still post "" so the
-      // cleared preview survives the reload.
-      if (!isEmptyPalette(pendingPaletteRef.current) || paletteResetRef.current) {
+      // Re-apply the unsaved palette after a (re)load / remount, same as media/text above — and
+      // note the `all.length > 0` guard those get. The palette needs the same guard: the preview
+      // SERVER-RENDERS the saved palette into #signex-palette, and posting unconditionally sent
+      // `css: ""` on every clean load (the working set is empty whenever there's nothing unsaved —
+      // including right after a save), which blanked that node and showed the site WITHOUT its own
+      // saved colours. Only speak when we have something to say — and a staged reset is the one
+      // empty palette that IS something to say: it must post "" so the cleared preview survives.
+      if (paletteTouchedRef.current) {
         bridge.postApplyPalette(paletteStyle(pendingPaletteRef.current) ?? "");
       }
+      // Re-audit the working set's override selectors against the fresh DOM. Unconditional, unlike
+      // the palette: the audit is a QUESTION, not an assertion, so asking it costs the preview
+      // nothing and never overwrites anything. It runs here rather than on save because a save
+      // refreshes the iframe — this IS "after each save" — and because the page a selector must
+      // match changes with the surface and the locale too, not only with the palette.
+      // A fresh document also invalidates the last click's resolution (its hexes were measured in
+      // the previous one), so the panel goes back to asking for a click rather than quoting a
+      // measurement that no longer holds.
+      setColorTarget(null);
+      // The LIVE working set's selectors, not the unsaved ones: auditing pendingPalette alone would
+      // report nothing after a save (it is empty by then) and silently retire the feature — a SAVED
+      // override whose selector drifted is the whole case worth surfacing. `baseRef.current.palette`
+      // is `savedPalette` seen from here: two views of one fact that saveDraft writes together, and
+      // the snapshot is the one this once-subscribed listener can read without a mirror ref.
+      const saved = baseRef.current.palette ?? {};
+      const working = paletteTouchedRef.current ? pendingPaletteRef.current : saved;
+      bridge.postAuditSelectors((working.overrides ?? []).map((o) => o.selector));
       // A select that changed the surface remounted the iframe — scroll once it's ready.
       if (scrollOnReadyRef.current) {
         bridge.postScrollToBlock(scrollOnReadyRef.current);
@@ -852,7 +836,7 @@ export function EditorShell(props: EditorShellProps) {
     const leaveHref = discardAsk?.kind === "leave" ? discardAsk.href : undefined;
     setPending(new Map());
     setPendingPalette({});
-    setPaletteReset(false);
+    setPaletteTouched(false);
     setMediaPreview(new Map());
     setTextPreview(new Map());
     setDiscardAsk(null);
@@ -983,8 +967,6 @@ export function EditorShell(props: EditorShellProps) {
               selectedBlockKey={selection?.blockKey ?? null}
               dirtyKeys={dirtyKeys}
               onSelect={onSelect}
-              paletteSelected={paletteOpen}
-              onSelectPalette={onSelectPalette}
             />
           </ResizablePanel>
 
@@ -1022,9 +1004,18 @@ export function EditorShell(props: EditorShellProps) {
             onResize={(s) => setRightCollapsed(s.asPercentage < 1)}
             className="bg-card"
           >
-            {paletteOpen ? (
-              <PalettePanel
-                palette={pendingPalette}
+            {/* The panel is MODE-dynamic: colour mode owns this zone, every other mode leaves the
+                section form in it. Not a third, independent selection — that was the old "Bảng màu"
+                rail item, and having two routes to the same colours meant the rail and the toolbar
+                could each claim to be showing you the editor. */}
+            {mode === "color" ? (
+              <ColorPanel
+                target={colorTarget}
+                // The EFFECTIVE palette, never the unsaved patch alone: after a save the patch is
+                // empty, and a panel bound to it would show the TEMPLATE defaults while the preview
+                // rendered the saved colours.
+                palette={effectivePalette}
+                broken={broken}
                 onChange={applyPalette}
                 onReset={onResetPalette}
               />
@@ -1065,42 +1056,6 @@ export function EditorShell(props: EditorShellProps) {
         }}
       />
 
-      {/* Colour-zone click popover (Task 10) — token mode (site-wide) or element mode (per-anchorId
-          override). anchor is a fixed screen position near the right panel; the trigger itself is an
-          invisible anchor span (see ColorPopover) so it doesn't shift layout. */}
-      {colorTarget && (
-        <ColorPopover
-          target={colorTarget}
-          // Show what the zone is ACTUALLY painted with today, not a placeholder: a seed always
-          // resolves (override ?? template default); a token is sparse, so undefined = "derives from
-          // the seeds" and the swatch renders as unset rather than inventing a colour.
-          tokenValue={
-            colorTarget.token in PALETTE_VARS
-              ? (pendingPalette.seeds?.[colorTarget.token as SeedKey] ??
-                PALETTE_VARS[colorTarget.token as SeedKey].default)
-              : colorTarget.token in TOKEN_VARS
-                ? pendingPalette.tokens?.[colorTarget.token as TokenKey]
-                : undefined
-          }
-          elementValueFor={(role) =>
-            pendingPalette.overrides?.find(
-              (o) => o.selector === anchorSelector(colorTarget.field, role),
-            )?.[role]
-          }
-          onPickToken={(tokenKey, hex) => {
-            const isSeed = tokenKey in PALETTE_VARS;
-            applyPalette(
-              isSeed
-                ? setSeed(pendingPalette, tokenKey, hex)
-                : setToken(pendingPalette, tokenKey, hex),
-            );
-          }}
-          onPickElement={(anchorId, role, hex) =>
-            applyPalette(setOverride(pendingPalette, anchorSelector(anchorId, role), role, hex))
-          }
-          onClose={() => setColorTarget(null)}
-        />
-      )}
     </>
   );
 }

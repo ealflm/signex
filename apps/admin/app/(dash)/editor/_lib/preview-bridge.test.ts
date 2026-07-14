@@ -30,8 +30,9 @@ describe("createPreviewBridge", () => {
     bridge.postScrollToBlock("hero");
     bridge.postApplyEdits([{ field: "hero.image", kind: "image", url: "/a.png" }]);
     bridge.postApplyPalette(":root{--x:#fff}");
+    bridge.postAuditSelectors([".a"]);
 
-    expect(t.sent).toHaveLength(6);
+    expect(t.sent).toHaveLength(7);
     for (const s of t.sent) expect(s.targetOrigin).toBe(WEB_ORIGIN);
   });
 
@@ -53,6 +54,7 @@ describe("createPreviewBridge", () => {
     bridge.postScrollToBlock("footer");
     bridge.postApplyEdits([{ field: "hero.video", kind: "video", mp4Url: "/v.mp4" }]);
     bridge.postApplyPalette(":root{--a:#000}");
+    bridge.postAuditSelectors(['[data-sx-c="nav.cta.color"]', ".missing"]);
 
     expect(t.sent.map((s) => s.message)).toEqual([
       { source: SOURCE, type: "setMode", mode: "media" },
@@ -61,7 +63,17 @@ describe("createPreviewBridge", () => {
       { source: SOURCE, type: "scrollToBlock", blockKey: "footer" },
       { source: SOURCE, type: "applyEdits", edits: [{ field: "hero.video", kind: "video", mp4Url: "/v.mp4" }] },
       { source: SOURCE, type: "applyPalette", css: ":root{--a:#000}" },
+      { source: SOURCE, type: "auditSelectors", selectors: ['[data-sx-c="nav.cta.color"]', ".missing"] },
     ]);
+  });
+
+  it("posts an EMPTY selector list — an audit of nothing is still an answer", () => {
+    // The panel's "Màu không còn áp dụng" section is driven by the overlay's reply, so the audit
+    // must run even when every override was just cleared: otherwise the last non-empty reply
+    // would stand and keep listing selectors the palette no longer has.
+    const t = fakeIframeRef();
+    createPreviewBridge(t.ref, WEB_ORIGIN).postAuditSelectors([]);
+    expect(t.sent[0].message).toEqual({ source: SOURCE, type: "auditSelectors", selectors: [] });
   });
 
   it("posts an EMPTY palette css when asked to — a staged reset says '' and means it", () => {

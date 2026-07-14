@@ -16,6 +16,7 @@
 //                     { type: "scrollToBlock", blockKey }  scroll+flash a block (navigator→canvas)
 //                     { type: "applyEdits", edits }    live DOM swap of media / pending inline text
 //                     { type: "applyPalette", css }    live re-theme of #signex-palette
+//                     { type: "auditSelectors", selectors }  ask which stored override selectors are dead
 //   preview → admin:  handed to `onMessage` verbatim — see the shell's branches.
 //
 // ORIGIN. Every outbound post is addressed to `webOrigin` (never "*"), and every inbound message is
@@ -56,6 +57,12 @@ export interface PreviewBridge {
   postScrollToBlock(blockKey: string): void;
   postApplyEdits(edits: ApplyEdit[]): void;
   postApplyPalette(css: string): void;
+  /**
+   * Ask the overlay which of these stored override selectors no longer match exactly one element.
+   * Only the preview can answer — the admin has no DOM for the page. The reply is a
+   * `{ type:"selectorAudit", broken }` message on the inbound channel.
+   */
+  postAuditSelectors(selectors: string[]): void;
 }
 
 /** Just enough of an `<iframe>` ref for the bridge to post at — and little enough for a test to
@@ -84,6 +91,7 @@ export function createPreviewBridge(target: PreviewTargetRef, webOrigin: string)
     postScrollToBlock: (blockKey) => post({ type: "scrollToBlock", blockKey }),
     postApplyEdits: (edits) => post({ type: "applyEdits", edits }),
     postApplyPalette: (css) => post({ type: "applyPalette", css }),
+    postAuditSelectors: (selectors) => post({ type: "auditSelectors", selectors }),
   };
 }
 

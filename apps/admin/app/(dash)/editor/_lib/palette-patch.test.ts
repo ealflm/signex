@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   setSeed,
   setToken,
+  setTokenColor,
   setOverride,
   clearOverride,
   resetAll,
@@ -39,6 +40,26 @@ describe("palette-patch reducers", () => {
     expect(clearOverride(b, '[data-sx-c="a"]').overrides).toEqual([
       { selector: '[data-sx-c="b"]', bg: "#222222" },
     ]);
+  });
+
+  it("setTokenColor routes a seed key to seeds and a token key to tokens", () => {
+    // The colour panel resolves ONE key per role off the winning CSS rule's var() and cannot know
+    // which tier it belongs to; the two tiers are stored under different slices and validated by
+    // different zod enums, so the routing has to happen somewhere. Here, once, is that somewhere.
+    expect(setTokenColor({}, "accentAqua", "#111111")).toEqual({ seeds: { accentAqua: "#111111" } });
+    expect(setTokenColor({}, "btnPrimaryBg", "#222222")).toEqual({
+      tokens: { btnPrimaryBg: "#222222" },
+    });
+  });
+
+  it("setTokenColor ignores a key that is no seed and no token", () => {
+    // Writing an unknown key would 422 the whole save-draft batch (PaletteSeeds/TokensSchema are
+    // key enums). `Object.hasOwn`, not `in`: "toString" IS in PALETTE_VARS by prototype.
+    for (const k of ["mystery", "toString", "constructor", "__proto__"]) {
+      expect(setTokenColor({ seeds: { accentAqua: "#000000" } }, k, "#ffffff")).toEqual({
+        seeds: { accentAqua: "#000000" },
+      });
+    }
   });
 
   it("resetAll clears everything and isEmptyPalette detects it", () => {

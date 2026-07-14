@@ -33,10 +33,12 @@
 // postMessage protocol (both directions use { source: "signex-editor", ... }):
 //   preview → admin:  { source, type: "edit", field, mediaKind: "image"|"video" }      // open media drawer
 //                     { source, type: "textEdit", field, value }                       // committed inline text edit
-//                     { source, type: "colorTarget", field, blockKey, label, rect, roles } // colour click → open colour popover
+//                     { source, type: "colorTarget", field, blockKey, label, rect, roles } // colour click → fill the colour panel
+//                     { source, type: "selectorAudit", broken }                        // reply to auditSelectors — stored selectors that no longer match
 //                     { source, type: "highlight", field }                             // canvas leaf focused (→ flash panel field)
 //                     { source, type: "ready" }                                        // handshake on mount — admin re-applies pending edits
 //   admin   → preview: { source, type: "refresh" }                                     // reload to show the just-saved working state
+//                     { source, type: "auditSelectors", selectors }                    // which stored override selectors are dead? (→ selectorAudit)
 //                     { source, type: "setMode", mode: "media"|"text"|"color"|"content" } // which capability a click invokes
 //                     { source, type: "highlight", field }                             // panel field focused (→ flash canvas leaf; Task 7)
 //                     { source, type: "applyEdits", edits:[…] }                         // live DOM swap (no reload)
@@ -710,6 +712,26 @@ export function EditOverlay() {
           document.head.appendChild(styleEl);
         }
         styleEl.textContent = typeof data.css === "string" ? data.css : "";
+        return;
+      }
+
+      // auditSelectors: which of the palette's stored override selectors no longer point at exactly
+      // one element? Only this frame can answer — the admin has no DOM for the page. A selector
+      // DRIFTS: it was proven unique when it was minted, and then a nav link was added, or a list
+      // item removed, and an `:nth-of-type` in it stopped meaning what it meant. Reported, never
+      // auto-removed: deleting a colour the user chose, because a selector drifted, would be worse
+      // than showing it broken — so the admin lists them and the user decides.
+      if (data.type === "auditSelectors" && Array.isArray(data.selectors)) {
+        const broken = (data.selectors as string[]).filter((sel) => {
+          try {
+            // !== 1, not === 0: a selector matching SEVERAL elements is broken too — it now paints
+            // things the user never picked, which is the failure that looks like it works.
+            return document.querySelectorAll(sel).length !== 1;
+          } catch {
+            return true; // unparseable here = dead here
+          }
+        });
+        window.parent.postMessage({ source: SOURCE, type: "selectorAudit", broken }, "*");
         return;
       }
 

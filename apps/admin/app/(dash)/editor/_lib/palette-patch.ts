@@ -4,7 +4,7 @@
 // `PalettePatch` aliases `@signex/shared`'s `Palette` — the same shape persisted on
 // ReleaseSnapshot.palette and rendered via `paletteStyle`.
 
-import type { Palette } from "@signex/shared";
+import { PALETTE_VARS, TOKEN_VARS, type Palette } from "@signex/shared";
 
 export type PalettePatch = Palette;
 
@@ -14,6 +14,22 @@ export function setSeed(p: PalettePatch, key: string, hex: string): PalettePatch
 
 export function setToken(p: PalettePatch, key: string, hex: string): PalettePatch {
   return { ...p, tokens: { ...(p.tokens ?? {}), [key]: hex } };
+}
+
+/**
+ * Site-wide pick from the colour panel: write `hex` behind `tokenKey`, whichever tier it belongs to.
+ *
+ * The panel resolves ONE key per role — whatever custom property the winning CSS rule reads — and
+ * has no way to know whether that lands in tier A (seeds) or tier B (tokens). The two are stored in
+ * different slices and validated by different key enums, so the routing has to happen exactly once,
+ * and this is it. An unrecognised key is a no-op rather than a write: it would 422 the entire
+ * save-draft batch, and the caller has already been told (readColorTarget) that it isn't a token.
+ */
+export function setTokenColor(p: PalettePatch, tokenKey: string, hex: string): PalettePatch {
+  // Object.hasOwn, never `in` — `"toString" in PALETTE_VARS` is true.
+  if (Object.hasOwn(PALETTE_VARS, tokenKey)) return setSeed(p, tokenKey, hex);
+  if (Object.hasOwn(TOKEN_VARS, tokenKey)) return setToken(p, tokenKey, hex);
+  return p;
 }
 
 export function setOverride(
