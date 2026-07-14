@@ -15,10 +15,16 @@ export type { EditCap };
  * cap names, but it silently would the day a cap contains another as a substring. These four
  * matchers pin the value's boundaries, so they match a whole cap and nothing else: exact, first,
  * last, middle.
+ *
+ * `prefix`/`suffix` are pasted onto EVERY matcher, because a selector list is four independent
+ * selectors and decorating only the first would leave the other three unscoped. Callers can't do
+ * this themselves by splitting the returned list on "," — the matcher values contain commas.
+ * `prefix` is verbatim, so it must carry its own combinator (`'body[data-sx-mode="text"] '`); it
+ * scopes by ancestor only and never changes which attribute values match.
  */
-export const capSel = (cap: EditCap, suffix = ""): string =>
+export const capSel = (cap: EditCap, suffix = "", prefix = ""): string =>
   [`="${cap}"`, `^="${cap},"`, `$=",${cap}"`, `*=",${cap},"`]
-    .map((m) => `[data-edit-caps${m}]${suffix}`)
+    .map((m) => `${prefix}[data-edit-caps${m}]${suffix}`)
     .join(",");
 
 /** JS-side equivalent: split on "," and compare whole values (never `includes()` on the string). */

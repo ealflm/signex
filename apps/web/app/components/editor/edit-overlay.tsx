@@ -3,17 +3,21 @@
 // app/components/editor/edit-overlay.tsx
 // Visual-editor overlay — rendered ONLY inside the /preview editor route (never on public pages).
 // On mount it scans the DOM for [data-edit-field] zones (stamped by editable() in the shared section
-// components when editable=1) and wires two kinds of inline editing:
+// components when editable=1) and wires inline editing:
 //   • MEDIA (caps image|video) — a floating "hotspot" layer is the hover + click surface for the
 //     media (it may be covered by content, so it lives above the page; click → admin drawer).
 //   • TEXT  (cap text)         — the span itself becomes contentEditable IN PLACE; the committed
 //     value is postMessage'd back to the admin (no hotspot for text — Plan-4 gate (a)).
+//   • COLOUR (any element)     — resolved from the click's paint stack by color-engine.ts, not from
+//     a cap: a click reports its roles to the admin, which opens the colour popover.
 //
-// CAPABILITIES: an element declares what it CAN do via `data-edit-caps` (a comma-joined list), not
-// a single `data-edit-kind`. Dispatch below is keyed off capabilities but otherwise unchanged — the
-// active-MODE gate that decides which capability a click invokes is a separate task. Because text is
-// still tested before colour, an element carrying both (hero.titleBottom) edits text on click, which
-// is what the old nested-span arrangement already did.
+// CAPABILITIES vs MODE. An element declares what it CAN do via `data-edit-caps` (a comma-joined
+// list — see _lib/edit-caps.ts), and the active MODE (see _lib/edit-mode.ts) decides which of those
+// a click invokes. hero.titleBottom is both text- and colour-editable; without a mode, one click has
+// to guess. With one, exactly one kind of thing is clickable at a time and a click is never
+// ambiguous — which is also what lets the affordances be gated on mutually exclusive selectors
+// instead of racing each other on specificity/source order. Mode arrives from the admin's toolbar
+// over the bridge (`setMode`); it is UI state only — never persisted, never in the public render.
 //
 // WHY A FLOATING HOTSPOT LAYER FOR MEDIA (not listeners + a badge ON the media element):
 //   1. Many media are visually COVERED by content — the home hero image sits behind the headline +
@@ -29,10 +33,11 @@
 // postMessage protocol (both directions use { source: "signex-editor", ... }):
 //   preview → admin:  { source, type: "edit", field, mediaKind: "image"|"video" }      // open media drawer
 //                     { source, type: "textEdit", field, value }                       // committed inline text edit
-//                     { source, type: "colorEdit", field, token, roles, rect, computed } // colour zone clicked → open colour popover (Task 6)
+//                     { source, type: "colorTarget", field, blockKey, label, rect, roles } // colour click → open colour popover
 //                     { source, type: "highlight", field }                             // canvas leaf focused (→ flash panel field)
 //                     { source, type: "ready" }                                        // handshake on mount — admin re-applies pending edits
 //   admin   → preview: { source, type: "refresh" }                                     // reload to show the just-saved working state
+//                     { source, type: "setMode", mode: "media"|"text"|"color"|"content" } // which capability a click invokes
 //                     { source, type: "highlight", field }                             // panel field focused (→ flash canvas leaf; Task 7)
 //                     { source, type: "applyEdits", edits:[…] }                         // live DOM swap (no reload)
 //                     { source, type: "applyPalette", css }                            // live re-theme of #signex-palette (no reload; Task 6)
@@ -47,9 +52,9 @@
 
 import { useEffect } from "react";
 
-import { ANCHOR_PAINT_TARGETS } from "@signex/shared";
-
+import { resolveMeaningfulBlock, resolveRoles } from "./_lib/color-engine";
 import { capSel, hasCap, type EditCap } from "./_lib/edit-caps";
+import { MODE_AFFORDANCE_CSS, isEditMode, modeScope, type EditMode } from "./_lib/edit-mode";
 
 const SOURCE = "signex-editor";
 
@@ -71,45 +76,6 @@ function closestCap(start: Element | null | undefined, cap: EditCap): HTMLElemen
   return null;
 }
 
-/**
- * getComputedStyle always resolves a colour to `rgb(…)`/`rgba(…)` — convert to the `#rrggbb` an
- * <input type="color"> needs. Returns undefined for anything not fully opaque: the template derives
- * most tokens as `color-mix(… N%, transparent)`, and hex can't carry that alpha, so showing one
- * would claim a colour the element doesn't actually have.
- */
-function rgbToHex(v: string): string | undefined {
-  const m = v.match(/^rgba?\(([^)]+)\)$/);
-  if (!m) return undefined;
-  const parts = m[1].split(/[,\s/]+/).filter(Boolean).map(Number);
-  const [r, g, b, a] = parts;
-  if (![r, g, b].every((n) => Number.isFinite(n))) return undefined;
-  if (a !== undefined && a !== 1) return undefined;
-  return `#${[r, g, b].map((n) => Math.round(n).toString(16).padStart(2, "0")).join("")}`;
-}
-
-/**
- * The zone's CURRENT rendered colour per role — what the admin's popover shows as its value.
- *
- * Reads each role from the element that actually PAINTS it: for an anchor in ANCHOR_PAINT_TARGETS
- * (e.g. the nav CTA, a transparent <a> whose pill is painted by a .btn-bg child) the anchor's own
- * background is rgba(0,0,0,0), so reading it would report "no colour" for a visibly navy button.
- * This mirrors exactly where paletteStyle writes the override, so what the swatch shows is what an
- * override would replace.
- */
-function computedColors(el: HTMLElement, anchorId: string): Record<string, string | undefined> {
-  const paint = ANCHOR_PAINT_TARGETS[anchorId] ?? {};
-  const read = (role: "bg" | "text" | "border", prop: "backgroundColor" | "color" | "borderTopColor") => {
-    const sel = paint[role];
-    const source = (sel ? el.querySelector<HTMLElement>(sel) : null) ?? el;
-    return rgbToHex(getComputedStyle(source)[prop]);
-  };
-  return {
-    bg: read("bg", "backgroundColor"),
-    text: read("text", "color"),
-    border: read("border", "borderTopColor"),
-  };
-}
-
 type EditState = {
   el: HTMLElement;
   field: string;
@@ -123,6 +89,13 @@ type EditState = {
 export function EditOverlay() {
   useEffect(() => {
     let disposed = false;
+
+    // The active mode — which capability a click invokes. An effect-scoped `let`, not React state:
+    // every listener below subscribes once, so they must read the LIVE value, and re-running this
+    // effect per mode change would tear down and rebuild the whole hotspot layer. The CSS half of
+    // the gate reads it off body.dataset.sxMode instead (kept in step by onMessage, below).
+    // "content" is the default: until the admin says otherwise, the canvas is read-only.
+    let mode: EditMode = "content";
 
     // ---- styles (injected once) ----------------------------------------------------------
     const style = document.createElement("style");
@@ -152,27 +125,17 @@ export function EditOverlay() {
       }
       .sx-edit-hotspot:hover .sx-edit-badge { opacity: 1; }
 
-      /* Inline COLOUR editing. Dashed outline distinguishes a colour zone from a text/media zone at
-         a glance. */
-      ${capSel("color")} { cursor: pointer; }
-      ${capSel("color", ":hover")} { outline: 2px dashed #4956e3; outline-offset: 2px; }
-      /* Inline TEXT editing. The affordance must NOT reflow the byte-faithful layout, so we use
-         outline/box-shadow (paints outside the box) — never border/margin/padding.
-         ORDER IS LOAD-BEARING: these carry the same specificity as the colour rules above, so being
-         listed later is what makes TEXT win on an element declaring both caps — matching the click
-         dispatch (text is tested first), so the affordance never advertises an edit you won't get.
-         Previously this fell out of the nesting: the text span was a child of the colour wrapper. */
-      ${capSel("text")} { cursor: text; }
-      ${capSel("text", ":hover")} { outline: 2px solid #4956e3; outline-offset: 2px; }
-      ${capSel("text", '[contenteditable="true"]')} {
+      /* The mode-gated affordances (text/colour/hotspot visibility). Kept in edit-mode.ts next to
+         isEditMode so a static test can read the cascade they produce — the CSS that PAINTS an
+         affordance and the dispatch that HONOURS it must agree on which mode does what, and a
+         disagreement between them is silent. */
+      ${MODE_AFFORDANCE_CSS}
+      /* The active inline edit. Gated for consistency with the rest, though it is belt-and-braces:
+         it can only match while contentEditable is on, which only text mode turns on — and leaving
+         text mode commits the edit, which turns it back off. */
+      ${capSel("text", '[contenteditable="true"]', modeScope("text"))} {
         outline: 2px solid #4956e3; outline-offset: 2px; background: rgba(73,86,227,.06);
       }
-      /* A media hotspot hovering OVER a text leaf defers to the text: text cursor, no media chrome,
-         so text painted on top of an image (e.g. the hero title) is clearly the edit target. */
-      .sx-edit-hotspot.sx-on-text { cursor: text; border-color: transparent !important; background: transparent !important; }
-      .sx-edit-hotspot.sx-on-text .sx-edit-badge { opacity: 0 !important; }
-      /* Text hovered THROUGH a media hotspot (the element's own :hover can't fire) gets the outline. */
-      ${capSel("text", ".sx-text-hover")} { outline: 2px solid #4956e3; outline-offset: 2px; }
       .sx-flash { animation: sx-flash .9s ease; }
       @keyframes sx-flash {
         0%,100% { outline-color: transparent; }
@@ -180,6 +143,12 @@ export function EditOverlay() {
       }
     `;
     document.head.appendChild(style);
+
+    // Publish the starting mode rather than leaving the attribute absent. An absent attribute
+    // happens to gate identically to "content" (every rule is either `[data-sx-mode="…"]`, which
+    // can't match, or `:not([data-sx-mode="…"])`, which does) — but that is a coincidence of the
+    // current rules, not a contract, and it would leave the admin unable to read the mode back.
+    document.body.dataset.sxMode = mode;
 
     // ---- hotspot layer: a fixed, page-layout-neutral overlay that holds one hotspot per MEDIA zone ----
     const layer = document.createElement("div");
@@ -198,6 +167,9 @@ export function EditOverlay() {
 
     const sync = () => {
       if (disposed) return;
+      // Only media mode shows hotspots; every other mode hides the whole layer in CSS, so measuring
+      // it would be pure waste on every scroll frame. Switching back to media calls scheduleSync().
+      if (mode !== "media") return;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       for (const entry of entries) {
@@ -447,54 +419,27 @@ export function EditOverlay() {
       hot.appendChild(badge);
 
       // The hotspot sits above ALL page content, so a full-bleed media (e.g. the hero image, which
-      // sits UNDER the headline + nav) can cover real controls AND in-place text leaves. We use
-      // elementsFromPoint — which returns the FULL stack, seeing THROUGH the (pointer-transparent)
-      // hotspot layer — to find what's really underneath, and PRIORITISE a text leaf over the image.
-      const contentUnder = (x: number, y: number) => {
-        const stack = document.elementsFromPoint(x, y) as HTMLElement[];
-        const content = stack.filter((n) => !n.closest(".sx-edit-layer"));
-        return {
-          topmost: content[0] ?? null,
-          text: content.map((n) => closestCap(n, "text")).find(Boolean) ?? null,
-        };
-      };
-
-      // Hover: when the cursor (over this media hotspot) is also over a text leaf, defer to the text —
-      // surface the text outline + text cursor and hide the media badge, so the user sees text wins.
-      let hoverText: HTMLElement | null = null;
-      const setHoverText = (t: HTMLElement | null) => {
-        if (t === hoverText) return;
-        hoverText?.classList.remove("sx-text-hover");
-        hoverText = t;
-        if (t) {
-          t.classList.add("sx-text-hover");
-          hot.classList.add("sx-on-text");
-        } else {
-          hot.classList.remove("sx-on-text");
-        }
-      };
-      const onMove = (e: MouseEvent) =>
-        setHoverText(contentUnder(e.clientX, e.clientY).text);
-      const onLeave = () => setHoverText(null);
+      // sits UNDER the headline + nav) can cover real controls. elementsFromPoint returns the FULL
+      // stack, seeing THROUGH the (pointer-transparent) hotspot layer, so we can find what a click
+      // would really have landed on.
+      const topmostUnder = (x: number, y: number) =>
+        (document.elementsFromPoint(x, y) as HTMLElement[]).find((n) => !n.closest(".sx-edit-layer")) ??
+        null;
 
       const onClick = (e: MouseEvent) => {
-        const { topmost, text } = contentUnder(e.clientX, e.clientY);
+        // A hotspot only receives clicks in media mode (CSS hides the layer otherwise), so a click
+        // here means the media. This used to first look for a text leaf under the pointer and edit
+        // THAT instead — text painted over an image had to win, because text and media were both
+        // live at once and the click was genuinely ambiguous. Mode is what resolved that: text is
+        // reached in text mode, where the hotspots aren't in the way at all. Deferring to text here
+        // as well would put back the ambiguity — and would mean the parts of an image behind text
+        // (most of the hero) still could not be clicked in the one mode that exists to edit images.
 
-        // 1) A TEXT leaf painted over the media (e.g. the hero title over the hero image) → edit the
-        //    text in place, not the image. Text is prioritised whenever it's anywhere in the stack.
-        if (text) {
-          e.preventDefault();
-          e.stopPropagation();
-          setHoverText(null);
-          beginEdit(text, e.clientX, e.clientY);
-          return;
-        }
-
-        // 2) A navigation LINK genuinely painted OVER the media → re-dispatch so the user can
+        // 1) A navigation LINK genuinely painted OVER the media → re-dispatch so the user can
         //    navigate (the document interceptor rewrites internal links to /preview). Deliberately
         //    NOT buttons/inputs: the hero quote-form submit sits under the hero hotspot, and
         //    re-dispatching to it would POST a junk lead — clicking there edits the image.
-        const control = topmost?.closest?.("a[href]") as HTMLElement | null;
+        const control = topmostUnder(e.clientX, e.clientY)?.closest?.("a[href]") as HTMLElement | null;
         if (control && control !== el && !el.contains(control) && !control.contains(el)) {
           control.dispatchEvent(
             new MouseEvent("click", {
@@ -508,14 +453,12 @@ export function EditOverlay() {
           return;
         }
 
-        // 3) Otherwise: edit the media.
+        // 2) Otherwise: edit the media.
         e.preventDefault();
         e.stopPropagation();
         window.parent.postMessage({ source: SOURCE, type: "edit", field, mediaKind }, "*");
       };
       hot.addEventListener("click", onClick);
-      hot.addEventListener("mousemove", onMove);
-      hot.addEventListener("mouseleave", onLeave);
       layer.appendChild(hot);
 
       entries.push({ el, hot, onScreen: true });
@@ -586,6 +529,36 @@ export function EditOverlay() {
     // One-shot initial position.
     scheduleSync();
 
+    // ---- colour mode: track what a click would select ---------------------------------------
+    // Text's affordance is a pure-CSS :hover rule, because a text target IS the element under the
+    // pointer. Colour's can't be: its target is resolved from the paint STACK (the topmost node is
+    // usually a meaningless .gsap_split_word fragment), so the outline has to be moved by JS to
+    // whatever resolveMeaningfulBlock would return — i.e. exactly what the click below will act on.
+    let colorHover: HTMLElement | null = null;
+    const setColorHover = (el: HTMLElement | null) => {
+      if (el === colorHover) return;
+      colorHover?.classList.remove("sx-color-hover");
+      colorHover = el;
+      el?.classList.add("sx-color-hover");
+    };
+    // Coalesce to one hit-test per frame: mousemove fires far faster, and each resolve forces layout
+    // on a page already running GSAP + Lenis every frame.
+    let hoverPt: { x: number; y: number } | null = null;
+    let hoverRaf = 0;
+    const onDocMove = (e: MouseEvent) => {
+      if (mode !== "color") return;
+      hoverPt = { x: e.clientX, y: e.clientY };
+      if (hoverRaf) return;
+      hoverRaf = requestAnimationFrame(() => {
+        hoverRaf = 0;
+        if (disposed || mode !== "color" || !hoverPt) return;
+        setColorHover(resolveMeaningfulBlock(hoverPt.x, hoverPt.y));
+      });
+    };
+    const onDocLeave = () => setColorHover(null);
+    document.addEventListener("mousemove", onDocMove, { passive: true });
+    document.addEventListener("mouseleave", onDocLeave);
+
     // ---- internal navigation interception + inline-text click → enter edit -----------------------
     // The shared section components render PUBLIC hrefs (`/`, `/about`, `/contact`, …). Following them
     // would navigate the iframe OUT of /preview (no token/editable flag, no [data-edit-field]). We
@@ -593,52 +566,61 @@ export function EditOverlay() {
     // on inline-text leaves here (capture phase) so they enter edit mode before the anchor/Webflow
     // runtime can act on them.
     const onDocClick = (e: MouseEvent) => {
+      // MODE ROUTES THE CLICK. Each branch below is the dispatch half of an affordance painted by
+      // MODE_AFFORDANCE_CSS under the same gate — the two must name the same mode or the canvas
+      // advertises an edit it won't perform. media/content fall through to the link interception:
+      // media is dispatched by the hotspot layer's own handler, and content is a read-only canvas
+      // whose only interaction IS navigation.
+
       // Inline TEXT: a click on an element declaring the "text" cap enters edit mode in place. Many
       // text leaves live inside an <a> (nav/footer labels, the features CTA) — preventDefault/stopProp
-      // so clicking to edit never navigates. (Media hotspots cover media, not text, so text clicks
-      // reach this capture-phase handler; the hero title covered by the hero image is handled in the
-      // hotspot onClick passthrough above.)
-      // Tested BEFORE colour, so an element declaring both (hero.titleBottom) edits text — the same
-      // outcome the old nested spans produced, where the inner text span was always the click target.
-      const textLeaf = closestCap(e.target as Element | null, "text");
-      if (textLeaf) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (editing && editing.el === textLeaf) return; // already editing — let the caret move
-        beginEdit(textLeaf, e.clientX, e.clientY);
-        return;
+      // so clicking to edit never navigates.
+      if (mode === "text") {
+        // closestCap, not closest("[data-edit-caps]") + hasCap: the nearest STAMPED ancestor is
+        // frequently not the nearest TEXT-capable one (a colour-only anchor wrapping a text leaf's
+        // parent), and stopping at it would silently drop the edit.
+        const textLeaf = closestCap(e.target as Element | null, "text");
+        if (textLeaf) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (editing && editing.el === textLeaf) return; // already editing — let the caret move
+          beginEdit(textLeaf, e.clientX, e.clientY);
+          return;
+        }
       }
 
-      // Inline COLOUR: a click on an element declaring the "color" cap opens the admin's colour
-      // popover instead of navigating/editing text. Many colour zones also live inside an <a> (e.g.
-      // the nav CTA button's background) — preventDefault/stopPropagation BEFORE the
-      // navigation-interception logic below so the click never falls through to the anchor's default
-      // navigation.
-      const colorEl = closestCap(e.target as Element | null, "color");
-      if (colorEl) {
-        e.preventDefault();
-        e.stopPropagation();
-        // Ship the zone's box (this iframe's viewport coords). The admin adds the iframe's own
-        // offset and hands the result to the popover as its anchor, so the popover opens BESIDE the
-        // element you clicked instead of at a fixed corner that covers it. The preview iframe is
-        // width-constrained but never transform-scaled, so these coords map 1:1 into the admin.
-        const r = colorEl.getBoundingClientRect();
-        window.parent.postMessage(
-          {
-            source: SOURCE,
-            type: "colorEdit",
-            field: colorEl.getAttribute("data-edit-field") ?? "",
-            token: colorEl.getAttribute("data-edit-color-token") ?? "",
-            roles: (colorEl.getAttribute("data-edit-color-roles") ?? "").split(",").filter(Boolean),
-            rect: { x: r.left, y: r.top, width: r.width, height: r.height },
-            // Most tokens are UNSET in the palette (they derive from a seed), so the stored value
-            // can't answer "what colour is this now?" — the user clicks a blue button and the
-            // swatch reads empty. The computed style can answer it, and only this frame knows it.
-            computed: computedColors(colorEl, colorEl.getAttribute("data-edit-field") ?? ""),
-          },
-          "*",
-        );
-        return;
+      // COLOUR: report what was clicked; the admin owns the popover. The target is resolved from the
+      // paint stack rather than from a cap — colour is editable on ANY element, so there is nothing
+      // to have stamped. Many candidates live inside an <a> (e.g. the nav CTA) — preventDefault /
+      // stopPropagation BEFORE the navigation interception below so the click never navigates.
+      if (mode === "color") {
+        const block = resolveMeaningfulBlock(e.clientX, e.clientY);
+        if (block) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Ship the block's box (this iframe's viewport coords). The admin adds the iframe's own
+          // offset and hands the result to the popover as its anchor, so the popover opens BESIDE
+          // the element you clicked instead of at a fixed corner that covers it. The preview iframe
+          // is width-constrained but never transform-scaled, so these coords map 1:1 into the admin.
+          const r = block.getBoundingClientRect();
+          const field = block.getAttribute("data-edit-field") ?? "";
+          window.parent.postMessage(
+            {
+              source: SOURCE,
+              type: "colorTarget",
+              field,
+              blockKey: block.closest("[data-sx-block]")?.getAttribute("data-sx-block") ?? "",
+              label: field || block.tagName.toLowerCase(),
+              rect: { x: r.left, y: r.top, width: r.width, height: r.height },
+              // Per role: the rendered hex, the token driving it, and a selector for a per-element
+              // override. Only this frame can answer any of it — most tokens carry no stored value
+              // (they derive from a seed), so the palette cannot say what colour this element is.
+              roles: resolveRoles(block),
+            },
+            "*",
+          );
+          return;
+        }
       }
 
       // Honour the media-zone editor clicks (handled above) and modified clicks (new-tab etc.).
@@ -688,6 +670,19 @@ export function EditOverlay() {
 
       if (data.type === "refresh") {
         window.location.reload();
+        return;
+      }
+
+      // setMode: the admin's toolbar decides which capability a click invokes. isEditMode, not
+      // `typeof data.mode === "string"`: this crosses a window boundary, and an unrecognised value
+      // would gate every affordance off while dispatch fell through every branch — a canvas that
+      // looks read-only but isn't in any mode the code names.
+      if (data.type === "setMode" && isEditMode(data.mode)) {
+        mode = data.mode;
+        document.body.dataset.sxMode = data.mode; // the CSS half of the gate reads this
+        if (editing) commit(); // don't strand an in-flight text edit in a mode that can't finish it
+        if (mode !== "color") setColorHover(null); // else the outline outlives its mode
+        scheduleSync(); // hotspots were unmeasured while hidden — reposition before they show
         return;
       }
 
@@ -807,6 +802,7 @@ export function EditOverlay() {
       disposed = true;
       cancelAnimationFrame(rafId);
       cancelAnimationFrame(nudgeRaf);
+      cancelAnimationFrame(hoverRaf);
       if (attachTimer) window.clearInterval(attachTimer);
       if (lenis && typeof lenis.off === "function") lenis.off("scroll", onLenisScroll);
       io.disconnect();
@@ -816,7 +812,13 @@ export function EditOverlay() {
       window.removeEventListener("wheel", onWinEvent);
       window.removeEventListener("touchmove", onWinEvent);
       document.removeEventListener("click", onDocClick, true);
+      document.removeEventListener("mousemove", onDocMove);
+      document.removeEventListener("mouseleave", onDocLeave);
       window.removeEventListener("message", onMessage);
+      // The overlay's classes/attributes live on the PAGE's own nodes, not the layer, so they
+      // outlive the layer's removal unless cleared here.
+      setColorHover(null);
+      delete document.body.dataset.sxMode;
       if (editing) {
         editing.cleanup();
         editing.el.contentEditable = "false";

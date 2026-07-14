@@ -76,6 +76,43 @@ test("the suffix is applied to every matcher, not just the first", () => {
   for (const p of parts) assert.ok(p.endsWith("]:hover"), p);
 });
 
+// The prefix exists so a caller can SCOPE the matchers (the overlay gates them on the active editor
+// mode: `body[data-sx-mode="text"] `). It has to reach every matcher for the same reason the suffix
+// does — a selector list is four independent selectors, and a prefix on only the first would leave
+// the other three unscoped, i.e. globally live. Callers cannot do this themselves by splitting the
+// list on "," : the matcher VALUES contain commas (`[data-edit-caps^="text,"]`).
+test("the prefix is applied to every matcher, not just the first", () => {
+  const sel = capSel("text", "", 'body[data-sx-mode="text"] ');
+  const parts = sel.split(/,(?=body)/);
+  assert.equal(parts.length, 4);
+  for (const p of parts) assert.ok(p.startsWith('body[data-sx-mode="text"] ['), p);
+});
+
+test("prefix and suffix apply together, to every matcher", () => {
+  const parts = capSel("text", ":hover", "body ").split(/,(?=body)/);
+  assert.equal(parts.length, 4);
+  for (const p of parts) {
+    assert.ok(p.startsWith("body ["), p);
+    assert.ok(p.endsWith("]:hover"), p);
+  }
+});
+
+test("no prefix is the default — the emitted list is unchanged", () => {
+  assert.equal(capSel("text", ":hover", ""), capSel("text", ":hover"));
+  assert.equal(capSel("text"), capSel("text", "", ""));
+});
+
+// A prefix must not change WHICH attribute values match — it scopes by ancestor, nothing else.
+test("a prefixed matcher still pins the cap's boundaries", () => {
+  for (const attr of ["text", "text,color", "color,text", "colorful", "textarea,color"]) {
+    assert.equal(
+      selMatches(capSel("text", "", 'body[data-sx-mode="text"] '), attr),
+      attr.split(",").includes("text"),
+      attr,
+    );
+  }
+});
+
 // THE load-bearing property: the CSS selector (which paints the affordance) and the JS predicate
 // (which dispatches the click) must select the exact same elements. Any disagreement means an
 // element that looks editable but isn't, or vice versa — silently.
