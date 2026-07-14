@@ -12,6 +12,7 @@ import {
 // resolves in the app (tsconfig paths + Next) but not under vitest. Every existing admin test
 // imports relatively for this reason. (A type-only "@/…" import inside modes.ts is fine — it is
 // erased before esbuild ever has to resolve it.)
+import { parseCanvasField } from "./blocks";
 import { deriveFields, type FieldPlan } from "../../../lib/zodform-fields";
 import { BLOCK_REGISTRY, type BlockKey } from "@signex/shared";
 
@@ -254,6 +255,51 @@ describe("lensFields", () => {
         const lensed = leafPaths(lensFields(all, keep));
         expect(contentPaths.filter((p) => lensed.includes(p))).toEqual(lensed);
       }
+    }
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  //  The canvas→panel flash IDENTITY.
+  //
+  //  A media hotspot posts { type: "edit", field: "<blockKey>.<path>" }; the shell parses it and
+  //  flashes `path.join(".")`, which FieldEditor matches against FieldPlan.name — the dotted name
+  //  ObjectField/ArrayField compose. Spec §Media: "every media in the selected section; click
+  //  scrolls + highlights one".
+  //
+  //  Selecting the section is the half that fails LOUDLY; this is the half that fails silently. A
+  //  flash name that names no rendered row is not an error anywhere — nothing throws, nothing warns,
+  //  the row simply never lights up, which is indistinguishable from the bug that was just fixed.
+  //  So the two halves of the click are asserted end to end, against the real registry.
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+
+  it("gives every media hotspot on the site a row in its section's Media lens", () => {
+    // Every `{ image: true } | { video: true }` stamp in apps/web (grep editableAttrs there; the
+    // INCLUDE list in apps/web/app/lib/edit-attrs.ts is the prose copy). tsc cannot see across the
+    // workspace boundary, so this list is checked in rather than imported — a stamp added there and
+    // not here is simply an untested one, but a stamp whose SCHEMA moves breaks this test, which is
+    // the drift that actually silences the flash.
+    const HOTSPOTS = [
+      "hero.image",
+      "nav.logo",
+      "footer.logo",
+      "footer.watermark",
+      "notFound.image",
+      "features.video.media", // nested — the flash name must NOT be just "media"
+      "features.featured.image",
+      "aboutPage.hero.video",
+      "aboutPage.testimonial.image",
+      "contactPage.hero.image",
+    ];
+    for (const hotspot of HOTSPOTS) {
+      const target = parseCanvasField(hotspot);
+      expect(target, `${hotspot}: canvas field must parse to a known block`).not.toBeNull();
+      const rows = leafPaths(
+        lensFields(deriveFields(BLOCK_REGISTRY[target!.blockKey]), isMediaField),
+      );
+      // The flash name the shell computes, and the rows the Media panel renders for that click.
+      expect(rows, `${hotspot}: Media lens must render the row the flash names`).toContain(
+        target!.path.join("."),
+      );
     }
   });
 

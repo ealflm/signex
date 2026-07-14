@@ -138,7 +138,7 @@ export function ContextPanel({
             // uneditable when switching to Content would show a full form.
             <p className="text-sm text-muted-foreground">
               {keepLeaf
-                ? "Mục này không có nội dung thuộc chế độ đang chọn."
+                ? "No fields for the current mode in this section."
                 : "No editable fields for this section."}
             </p>
           )}

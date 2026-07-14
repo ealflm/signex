@@ -56,6 +56,7 @@ import {
   DEVICE_MAX_WIDTH,
   SURFACE_PATH_BY_BLOCK,
   isBlockKey,
+  parseCanvasField,
   type DeviceWidth,
   type Locale,
   type Selection,
@@ -773,11 +774,24 @@ export function EditorShell(props: EditorShellProps) {
   // live values are read through refs here rather than captured.
   function handleBridgeMessage(data: BridgeMessage) {
     if (data.type === "edit" && typeof data.field === "string") {
+      const target = parseCanvasField(data.field);
+      if (!target) return; // unknown block — nothing downstream has a schema for it
       const kind = data.mediaKind === "video" ? "video" : "image";
       // Selection follows the click: `field` is "<blockKey>.<path>", so the media hotspot names its
       // own block. Do this BEFORE opening the picker, so closing it leaves the Media form showing
       // the section you clicked rather than whatever was selected beforehand.
-      selectFromCanvas(data.field.split(".")[0]);
+      selectFromCanvas(target.blockKey);
+      // …and the OTHER half of what the Media panel owes a click (spec §Media: "every media in the
+      // selected section; click scrolls + highlights one"). Selection alone only gets the right
+      // section on screen — it says nothing about WHICH of that section's media you just clicked,
+      // and `features`/`aboutPage` list several. `path` is the within-block dotted name, which is
+      // exactly the identity FieldEditor matches flashField against (see onCanvasHighlight, which
+      // computes it the same way for the text path).
+      //
+      // The scroll is the durable half: the picker opens over this, so the 900ms ring is spent
+      // behind a modal, but the row is scrolled into view and is still there when the picker closes.
+      flashNonce.current += 1;
+      setFlashField({ name: target.path.join("."), nonce: flashNonce.current });
       openMediaPicker(data.field, kind);
     } else if (data.type === "colorTarget") {
       // A colour-mode click. The preview has already done the only part that needs a DOM: it
@@ -802,9 +816,14 @@ export function EditorShell(props: EditorShellProps) {
       // locale so ONLY that leaf is written (the other locale stays untouched). Rides the SAME
       // pending Map + Save-draft batch + status pill as a panel edit — no separate persistence.
       const field = data.field;
+      const target = parseCanvasField(field);
+      // An unknown block cannot be written: applyFieldEdit would seed `pending` with a key the
+      // schema has no entry for, which the save-draft validation then rejects — poisoning EVERY
+      // later save with an edit the user cannot see or remove. Dropping it is the lesser evil.
+      if (!target) return;
+      const { blockKey, path: rest } = target;
       const value = String(data.value ?? "");
       const locale = langRef.current;
-      const [blockKey, ...rest] = field.split(".") as [BlockKey, ...string[]];
       const blockData =
         pendingRef.current.get(blockKey) ??
         ((baseRef.current.blocks as unknown as Record<string, Record<string, unknown>>)[blockKey] ??
@@ -819,8 +838,12 @@ export function EditorShell(props: EditorShellProps) {
       });
     } else if (data.type === "highlight" && typeof data.field === "string") {
       // canvas→panel half of the two-way highlight: select + flash the matching panel field.
-      const [blockKey, ...rest] = data.field.split(".") as [BlockKey, ...string[]];
-      onCanvasHighlight(blockKey, rest.join("."));
+      // Guarded like every other inbound block key: onCanvasHighlight setSelection's the key
+      // unconditionally, and ContextPanel then does deriveFields(BLOCK_REGISTRY[k]) — the shortest
+      // path to the exact crash isBlockKey exists to stop.
+      const target = parseCanvasField(data.field);
+      if (!target) return;
+      onCanvasHighlight(target.blockKey, target.path.join("."));
     } else if (data.type === "ready") {
       // Push the live mode into the fresh overlay. This is the ONLY way a (re)loaded preview
       // learns the mode: it boots in "content" and postMode's earlier posts died with the

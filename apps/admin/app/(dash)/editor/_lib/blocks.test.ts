@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 // Relative, NOT "@/…": apps/admin/vitest.config.ts sets no resolve.alias (see modes.test.ts).
-import { isBlockKey, BLOCK_LABELS, SURFACE_PATH_BY_BLOCK } from "./blocks";
+import { isBlockKey, parseCanvasField, BLOCK_LABELS, SURFACE_PATH_BY_BLOCK } from "./blocks";
 import { BLOCK_KEYS } from "@signex/shared";
 
 describe("isBlockKey", () => {
@@ -25,6 +25,44 @@ describe("isBlockKey", () => {
     expect(isBlockKey("toString")).toBe(false);
     expect(isBlockKey("constructor")).toBe(false);
     expect(isBlockKey("__proto__")).toBe(false);
+  });
+});
+
+describe("parseCanvasField", () => {
+  it("splits a canvas field into a proven block key and the path WITHIN it", () => {
+    // The block key is never part of the path: the panel addresses a field by its within-block
+    // dotted name, so leaking the key in would match nothing (and, on the textEdit path, would
+    // write to the wrong address).
+    expect(parseCanvasField("hero.image")).toEqual({ blockKey: "hero", path: ["image"] });
+    expect(parseCanvasField("features.video.media")).toEqual({
+      blockKey: "features",
+      path: ["video", "media"],
+    });
+  });
+
+  it("yields an EMPTY path, not [\"\"], for a bare block key", () => {
+    // "".split(".") is [""], which would address a child named "" — the reason path is segments
+    // rather than a string the callers re-split.
+    expect(parseCanvasField("hero")).toEqual({ blockKey: "hero", path: [] });
+  });
+
+  it("rejects every key isBlockKey rejects — the guard is not per-branch", () => {
+    // The whole point of the shared parse: `highlight` cast this unguarded and fed
+    // deriveFields(BLOCK_REGISTRY[k]) → undefined, crashing the editor. Untrusted-ness is a
+    // property of the BRIDGE, not of which branch happens to look reachable.
+    expect(parseCanvasField("heroo.image")).toBeNull();
+    expect(parseCanvasField(".image")).toBeNull(); // "" — an element outside any [data-sx-block]
+    expect(parseCanvasField("")).toBeNull();
+    expect(parseCanvasField("__proto__.image")).toBeNull();
+    expect(parseCanvasField("toString.x")).toBeNull();
+    expect(parseCanvasField(undefined)).toBeNull();
+    expect(parseCanvasField(null)).toBeNull();
+    expect(parseCanvasField(42)).toBeNull();
+    expect(parseCanvasField({ blockKey: "hero" })).toBeNull();
+  });
+
+  it("accepts a field under every block in the registry", () => {
+    for (const k of BLOCK_KEYS) expect(parseCanvasField(`${k}.x`)?.blockKey).toBe(k);
   });
 });
 

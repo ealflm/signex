@@ -32,6 +32,39 @@ export interface Selection {
 export const isBlockKey = (v: unknown): v is BlockKey =>
   typeof v === "string" && Object.hasOwn(BLOCK_REGISTRY, v);
 
+// ─── CanvasField ──────────────────────────────────────────────────────────────
+
+/** An inbound canvas field ("<blockKey>.<path>"), split and proven. */
+export interface CanvasField {
+  blockKey: BlockKey;
+  /**
+   * The path WITHIN the block, as segments — never including the block key. Join with "." for the
+   * panel's field identity (FieldPlan.name, which ObjectField/ArrayField build the same way); pass
+   * as-is to a walker that wants segments. Empty when the message named a block and nothing else.
+   */
+  path: string[];
+}
+
+/**
+ * Parse a "<blockKey>.<path>" field off an inbound preview message.
+ *
+ * EVERY branch of the bridge listener that derives a block key from a message goes through this —
+ * `edit`, `textEdit` and `highlight` alike. The bridge proves origin and nothing else, so each of
+ * those keys is an unproven string, and the three used to split-and-cast it independently: two
+ * spellings of the same parse, one of them (isBlockKey via selectFromCanvas) guarded and the others
+ * not. `highlight` was the sharp end — an unknown key went straight to
+ * `deriveFields(BLOCK_REGISTRY[k])`, which is the crash isBlockKey's own tests document.
+ *
+ * Guarding "the branch that looked exploitable" is what produced that split. The parse is one
+ * operation; it is written once, and it either yields a block we have a schema for or nothing.
+ */
+export function parseCanvasField(v: unknown): CanvasField | null {
+  if (typeof v !== "string") return null;
+  const [blockKey, ...path] = v.split(".");
+  if (!isBlockKey(blockKey)) return null;
+  return { blockKey, path };
+}
+
 // ─── ToolbarStatus ────────────────────────────────────────────────────────────
 export type ToolbarStatus =
   | { kind: "saved"; revision: number }
