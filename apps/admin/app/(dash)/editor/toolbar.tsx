@@ -227,8 +227,8 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
               • button `min-w-[34px]` stops that shrink exactly at the measured icon-only button —
                 the 14px shrink-0 icon + its 2×10px padding. With min-w-0 there instead the buttons
                 squeeze to 21px and clip the icons at 1280.
-              • wrapper `min-w-[140px]` (= 4×34 + the group's 2×2 padding) stops the WRAPPER at the
-                group's own floor. Without it the wrapper shrinks past the group, which then spills
+              • wrapper `min-w-[142px]` (= 4×34 + the group's 2×2 padding + its 2×1 border) stops
+                the WRAPPER at the group's own floor. Without it the wrapper shrinks past the group, which then spills
                 out of its justify-center box and overlaps the status pill by 19px at 1280 —
                 trading the document overflow for the very collision this control was accused of.
             The pill's column keeps min-width:auto, so it is free to wrap and absorb the rest;
@@ -237,11 +237,11 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
             design: a label is redundant with its icon + tooltip, whereas the status pill and
             Publish have no fallback. whitespace-nowrap (via truncate) is also what makes the
             1373–1488 two-line band unreachable at any width. */}
-        <div className="flex min-w-[140px] flex-1 justify-center">
+        <div className="flex min-w-[142px] flex-1 justify-center">
           <div
             role="group"
             aria-label="Chế độ chỉnh sửa"
-            className="flex min-w-0 shrink items-center rounded-md border border-input bg-background p-0.5"
+            className="flex min-w-0 items-center rounded-md border border-input bg-background p-0.5"
           >
             {EDIT_MODES.map((m) => (
               <Tooltip key={m.key}>
@@ -259,6 +259,8 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
                     )}
                   >
                     <m.Icon className="h-3.5 w-3.5 shrink-0" />
+                    {/* truncate needs a block box; it works here only because the button is
+                        display:flex, which blockifies this otherwise-inline span. */}
                     <span className="hidden min-w-0 truncate 2xl:inline">{m.label}</span>
                   </button>
                 </TooltipTrigger>
