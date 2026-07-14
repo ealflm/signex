@@ -52,9 +52,10 @@ export function resolveMeaningfulBlock(x: number, y: number): HTMLElement | null
   );
 }
 
-/** The element that actually PAINTS `role` for `block`. The nav CTA is a transparent <a> whose
- *  pill is painted by a .btn-bg child, so reading the block itself reports "no colour" for a
- *  visibly navy button. Searching the subtree finds the real painter by construction. */
+/** The element that actually PAINTS `role` for `block`. For `bg`/`border`, colour does NOT
+ *  inherit, so the block itself is frequently transparent — the nav CTA is a transparent <a>
+ *  whose pill is painted by a .btn-bg child — and searching the subtree finds the real painter
+ *  by construction. `text` is the opposite case: see the comment inside that branch. */
 function painterFor(block: HTMLElement, role: ColorRole): HTMLElement | null {
   const candidates = [block, ...Array.from(block.querySelectorAll<HTMLElement>("*"))];
   if (role === "bg") {
@@ -68,11 +69,21 @@ function painterFor(block: HTMLElement, role: ColorRole): HTMLElement | null {
     );
   }
   if (role === "text") {
-    return (
-      candidates.find((el) =>
-        Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? "").trim()),
-      ) ?? block
-    );
+    // No glyphs anywhere in the subtree → nothing the user can see or would edit as a "text
+    // colour". Report the role as absent rather than as a colour nobody asked for (e.g. the
+    // navbar shell, a bg-only <a>, or an icon-only button all have a computed `color` that never
+    // paints a pixel).
+    if (!block.textContent?.trim()) return null;
+    // CSS `color` INHERITS, so the rule that actually declares it almost never lives on the
+    // deepest node that happens to own a text node — searching down for "the node with a text
+    // child" finds a GSAP split-text letter div (this template explodes headings into one <div>
+    // per letter) or an unclassed text-hook <span>, neither of which is stylable or anchorable.
+    // That is exactly the .gsap_split_word fragment problem resolveMeaningfulBlock exists to
+    // avoid, reintroduced one layer down. `block` is both the CORRECT element (inheritance means
+    // getComputedStyle(block).color already equals what's rendered) and the ADDRESSABLE one
+    // (data-sx-c / data-sx-block are stamped on blocks, never on a GSAP letter fragment) — so the
+    // block itself is the text painter. Do not walk the subtree for this role.
+    return block;
   }
   return (
     candidates.find((el) => {
@@ -142,7 +153,12 @@ export function buildSelector(el: HTMLElement): string | null {
   const anchor = el.closest("[data-sx-c]") as HTMLElement | null;
   if (anchor === el) {
     const sel = `[data-sx-c="${anchor.getAttribute("data-sx-c")}"]`;
-    return verify(sel, el);
+    const verified = verify(sel, el);
+    if (verified) return verified;
+    // Anchor id isn't unique on this page (e.g. editColor invoked inside a .map() so several
+    // elements share one data-sx-c value) — fall through to the block walk below instead of
+    // refusing outright. Every attempt still goes through verify(), so nothing unprovable is
+    // ever returned.
   }
   const root = el.closest("[data-sx-block]") as HTMLElement | null;
   if (!root) return null;
