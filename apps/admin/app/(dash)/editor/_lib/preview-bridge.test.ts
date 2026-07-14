@@ -16,7 +16,7 @@ function fakeIframeRef() {
     },
   } as unknown as Window;
   const ref: { current: { contentWindow: Window | null } | null } = { current: { contentWindow } };
-  return { sent, ref: ref as PreviewTargetRef, detach: () => (ref.current = null) };
+  return { sent, ref: ref as PreviewTargetRef };
 }
 
 describe("createPreviewBridge", () => {

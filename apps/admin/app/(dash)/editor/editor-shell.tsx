@@ -657,7 +657,7 @@ export function EditorShell(props: EditorShellProps) {
     [publishing, pending, pendingPalette, paletteReset, saveDraft, themeId, draftRevision],
   );
 
-  // ── Step 6: status, guards, postMessage bridge ────────────────────────────────
+  // ── Step 6: status and guards (the bridge itself now lives in _lib/preview-bridge) ──
   // A palette-only change (no block edits) counts as unsaved too — it drives the same dirty
   // indicator, save/publish enablement, and navigation guards as a block edit. `paletteReset` alone
   // (pendingPalette back to {}) must ALSO count as dirty — otherwise a reset-only change looks
