@@ -9,16 +9,39 @@ describe("paletteStyle", () => {
     expect(paletteStyle({ seeds: {}, tokens: {}, overrides: [] })).toBeNull();
   });
 
-  it("emits only present seed vars at :root", () => {
+  it("emits only present seed vars", () => {
     const css = paletteStyle({ seeds: { accentAqua: "#123456" } })!;
-    expect(css).toMatch(/:root\{/);
+    expect(css).toMatch(/:root, html body\{/);
     expect(css).toContain("--_🎨-color--base---accent--aqua:#123456");
     expect(css).not.toMatch(/ocean/);
   });
 
-  it("emits token vars at :root", () => {
+  // REGRESSION: the template declares every tier-B token on `body` as well as `:root`, so a
+  // `:root`-only rule lost to it page-wide and "change the whole site" did nothing. `html body`
+  // (0,0,2) out-specifies the template's `body` (0,0,1) irrespective of source order.
+  it("targets body too, so a token override is not shadowed by the template's body rule", () => {
     const css = paletteStyle({ tokens: { inkBase: "#abcdef" } })!;
     expect(css).toContain("--_🎨-color--tokens---ink--base:#abcdef");
+    expect(css.startsWith(":root, html body{")).toBe(true);
+  });
+
+  it("emits seeds and tokens in one rule", () => {
+    const css = paletteStyle({ seeds: { accentAqua: "#123456" }, tokens: { inkBase: "#abcdef" } })!;
+    expect(css).toBe(
+      ":root, html body{--_🎨-color--base---accent--aqua:#123456;" +
+        "--_🎨-color--tokens---ink--base:#abcdef}",
+    );
+  });
+
+  // The var rule must not swallow per-element override rules that follow it.
+  it("keeps override rules separate from the var rule", () => {
+    const css = paletteStyle({
+      tokens: { inkBase: "#abcdef" },
+      overrides: [{ selector: ".a", bg: "#111111" }],
+    })!;
+    expect(css).toBe(
+      ":root, html body{--_🎨-color--tokens---ink--base:#abcdef}.a{background-color:#111111}",
+    );
   });
 
   it("skips invalid hex defensively (never trusts caller)", () => {

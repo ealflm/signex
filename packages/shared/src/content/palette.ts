@@ -23,7 +23,13 @@ export type SeedKey = keyof typeof PALETTE_VARS;
 export const SEED_KEYS = Object.keys(PALETTE_VARS) as SeedKey[];
 
 // ── Tier B: :root-level semantic tokens worth overriding site-wide. ──
-// Allowlist only; section-scoped re-declarations still win locally (documented limitation).
+// Allowlist only. Two things re-declare these tokens in the template, and they are NOT the same:
+//   1. `body` re-declares all 12 — page-wide, and therefore NOT a local override at all. An
+//      override emitted only at `:root` loses to it everywhere, which made this whole tier a silent
+//      no-op. paletteStyle() now out-specifies it (see ROOT_SELECTOR there); nothing to work around.
+//   2. ~29 section selectors (`.master_footer`, `.wrap_home-a`, `.card_team`, …) re-declare them for
+//      their own subtree. Those still win locally — BY DESIGN, not a limitation: a site-wide token
+//      change should not flatten a section that deliberately re-themes itself.
 export const TOKEN_VARS = {
   inkBase:            { cssVar: "--_🎨-color--tokens---ink--base",                        label: "Chữ chính" },
   inkLift:            { cssVar: "--_🎨-color--tokens---ink--lift",                        label: "Chữ nổi" },
