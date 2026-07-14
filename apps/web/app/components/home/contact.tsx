@@ -74,7 +74,7 @@ export function Contact({
   const t = dict.form;
 
   return (
-    <section className="section_hero-contact-b">
+    <section className="section_hero-contact-b" data-sx-block="contactPage">
       <div className="padding-global">
         <div className="w-layout-blockcontainer container-large w-container">
           <div className="master_contact-b">

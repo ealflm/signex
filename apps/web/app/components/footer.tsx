@@ -47,7 +47,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
   const t = dict;
 
   return (
-    <section className="footer">
+    <section className="footer" data-sx-block="footer">
       <div className="master_footer" {...editColor(editable, "footer.bar.color", { token: "baseDark", roles: ["bg"] })}>
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">

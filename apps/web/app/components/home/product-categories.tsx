@@ -28,7 +28,7 @@ export function ProductCategories({ dict, editable = false }: { dict: Dictionary
   const t = dict;
 
   return (
-    <section className="section_hero-resorts" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18">
+    <section className="section_hero-resorts" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18" data-sx-block="productsHeader">
       <div className="padding-global">
         <div className="w-layout-blockcontainer container-large w-container">
           <div className="headline_home-about" data-w-id="0f29df12-8c38-da6f-794d-3989ac10d663" style={{ opacity: 0, filter: 'blur(5px)' }}>

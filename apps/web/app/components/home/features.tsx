@@ -34,7 +34,7 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
     : "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm";
 
   return (
-    <section className="section_features">
+    <section className="section_features" data-sx-block="features">
       <div className="padding-global">
         <div className="w-layout-blockcontainer container-large w-container">
           <div className="headline_features" data-w-id="0f29df12-8c38-da6f-794d-3989ac10d663" style={{ opacity: 0, filter: 'blur(5px)' }}>

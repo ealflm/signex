@@ -10,7 +10,7 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
   const t = dict.hero;
 
   return (
-    <section className="section_hero-home-a">
+    <section className="section_hero-home-a" data-sx-block="hero">
       <div className="padding-global home-a">
         <div className="w-layout-blockcontainer container-large w-container">
           <div className="wrap_home-a">

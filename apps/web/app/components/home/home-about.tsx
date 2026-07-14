@@ -41,7 +41,7 @@ export function HomeAbout({
   const t = dict;
 
   return (
-    <section className="section_home-about">
+    <section className="section_home-about" data-sx-block="about">
       <div className="padding-global">
         <div className="w-layout-blockcontainer container-large w-container">
           <div className="headline_home-about" data-w-id={headlineWid} style={{ opacity: 0, filter: 'blur(5px)' }}>

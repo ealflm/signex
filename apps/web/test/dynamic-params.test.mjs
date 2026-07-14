@@ -105,3 +105,26 @@ test("marketing tags come from the GTM container constant, not the theme meta bl
   const content = readFileSync(join(APP, "lib", "content.ts"), "utf8");
   assert.doesNotMatch(content, /ga4Id:\s*b\.meta/);
 });
+
+// data-sx-block — the scope every generated colour-override selector is anchored to. Must be
+// rendered on the PUBLIC site (unconditionally), not just in /preview, since the override CSS
+// has to match there. Spot-checks three block roots; every other block root is stamped too (see
+// Task 3 report) but this suite stays STATIC (readFileSync, no server/network), so the full
+// runtime assertion (and the data-edit-* leak check) lives in the E2E task.
+test("block roots are stamped with data-sx-block, unconditionally", () => {
+  for (const [file, key] of [
+    ["navbar.tsx", "nav"],
+    ["home/hero.tsx", "hero"],
+    ["footer.tsx", "footer"],
+  ]) {
+    const s = src("components", file);
+    assert.match(s, new RegExp(`data-sx-block="${key}"`), `${file}: block root not stamped`);
+    // It must NOT be gated on `editable` — generated override selectors are scoped to this
+    // attribute, so it has to exist on the public site, not just in preview.
+    assert.doesNotMatch(
+      s,
+      new RegExp(`editable[^\\n]*data-sx-block="${key}"`),
+      `${file}: data-sx-block must not be conditional on editable`,
+    );
+  }
+});

@@ -51,7 +51,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
   const heroWebm = hasCustomVideo ? heroVideo.webmUrl : "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_webm.webm";
   return (
     <>
-      <section className="section_hero-home-c">
+      <section className="section_hero-home-c" data-sx-block="aboutPage">
         {/* about hero video: configurable VideoRef (aboutPage.hero.video); literal fallback below */}
         <div
           className="master_hero-home-c w-background-video w-background-video-atom"
@@ -136,7 +136,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           </div>
         </div>
       </section>
-      <section>
+      <section data-sx-block="aboutPage">
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container"></div>
         </div>
@@ -146,7 +146,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           (af30d5d7 — not registered under /about's home-c data-wf-page) to the now-unused home-c
           stats reveal id (8dd77407) so it fades in like the rest of /about; the slider is a global
           Webflow component. Caladan placeholder copy — to be localised later. */}
-      <section className="section_testimonial">
+      <section className="section_testimonial" data-sx-block="aboutPage">
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="headline_testimonials-v2" data-w-id="8dd77407-7638-8860-84b4-1292d73f46a7" style={{ opacity: 0, filter: 'blur(5px)' }}>
@@ -205,7 +205,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           /about's data-wf-page). The cards reuse signex's existing card aesthetic (the stat tiles'
           light-gray surface + the MVV is-vision blue icon tint) via scoped .about-values_* in
           globals.css; content is dict-driven EN+VI (aboutPage.approach), icons by index. */}
-      <section className="section_home-about">
+      <section className="section_home-about" data-sx-block="aboutPage">
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
@@ -251,7 +251,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           Production Strengths) reusing the .about-values_* card aesthetic, each a bulleted list, plus
           a centered closing note. No ref section matched this layout (header + per-card bullet lists),
           so it's a custom build using signex's existing colours/type. dict-driven EN+VI. */}
-      <section className="section_home-about">
+      <section className="section_home-about" data-sx-block="aboutPage">
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>
@@ -349,7 +349,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           sections). Rows alternate item left/right by index; on ≤767px the .timeline_empty hides and
           even rows' circle is re-ordered to the front via a scoped nth-child rule (replacing Caladan's
           per-node w-node ids). dict-driven EN+VI; milestones are SIGNEX-themed placeholders. */}
-      <section className="section_timeline">
+      <section className="section_timeline" data-sx-block="aboutPage">
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>

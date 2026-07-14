@@ -6,7 +6,9 @@ import { editAttrs, editText, editColor } from "@/app/lib/edit-attrs";
 
 export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; editable?: boolean }) {
   return (
-    <div className="master_navigation">
+    // data-sx-block: the scope every generated colour-override selector is anchored to. Rendered
+    // on the PUBLIC site too (unlike data-edit-*), because the override CSS must match there.
+    <div className="master_navigation" data-sx-block="nav">
       <div className="banner-navbar" />
       <div
         className="navbar w-nav"

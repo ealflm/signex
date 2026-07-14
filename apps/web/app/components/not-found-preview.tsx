@@ -20,7 +20,7 @@ export function NotFoundPreview({
   const t = dict.notFound;
 
   return (
-    <div className="utility_page-wrap _404">
+    <div className="utility_page-wrap _404" data-sx-block="notFound">
       <div className="utility_page-content _404">
         <div className="w-layout-grid grid_404">
           <div className="content_404">
