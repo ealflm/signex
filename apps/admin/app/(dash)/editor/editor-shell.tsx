@@ -12,11 +12,9 @@
 //     the status pill). One Save-draft batches the whole map into ONE POST.
 //   • baseRef — the last server-known draft snapshot; pending layers on top (workingBlockData).
 //
-// postMessage protocol (both directions { source: "signex-editor", ... }), origin-verified:
-//   preview → admin:  { type: "edit", field, mediaKind }   → open the media picker
-//                     { type: "ready" }                     → re-apply live media swaps after (re)load
-//   admin   → preview: { type: "refresh" }                  → reload the iframe (after save / discard)
-//                     { type: "applyEdits", edits:[…] }      → live DOM media swap (no reload)
+// The preview is spoken to over the postMessage bridge in _lib/preview-bridge.ts — that file owns
+// the protocol, the origin checks and the listener; the shell owns what to say and when. Inbound
+// messages arrive at handleBridgeMessage below, already gated on origin + source.
 //
 // The NEW flow (vs the old /visual editor) records edits into `pending` and live-swaps the preview —
 // it does NOT PUT per edit. Persistence happens once on Save draft (save-draft batch) / Publish.
@@ -68,6 +66,12 @@ import {
   type ToolbarStatus,
 } from "./_lib/blocks";
 import { DEFAULT_MODE, type EditMode } from "./_lib/modes";
+import {
+  usePreviewBridge,
+  type ApplyEdit,
+  type BridgeMessage,
+  type MediaPreview,
+} from "./_lib/preview-bridge";
 import type { FieldAssetRow } from "./_fields/field-editor";
 import {
   MediaPickerDialog,
@@ -84,8 +88,6 @@ import {
   type PalettePatch,
 } from "./_lib/palette-patch";
 import { ANCHOR_PAINT_TARGETS, type PaletteOverride } from "@signex/shared";
-
-const SOURCE = "signex-editor";
 
 /**
  * TEMPORARY (removed in Task 10, with ANCHOR_PAINT_TARGETS itself).
@@ -185,16 +187,6 @@ function resolveTextEdit(
   return { path: pathNoLocale, value: merged };
 }
 
-// Live-swap descriptor mirrored to the preview overlay (keyed by full "blockKey.path" field).
-interface MediaPreview {
-  field: string;
-  kind: "image" | "video";
-  url?: string;
-  posterUrl?: string;
-  mp4Url?: string;
-  webmUrl?: string;
-}
-
 // A pending inline TEXT edit, mirrored to the overlay's applyEdits re-apply on `ready`. `field` is
 // the locale-agnostic snapshot path (matches data-edit-field); `locale` says which locale's canvas
 // it belongs to (the iframe is per-locale, so only the current locale's entries are re-posted).
@@ -203,9 +195,6 @@ interface TextPreview {
   value: string;
   locale: Locale;
 }
-
-// The union the overlay's applyEdits handler accepts (media live-swap + inline-text re-apply).
-type ApplyEdit = MediaPreview | { field: string; kind: "text"; text: string };
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
@@ -376,20 +365,16 @@ export function EditorShell(props: EditorShellProps) {
     }
   }, [pickerAssets]);
 
-  // ── postMessage helpers ───────────────────────────────────────────────────────
-  const postRefresh = useCallback(() => {
-    iframeRef.current?.contentWindow?.postMessage({ source: SOURCE, type: "refresh" }, webOrigin);
-  }, [webOrigin]);
-
-  const postApplyEdits = useCallback(
-    (edits: ApplyEdit[]) => {
-      iframeRef.current?.contentWindow?.postMessage(
-        { source: SOURCE, type: "applyEdits", edits },
-        webOrigin,
-      );
-    },
-    [webOrigin],
-  );
+  // ── Preview bridge ────────────────────────────────────────────────────────────
+  // Posters out + the (origin-verified) inbound listener live in _lib/preview-bridge.ts; the shell
+  // keeps only the decisions about what to say and when.
+  //
+  // `handleBridgeMessage` is declared BELOW, as a hoisted function: it posts back through this very
+  // bridge, so the two reference each other. That cycle is declaration-order only — the bridge's own
+  // listener is what invokes the handler, and by then `bridge` is initialised. usePreviewBridge holds
+  // it as an effect event, so re-creating it each render neither re-subscribes the listener nor
+  // leaves the handler reading a stale render's values.
+  const bridge = usePreviewBridge({ iframeRef, webOrigin, onMessage: handleBridgeMessage });
 
   // Mode lives here but is ENFORCED in the iframe, so every mode change has to be posted. This is
   // best-effort by nature: a preview that is still loading (or reloading) has no listener yet and
@@ -397,35 +382,22 @@ export function EditorShell(props: EditorShellProps) {
   // every (re)load, so the last mode the toolbar shows always wins. Both halves are needed: `ready`
   // alone would ignore mode changes made while the preview sits loaded, and this alone would lose
   // any change racing a reload.
-  const postSetMode = useCallback(
-    (m: EditMode) => {
-      iframeRef.current?.contentWindow?.postMessage(
-        { source: SOURCE, type: "setMode", mode: m },
-        webOrigin,
-      );
-    },
-    [webOrigin],
-  );
-
   const onModeChange = useCallback(
     (m: EditMode) => {
       setMode(m);
-      postSetMode(m);
+      bridge.postMode(m);
     },
-    [postSetMode],
+    [bridge],
   );
 
-  // Updates the palette working patch AND live-applies it to the preview (same postMessage idiom as
+  // Updates the palette working patch AND live-applies it to the preview (same bridge idiom as
   // postApplyEdits — the overlay listens for both). Called on every palette panel change.
   const applyPalette = useCallback(
     (next: PalettePatch) => {
       setPendingPalette(next);
-      iframeRef.current?.contentWindow?.postMessage(
-        { source: SOURCE, type: "applyPalette", css: paletteStyle(next) ?? "" },
-        webOrigin,
-      );
+      bridge.postApplyPalette(paletteStyle(next) ?? "");
     },
-    [webOrigin],
+    [bridge],
   );
 
   // "Đặt lại toàn bộ màu" — distinct from a normal `applyPalette({...})` edit: it must mark the save
@@ -435,28 +407,6 @@ export function EditorShell(props: EditorShellProps) {
     setPaletteReset(true);
     applyPalette({});
   }, [applyPalette]);
-
-  // Panel→canvas highlight: flash the canvas leaf matching a focused panel field's snapshot path.
-  const postHighlight = useCallback(
-    (field: string) => {
-      iframeRef.current?.contentWindow?.postMessage(
-        { source: SOURCE, type: "highlight", field },
-        webOrigin,
-      );
-    },
-    [webOrigin],
-  );
-
-  // Navigator→canvas: scroll the block's region into view + flash it (left-zone half of #2).
-  const postScrollToBlock = useCallback(
-    (blockKey: BlockKey) => {
-      iframeRef.current?.contentWindow?.postMessage(
-        { source: SOURCE, type: "scrollToBlock", blockKey },
-        webOrigin,
-      );
-    },
-    [webOrigin],
-  );
 
   // ── Media picker open / apply ─────────────────────────────────────────────────
   const openMediaPicker = useCallback(
@@ -517,11 +467,11 @@ export function EditorShell(props: EditorShellProps) {
         n.set(mediaTarget.field, entry);
         return n;
       });
-      postApplyEdits([entry]);
+      bridge.postApplyEdits([entry]);
       setPickerOpen(false);
       setMediaTarget(null);
     },
-    [mediaTarget, pickerAssets, pending, loadAssets, postApplyEdits],
+    [mediaTarget, pickerAssets, pending, loadAssets, bridge],
   );
 
   // ── Step 3: selection → panel + (page-backed) iframe navigation ──────────────
@@ -534,11 +484,11 @@ export function EditorShell(props: EditorShellProps) {
       // Canvas: scroll+flash now (same surface), and again on the next "ready" (if the surface changed
       // the iframe is remounting, so the live scroll lands after the new page hydrates).
       scrollOnReadyRef.current = blockKey;
-      postScrollToBlock(blockKey);
+      bridge.postScrollToBlock(blockKey);
       // Right panel: scroll to top + flash.
       setPanelFlash((n) => n + 1);
     },
-    [lang, previewPath, postScrollToBlock],
+    [lang, previewPath, bridge],
   );
 
   // "Bảng màu" nav entry → swap the context panel for the palette panel (mutually exclusive with a
@@ -624,7 +574,7 @@ export function EditorShell(props: EditorShellProps) {
         setMediaPreview(new Map());
         setTextPreview(new Map());
         toast.success("Saved to draft.");
-        postRefresh();
+        bridge.postRefresh();
         return body.draftRevision;
       }
       if (res.status === 409) {
@@ -666,7 +616,7 @@ export function EditorShell(props: EditorShellProps) {
       setSaving(false);
       savingRef.current = false;
     }
-  }, [pending, pendingPalette, paletteReset, themeId, draftRevision, postRefresh]);
+  }, [pending, pendingPalette, paletteReset, themeId, draftRevision, bridge]);
 
   // ── Step 5: Publish (save pending first) ──────────────────────────────────────
   const publish = useCallback(
@@ -785,119 +735,97 @@ export function EditorShell(props: EditorShellProps) {
     return () => document.removeEventListener("click", onClick, true);
   }, [unsavedCount]);
 
-  // Inbound bridge: preview overlay → admin. Subscribed once; reads live media via a ref.
-  useEffect(() => {
-    const onMessage = (e: MessageEvent) => {
-      if (e.origin !== webOrigin) return;
-      const data = e.data;
-      if (!data || typeof data !== "object" || data.source !== SOURCE) return;
-      if (data.type === "edit" && typeof data.field === "string") {
-        const kind = data.mediaKind === "video" ? "video" : "image";
-        openMediaPicker(data.field, kind);
-      } else if (data.type === "colorEdit" && typeof data.field === "string") {
-        // A colour-zone click (Task 6) — open the popover. `token` is "" for element-only zones;
-        // `roles` are the CSS custom-property roles ("bg"/"text"/"border") the zone can override.
-        // `rect` is the zone's box in the IFRAME's viewport; add the iframe's own offset so the
-        // popover can anchor to the real element (the iframe is width-capped, never scaled, so the
-        // translation is a plain offset). Falls back to a zero box at the iframe's origin if an
-        // older preview build sends no rect.
-        const ir = iframeRef.current?.getBoundingClientRect();
-        const r = (data.rect ?? null) as
-          | { x: number; y: number; width: number; height: number }
-          | null;
-        setColorTarget({
-          field: data.field,
-          token: typeof data.token === "string" ? data.token : "",
-          roles: Array.isArray(data.roles) ? data.roles : [],
-          rect: {
-            x: (ir?.left ?? 0) + (r?.x ?? 0),
-            y: (ir?.top ?? 0) + (r?.y ?? 0),
-            width: r?.width ?? 0,
-            height: r?.height ?? 0,
-          },
-          // The zone's rendered colour per role, straight from the preview's computed style. Most
-          // tokens carry no stored value (they derive from a seed), so this is the only thing that
-          // can show what the clicked element actually looks like right now.
-          computed: (data.computed ?? {}) as Partial<Record<ColorRole, string>>,
-        });
-      } else if (data.type === "textEdit" && typeof data.field === "string") {
-        // A committed inline text edit. `field` is the snapshot path WITHOUT locale; append the live
-        // locale so ONLY that leaf is written (the other locale stays untouched). Rides the SAME
-        // pending Map + Save-draft batch + status pill as a panel edit — no separate persistence.
-        const field = data.field as string;
-        const value = String(data.value ?? "");
-        const locale = langRef.current;
-        const [blockKey, ...rest] = field.split(".") as [BlockKey, ...string[]];
-        const blockData =
-          pendingRef.current.get(blockKey) ??
-          ((baseRef.current.blocks as unknown as Record<string, Record<string, unknown>>)[
-            blockKey
-          ] ??
-            {});
-        const edit = resolveTextEdit(blockData, rest, locale, value);
-        applyFieldEdit(blockKey, edit.path, edit.value);
-        // Mirror it so `ready` can re-apply it to the canvas after a refresh / locale remount.
-        setTextPreview((prev) => {
-          const n = new Map(prev);
-          n.set(`${field}.${locale}`, { field, value, locale });
-          return n;
-        });
-      } else if (data.type === "highlight" && typeof data.field === "string") {
-        // canvas→panel half of the two-way highlight: select + flash the matching panel field.
-        const [blockKey, ...rest] = (data.field as string).split(".") as [BlockKey, ...string[]];
-        onCanvasHighlight(blockKey, rest.join("."));
-      } else if (data.type === "ready") {
-        // Push the live mode into the fresh overlay. This is the ONLY way a (re)loaded preview
-        // learns the mode: it boots in "content" and postSetMode's earlier posts died with the
-        // previous document. Read modeRef, not `mode` — a mode changed WHILE the iframe was
-        // reloading was dropped on the floor, and this re-post is what recovers it.
-        // Deliberately unguarded, unlike the palette below: mode is pure UI state that the preview
-        // has no other source for, so re-asserting it can only ever restore agreement. (The palette
-        // is the opposite — the preview server-renders its own, so speaking unprompted DESTROYS it.)
-        postSetMode(modeRef.current);
-        // Re-apply live media swaps AND this-locale pending inline TEXT after a (re)load / remount.
-        const media = [...mediaPreviewRef.current.values()];
-        const text: ApplyEdit[] = [...textPreviewRef.current.values()]
-          .filter((t) => t.locale === langRef.current)
-          .map((t) => ({ field: t.field, kind: "text" as const, text: t.value }));
-        const all: ApplyEdit[] = [...media, ...text];
-        if (all.length > 0) postApplyEdits(all);
-        // Re-apply the unsaved palette patch after a (re)load / remount, same as media/text above —
-        // and note the `all.length > 0` guard those get. The palette needs the same guard: the
-        // preview SERVER-RENDERS the saved palette into #signex-palette, and posting
-        // unconditionally sent `css: ""` on every clean load (pending is empty whenever there's
-        // nothing unsaved — including right after a save), which blanked that node and showed the
-        // site WITHOUT its own saved colours. Only speak when we have something to say.
-        // A staged reset is the one empty patch that IS a change: it must still post "" so the
-        // cleared preview survives the reload.
-        if (!isEmptyPalette(pendingPaletteRef.current) || paletteResetRef.current) {
-          iframeRef.current?.contentWindow?.postMessage(
-            {
-              source: SOURCE,
-              type: "applyPalette",
-              css: paletteStyle(pendingPaletteRef.current) ?? "",
-            },
-            webOrigin,
-          );
-        }
-        // A select that changed the surface remounted the iframe — scroll once it's ready.
-        if (scrollOnReadyRef.current) {
-          postScrollToBlock(scrollOnReadyRef.current);
-          scrollOnReadyRef.current = null;
-        }
+  // Inbound bridge: preview overlay → admin. `data` has passed the bridge's origin + source gate and
+  // nothing else, so every branch narrows its own fields. The bridge subscribes its listener ONCE, so
+  // live values are read through refs here rather than captured.
+  function handleBridgeMessage(data: BridgeMessage) {
+    if (data.type === "edit" && typeof data.field === "string") {
+      const kind = data.mediaKind === "video" ? "video" : "image";
+      openMediaPicker(data.field, kind);
+    } else if (data.type === "colorEdit" && typeof data.field === "string") {
+      // A colour-zone click (Task 6) — open the popover. `token` is "" for element-only zones;
+      // `roles` are the CSS custom-property roles ("bg"/"text"/"border") the zone can override.
+      // `rect` is the zone's box in the IFRAME's viewport; add the iframe's own offset so the
+      // popover can anchor to the real element (the iframe is width-capped, never scaled, so the
+      // translation is a plain offset). Falls back to a zero box at the iframe's origin if an
+      // older preview build sends no rect.
+      const ir = iframeRef.current?.getBoundingClientRect();
+      const r = (data.rect ?? null) as
+        | { x: number; y: number; width: number; height: number }
+        | null;
+      setColorTarget({
+        field: data.field,
+        token: typeof data.token === "string" ? data.token : "",
+        roles: Array.isArray(data.roles) ? data.roles : [],
+        rect: {
+          x: (ir?.left ?? 0) + (r?.x ?? 0),
+          y: (ir?.top ?? 0) + (r?.y ?? 0),
+          width: r?.width ?? 0,
+          height: r?.height ?? 0,
+        },
+        // The zone's rendered colour per role, straight from the preview's computed style. Most
+        // tokens carry no stored value (they derive from a seed), so this is the only thing that
+        // can show what the clicked element actually looks like right now.
+        computed: (data.computed ?? {}) as Partial<Record<ColorRole, string>>,
+      });
+    } else if (data.type === "textEdit" && typeof data.field === "string") {
+      // A committed inline text edit. `field` is the snapshot path WITHOUT locale; append the live
+      // locale so ONLY that leaf is written (the other locale stays untouched). Rides the SAME
+      // pending Map + Save-draft batch + status pill as a panel edit — no separate persistence.
+      const field = data.field;
+      const value = String(data.value ?? "");
+      const locale = langRef.current;
+      const [blockKey, ...rest] = field.split(".") as [BlockKey, ...string[]];
+      const blockData =
+        pendingRef.current.get(blockKey) ??
+        ((baseRef.current.blocks as unknown as Record<string, Record<string, unknown>>)[blockKey] ??
+          {});
+      const edit = resolveTextEdit(blockData, rest, locale, value);
+      applyFieldEdit(blockKey, edit.path, edit.value);
+      // Mirror it so `ready` can re-apply it to the canvas after a refresh / locale remount.
+      setTextPreview((prev) => {
+        const n = new Map(prev);
+        n.set(`${field}.${locale}`, { field, value, locale });
+        return n;
+      });
+    } else if (data.type === "highlight" && typeof data.field === "string") {
+      // canvas→panel half of the two-way highlight: select + flash the matching panel field.
+      const [blockKey, ...rest] = data.field.split(".") as [BlockKey, ...string[]];
+      onCanvasHighlight(blockKey, rest.join("."));
+    } else if (data.type === "ready") {
+      // Push the live mode into the fresh overlay. This is the ONLY way a (re)loaded preview
+      // learns the mode: it boots in "content" and postMode's earlier posts died with the
+      // previous document. Read modeRef, not `mode` — a mode changed WHILE the iframe was
+      // reloading was dropped on the floor, and this re-post is what recovers it.
+      // Deliberately unguarded, unlike the palette below: mode is pure UI state that the preview
+      // has no other source for, so re-asserting it can only ever restore agreement. (The palette
+      // is the opposite — the preview server-renders its own, so speaking unprompted DESTROYS it.)
+      bridge.postMode(modeRef.current);
+      // Re-apply live media swaps AND this-locale pending inline TEXT after a (re)load / remount.
+      const media = [...mediaPreviewRef.current.values()];
+      const text: ApplyEdit[] = [...textPreviewRef.current.values()]
+        .filter((t) => t.locale === langRef.current)
+        .map((t) => ({ field: t.field, kind: "text" as const, text: t.value }));
+      const all: ApplyEdit[] = [...media, ...text];
+      if (all.length > 0) bridge.postApplyEdits(all);
+      // Re-apply the unsaved palette patch after a (re)load / remount, same as media/text above —
+      // and note the `all.length > 0` guard those get. The palette needs the same guard: the
+      // preview SERVER-RENDERS the saved palette into #signex-palette, and posting
+      // unconditionally sent `css: ""` on every clean load (pending is empty whenever there's
+      // nothing unsaved — including right after a save), which blanked that node and showed the
+      // site WITHOUT its own saved colours. Only speak when we have something to say.
+      // A staged reset is the one empty patch that IS a change: it must still post "" so the
+      // cleared preview survives the reload.
+      if (!isEmptyPalette(pendingPaletteRef.current) || paletteResetRef.current) {
+        bridge.postApplyPalette(paletteStyle(pendingPaletteRef.current) ?? "");
       }
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [
-    webOrigin,
-    openMediaPicker,
-    postApplyEdits,
-    postScrollToBlock,
-    postSetMode,
-    applyFieldEdit,
-    onCanvasHighlight,
-  ]);
+      // A select that changed the surface remounted the iframe — scroll once it's ready.
+      if (scrollOnReadyRef.current) {
+        bridge.postScrollToBlock(scrollOnReadyRef.current);
+        scrollOnReadyRef.current = null;
+      }
+    }
+  }
 
   // Esc exits full-page mode.
   useEffect(() => {
@@ -929,8 +857,8 @@ export function EditorShell(props: EditorShellProps) {
     setTextPreview(new Map());
     setDiscardAsk(null);
     if (leaveHref) router.push(stripBasePath(leaveHref));
-    else postRefresh();
-  }, [discardAsk, router, postRefresh]);
+    else bridge.postRefresh();
+  }, [discardAsk, router, bridge]);
 
   // Validity bubbles up from JSON field editors; the API's 422 is the authoritative gate, so we do
   // not block Save on it here. Kept as a stable no-op the panel can call.
@@ -1032,7 +960,7 @@ export function EditorShell(props: EditorShellProps) {
           rightCollapsed={rightCollapsed}
           onToggleLeft={toggleLeftPanel}
           onToggleRight={toggleRightPanel}
-          onReload={postRefresh}
+          onReload={bridge.postRefresh}
           onDiscard={onDiscard}
           onSave={onSave}
           onPublish={() => setPublishOpen(true)}
@@ -1113,7 +1041,7 @@ export function EditorShell(props: EditorShellProps) {
                 }}
                 onValidityChange={onValidityChange}
                 onFieldFocus={(name) => {
-                  if (selection) postHighlight(`${selection.blockKey}.${name}`);
+                  if (selection) bridge.postHighlight(`${selection.blockKey}.${name}`);
                 }}
                 flashField={flashField}
                 panelFlash={panelFlash}
