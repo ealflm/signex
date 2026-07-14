@@ -69,21 +69,39 @@ function painterFor(block: HTMLElement, role: ColorRole): HTMLElement | null {
     );
   }
   if (role === "text") {
-    // No glyphs anywhere in the subtree → nothing the user can see or would edit as a "text
-    // colour". Report the role as absent rather than as a colour nobody asked for (e.g. the
-    // navbar shell, a bg-only <a>, or an icon-only button all have a computed `color` that never
-    // paints a pixel).
-    if (!block.textContent?.trim()) return null;
-    // CSS `color` INHERITS, so the rule that actually declares it almost never lives on the
-    // deepest node that happens to own a text node — searching down for "the node with a text
-    // child" finds a GSAP split-text letter div (this template explodes headings into one <div>
-    // per letter) or an unclassed text-hook <span>, neither of which is stylable or anchorable.
-    // That is exactly the .gsap_split_word fragment problem resolveMeaningfulBlock exists to
-    // avoid, reintroduced one layer down. `block` is both the CORRECT element (inheritance means
-    // getComputedStyle(block).color already equals what's rendered) and the ADDRESSABLE one
-    // (data-sx-c / data-sx-block are stamped on blocks, never on a GSAP letter fragment) — so the
-    // block itself is the text painter. Do not walk the subtree for this role.
-    return block;
+    // `text` is the role where the obvious answers are both wrong, in opposite directions. Two
+    // rejected approaches, so the next reader doesn't "simplify" back into either:
+    //
+    //   (a) Walk DOWN to the deepest node owning a text child. Fails LOUDLY: in this template that
+    //       node is a GSAP split-text letter <div> (headings are exploded one <div> per letter) or
+    //       an unclassed text-hook <span> — neither is stylable or anchorable, so buildSelector
+    //       returns null and the role dies for every anchor. Same .gsap_split_word fragment
+    //       problem resolveMeaningfulBlock exists to avoid, reintroduced one layer down.
+    //
+    //   (b) Return `block` unconditionally, reasoning "colour inherits, so block's computed colour
+    //       IS the rendered one". Fails SILENTLY, which is worse: inheritance only holds while no
+    //       descendant re-declares `color`. Click a padding/flex gap in the hero and `block`
+    //       resolves to <section data-sx-block="hero"> (no intervening layout div carries an
+    //       anchor, so the walk goes all the way up); that section computes to navy #0b1f33 while
+    //       .wrap_home-a inside it re-declares `color: white` and every glyph on screen is white.
+    //       Reporting navy plus a provably-unique selector hands the caller a hex that no glyph
+    //       has and promises an override that would change nothing — the "lying hex" rgbToHex
+    //       goes out of its way to avoid, laundered through the selector instead.
+    //
+    // So: `block` is the painter only when it genuinely DETERMINES its text colour. Gather the
+    // elements that actually render glyphs (own a direct, non-empty text node) and require all of
+    // them to have inherited block's colour unchanged. If any re-declares, no single element
+    // paints this block's text — the role is absent rather than a lie.
+    const glyphBearers = candidates.filter((el) =>
+      Array.from(el.childNodes).some((n) => n.nodeType === Node.TEXT_NODE && !!n.nodeValue?.trim()),
+    );
+    // Subsumes the old no-glyph gate: the navbar shell, a bg-only <a> and an icon-only button all
+    // have a computed `color` that never paints a pixel, so there is no text colour to edit.
+    if (glyphBearers.length === 0) return null;
+    // Compare the computed strings getComputedStyle already resolved and serialized — NOT hex.
+    // Hex would drop every non-opaque colour to undefined and make unequal colours compare equal.
+    const blockColor = getComputedStyle(block).color;
+    return glyphBearers.every((el) => getComputedStyle(el).color === blockColor) ? block : null;
   }
   return (
     candidates.find((el) => {
