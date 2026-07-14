@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CssSelectorSchema } from "./selector";
 
 /** #rgb or #rrggbb. Alpha is NOT stored — the token system derives transparency from the seeds. */
 export const Hex = z
@@ -51,17 +52,30 @@ export const PaletteOverrideRolesSchema = z
   .partial()
   .strict();
 /**
- * Keyed by anchorId = the same "<blockKey>.<path>" string used by data-edit-field, e.g.
- * "nav.cta.color". Constrained to the real anchorId charset (letters, digits, dot, hyphen, colon,
- * underscore) — this is also a stored-XSS guard: anchorId is emitted into a `<style>` element via
- * dangerouslySetInnerHTML (see palette-style.ts), and `<style>` is an HTML raw-text element, so an
- * unconstrained key like `</style><script>…` could break out and execute for every visitor.
+ * The anchorId charset = the same "<blockKey>.<path>" string used by data-edit-field, e.g.
+ * "nav.cta.color". Still used by the `[data-sx-c="…"]` production inside the selector grammar
+ * (see selector.ts), which is where the stored-XSS guard now lives.
  */
 export const PALETTE_ANCHOR_ID_RE = /^[A-Za-z0-9._:-]+$/;
-export const PaletteOverridesSchema = z.record(
-  z.string().regex(PALETTE_ANCHOR_ID_RE),
-  PaletteOverrideRolesSchema,
-);
+
+/**
+ * One per-element override. `selector` is the full CSS target — a hand-stamped anchor is just the
+ * special case `[data-sx-c="…"]`, which is why there is no separate anchorId mechanism.
+ * Grammar-constrained (see selector.ts): this string is emitted into `<style>`.
+ */
+export const PaletteOverrideSchema = z
+  .object({
+    selector: CssSelectorSchema,
+    bg: Hex.optional(),
+    text: Hex.optional(),
+    border: Hex.optional(),
+  })
+  .strict();
+
+/** Capped so a runaway client cannot bloat the `<style>` on every public page. */
+export const PaletteOverridesSchema = z.array(PaletteOverrideSchema).max(200);
+
+export type PaletteOverride = z.infer<typeof PaletteOverrideSchema>;
 
 /**
  * Anchors whose colour is painted by a DESCENDANT rather than by the anchor element itself, mapped

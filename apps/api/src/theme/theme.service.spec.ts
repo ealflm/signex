@@ -470,7 +470,14 @@ describe('ThemeService.saveDraft', () => {
         ...BASE_SNAPSHOT,
         palette: {
           tokens: { inkBase: '#000000' },
-          overrides: { 'hero.title': { bg: '#ffffff', text: '#000000', border: '#cccccc' } },
+          overrides: [
+            {
+              selector: '[data-sx-c="hero.title"]',
+              bg: '#ffffff',
+              text: '#000000',
+              border: '#cccccc',
+            },
+          ],
         },
       },
     });
@@ -489,27 +496,36 @@ describe('ThemeService.saveDraft', () => {
     const updatedSnap = finalUpdate[0].data.draftSnapshot;
     expect(updatedSnap.palette.seeds.accentAqua).toBe('#123456');
     expect(updatedSnap.palette.tokens).toEqual({ inkBase: '#000000' });
-    expect(updatedSnap.palette.overrides).toEqual({
-      'hero.title': { bg: '#ffffff', text: '#000000', border: '#cccccc' },
-    });
+    expect(updatedSnap.palette.overrides).toEqual([
+      {
+        selector: '[data-sx-c="hero.title"]',
+        bg: '#ffffff',
+        text: '#000000',
+        border: '#cccccc',
+      },
+    ]);
   });
 
-  it('deep-merges override roles for the same anchorId across saves (no cross-save role loss)', async () => {
+  it('deep-merges override roles for the same selector across saves (no cross-save role loss)', async () => {
     tx.theme.findUniqueOrThrow.mockReset();
     tx.theme.findUniqueOrThrow.mockResolvedValue({
       draftSnapshot: {
         ...BASE_SNAPSHOT,
         palette: {
-          overrides: { 'nav.cta.color': { text: '#111111' } },
+          overrides: [
+            { selector: '[data-sx-c="nav.cta.color"]', text: '#111111' },
+          ],
         },
       },
     });
 
-    // A later save only touches `bg` on the same anchor — `text` from the earlier save must survive.
+    // A later save only touches `bg` on the same element — `text` from the earlier save must survive.
     await service.saveDraft(ACTOR, THEME_ID, {
       edits: [],
       expectedDraftRevision: 5,
-      palette: { overrides: { 'nav.cta.color': { bg: '#222222' } } },
+      palette: {
+        overrides: [{ selector: '[data-sx-c="nav.cta.color"]', bg: '#222222' }],
+      },
     } as any);
 
     const finalUpdate = tx.theme.update.mock.calls.find(
@@ -517,10 +533,9 @@ describe('ThemeService.saveDraft', () => {
     );
     expect(finalUpdate).toBeDefined();
     const updatedSnap = finalUpdate[0].data.draftSnapshot;
-    expect(updatedSnap.palette.overrides['nav.cta.color']).toEqual({
-      text: '#111111',
-      bg: '#222222',
-    });
+    expect(updatedSnap.palette.overrides).toEqual([
+      { selector: '[data-sx-c="nav.cta.color"]', text: '#111111', bg: '#222222' },
+    ]);
   });
 
   it('replacePalette:true replaces the whole palette verbatim, discarding stale keys (reset support)', async () => {

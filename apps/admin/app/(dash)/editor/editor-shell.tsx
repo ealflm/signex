@@ -82,8 +82,23 @@ import {
   setToken,
   type PalettePatch,
 } from "./_lib/palette-patch";
+import { ANCHOR_PAINT_TARGETS, type PaletteOverride } from "@signex/shared";
 
 const SOURCE = "signex-editor";
+
+/**
+ * TEMPORARY (removed in Task 10, with ANCHOR_PAINT_TARGETS itself).
+ * The colour popover still speaks anchorIds. Overrides are now selector-keyed, so translate — and
+ * keep honouring the paint-target redirect, or the nav CTA's background would regress: its pill is
+ * painted by a `.btn-bg` child that covers the transparent <a>, so a declaration on the anchor is
+ * invisible. Task 5's auto-resolve supplies the full selector and makes this obsolete.
+ */
+function anchorSelector(anchorId: string, role: "bg" | "text" | "border"): string {
+  const paint = Object.hasOwn(ANCHOR_PAINT_TARGETS, anchorId)
+    ? ANCHOR_PAINT_TARGETS[anchorId][role]
+    : undefined;
+  return paint ? `[data-sx-c="${anchorId}"] ${paint}` : `[data-sx-c="${anchorId}"]`;
+}
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -553,26 +568,21 @@ export function EditorShell(props: EditorShellProps) {
         } else if (!isEmptyPalette(pendingPalette)) {
           // Shallow-merge per slice — mirrors the server's merge (theme.service.ts saveDraft) — so a
           // patch that only touched e.g. seeds this session doesn't wipe previously-saved tokens/overrides.
-          // `overrides` is merged one level deeper (per-anchor role merge), byte-identical in shape to
-          // the API's merge: a whole-object replace per anchorId would drop a role saved in an earlier
+          // `overrides` is a LIST keyed by `selector`, merged role-wise per selector, byte-identical
+          // in shape to the API's merge: a whole-entry replace would drop a role saved in an earlier
           // session (pendingPalette resets to {} across a save boundary).
           const prevPalette = baseRef.current.palette ?? {};
-          const prevOverrides = prevPalette.overrides ?? {};
-          const patchOverrides = pendingPalette.overrides ?? {};
-          const overrides: Record<string, Record<string, unknown>> = {};
-          for (const anchor of new Set([
-            ...Object.keys(prevOverrides),
-            ...Object.keys(patchOverrides),
-          ])) {
-            overrides[anchor] = {
-              ...(prevOverrides[anchor] ?? {}),
-              ...(patchOverrides[anchor] ?? {}),
-            };
+          const bySelector = new Map<string, PaletteOverride>();
+          for (const ov of prevPalette.overrides ?? []) {
+            if (ov?.selector) bySelector.set(ov.selector, { ...ov });
+          }
+          for (const ov of pendingPalette.overrides ?? []) {
+            bySelector.set(ov.selector, { ...(bySelector.get(ov.selector) ?? {}), ...ov });
           }
           baseRef.current.palette = {
             seeds: { ...(prevPalette.seeds ?? {}), ...(pendingPalette.seeds ?? {}) },
             tokens: { ...(prevPalette.tokens ?? {}), ...(pendingPalette.tokens ?? {}) },
-            overrides,
+            overrides: [...bySelector.values()],
           };
         }
         setDraftRevision(body.draftRevision);
@@ -1101,7 +1111,11 @@ export function EditorShell(props: EditorShellProps) {
                 ? pendingPalette.tokens?.[colorTarget.token as TokenKey]
                 : undefined
           }
-          elementValueFor={(role) => pendingPalette.overrides?.[colorTarget.field]?.[role]}
+          elementValueFor={(role) =>
+            pendingPalette.overrides?.find(
+              (o) => o.selector === anchorSelector(colorTarget.field, role),
+            )?.[role]
+          }
           onPickToken={(tokenKey, hex) => {
             const isSeed = tokenKey in PALETTE_VARS;
             applyPalette(
@@ -1111,7 +1125,7 @@ export function EditorShell(props: EditorShellProps) {
             );
           }}
           onPickElement={(anchorId, role, hex) =>
-            applyPalette(setOverride(pendingPalette, anchorId, role, hex))
+            applyPalette(setOverride(pendingPalette, anchorSelector(anchorId, role), role, hex))
           }
           onClose={() => setColorTarget(null)}
         />

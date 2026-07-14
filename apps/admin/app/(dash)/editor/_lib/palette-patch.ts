@@ -18,12 +18,21 @@ export function setToken(p: PalettePatch, key: string, hex: string): PalettePatc
 
 export function setOverride(
   p: PalettePatch,
-  anchorId: string,
+  selector: string,
   role: "bg" | "text" | "border",
   hex: string,
 ): PalettePatch {
-  const prev = p.overrides?.[anchorId] ?? {};
-  return { ...p, overrides: { ...(p.overrides ?? {}), [anchorId]: { ...prev, [role]: hex } } };
+  const list = p.overrides ?? [];
+  const i = list.findIndex((o) => o.selector === selector);
+  const next =
+    i >= 0
+      ? list.map((o, j) => (j === i ? { ...o, [role]: hex } : o))
+      : [...list, { selector, [role]: hex }];
+  return { ...p, overrides: next };
+}
+
+export function clearOverride(p: PalettePatch, selector: string): PalettePatch {
+  return { ...p, overrides: (p.overrides ?? []).filter((o) => o.selector !== selector) };
 }
 
 export function resetAll(): PalettePatch {
@@ -35,6 +44,6 @@ export function isEmptyPalette(p: PalettePatch | undefined | null): boolean {
   const n =
     Object.keys(p.seeds ?? {}).length +
     Object.keys(p.tokens ?? {}).length +
-    Object.keys(p.overrides ?? {}).length;
+    (p.overrides ?? []).length;
   return n === 0;
 }

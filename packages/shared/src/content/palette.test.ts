@@ -11,7 +11,7 @@ describe("PaletteSchema", () => {
     const r = PaletteSchema.safeParse({
       seeds: { accentAqua: "#2ec4b6", baseDark: "#0b1f33" },
       tokens: { inkBase: "#ffffff" },
-      overrides: { "hero.cta": { bg: "#ff0000", text: "#fff" } },
+      overrides: [{ selector: '[data-sx-c="hero.cta"]', bg: "#ff0000", text: "#fff" }],
     });
     expect(r.success).toBe(true);
   });
@@ -32,23 +32,30 @@ describe("PaletteSchema", () => {
 
   it("rejects an unknown override role", () => {
     const r = PaletteSchema.safeParse({
-      overrides: { "hero.cta": { glow: "#fff" } },
+      overrides: [{ selector: '[data-sx-c="hero.cta"]', glow: "#fff" }],
     });
     expect(r.success).toBe(false);
   });
 
-  it("rejects an override anchorId containing HTML metacharacters (stored-XSS guard)", () => {
+  it("rejects an override selector containing HTML metacharacters (stored-XSS guard)", () => {
     const r = PaletteSchema.safeParse({
-      overrides: { "</style>": { bg: "#000000" } },
+      overrides: [{ selector: "</style>", bg: "#000000" }],
     });
     expect(r.success).toBe(false);
   });
 
-  it("still accepts a normal anchorId of the real convention (dots, letters, digits, hyphen)", () => {
+  it("still accepts an anchor selector of the real convention (dots, letters, digits, hyphen)", () => {
     const r = PaletteSchema.safeParse({
-      overrides: { "nav.cta.color": { bg: "#000000" } },
+      overrides: [{ selector: '[data-sx-c="nav.cta.color"]', bg: "#000000" }],
     });
     expect(r.success).toBe(true);
+  });
+
+  it("caps overrides at 200 and rejects an unsupported selector", () => {
+    const one = { selector: ".a", bg: "#000000" };
+    expect(PaletteSchema.safeParse({ overrides: Array(200).fill(one) }).success).toBe(true);
+    expect(PaletteSchema.safeParse({ overrides: Array(201).fill(one) }).success).toBe(false);
+    expect(PaletteSchema.safeParse({ overrides: [{ selector: "*", bg: "#000000" }] }).success).toBe(false);
   });
 });
 

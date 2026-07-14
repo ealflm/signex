@@ -302,38 +302,31 @@ export class ThemeService {
           return;
         }
 
-        // Merge the palette patch, shallow-merged per slice, so a patch that
-        // only sends e.g. `seeds` doesn't wipe existing `tokens`/`overrides`.
-        // `overrides` is merged one level deeper (per-anchor role merge): a whole-object replace per
-        // anchorId would drop a role saved in an earlier session (e.g. `text` saved now, `bg` saved
-        // later on the same anchor) since `pendingPalette` resets to {} across a save boundary.
+        // Merge the palette patch, shallow-merged per slice, so a patch that only sends e.g.
+        // `seeds` doesn't wipe existing `tokens`/`overrides`.
+        // `overrides` is a LIST keyed by `selector`: merge role-wise per selector, because
+        // pendingPalette resets to {} across a save boundary — a whole-entry replace would drop a
+        // role saved in an earlier session (e.g. `text` now, `bg` later on the same element).
         if (palette) {
-          const prev = (snap.palette ?? {}) as Record<
-            string,
-            Record<string, unknown>
-          >;
-          const prevOverrides = (prev.overrides ?? {}) as Record<
-            string,
-            Record<string, unknown>
-          >;
-          const patchOverrides = (palette.overrides ?? {}) as Record<
-            string,
-            Record<string, unknown>
-          >;
-          const overrides: Record<string, Record<string, unknown>> = {};
-          for (const anchor of new Set([
-            ...Object.keys(prevOverrides),
-            ...Object.keys(patchOverrides),
-          ])) {
-            overrides[anchor] = {
-              ...(prevOverrides[anchor] ?? {}),
-              ...(patchOverrides[anchor] ?? {}),
-            };
+          const prev = (snap.palette ?? {}) as {
+            seeds?: Record<string, string>;
+            tokens?: Record<string, string>;
+            overrides?: Array<Record<string, string>>;
+          };
+          const bySelector = new Map<string, Record<string, string>>();
+          for (const ov of prev.overrides ?? []) {
+            if (ov?.selector) bySelector.set(ov.selector, { ...ov });
+          }
+          for (const ov of palette.overrides ?? []) {
+            bySelector.set(ov.selector, {
+              ...(bySelector.get(ov.selector) ?? {}),
+              ...ov,
+            });
           }
           snap.palette = {
             seeds: { ...(prev.seeds ?? {}), ...(palette.seeds ?? {}) },
             tokens: { ...(prev.tokens ?? {}), ...(palette.tokens ?? {}) },
-            overrides,
+            overrides: [...bySelector.values()],
           };
         }
       },

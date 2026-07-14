@@ -6,7 +6,7 @@ describe("paletteStyle", () => {
     expect(paletteStyle(undefined)).toBeNull();
     expect(paletteStyle(null)).toBeNull();
     expect(paletteStyle({})).toBeNull();
-    expect(paletteStyle({ seeds: {}, tokens: {}, overrides: {} })).toBeNull();
+    expect(paletteStyle({ seeds: {}, tokens: {}, overrides: [] })).toBeNull();
   });
 
   it("emits only present seed vars at :root", () => {
@@ -21,63 +21,40 @@ describe("paletteStyle", () => {
     expect(css).toContain("--_🎨-color--tokens---ink--base:#abcdef");
   });
 
-  it("emits per-anchor override rules", () => {
-    const css = paletteStyle({ overrides: { "hero.cta": { bg: "#ff0000", text: "#ffffff" } } })!;
-    expect(css).toContain('[data-sx-c="hero.cta"]{background-color:#ff0000;color:#ffffff}');
-  });
-
   it("skips invalid hex defensively (never trusts caller)", () => {
     expect(paletteStyle({ seeds: { accentAqua: "javascript:alert(1)" } as never })).toBeNull();
   });
 
-  // The nav CTA is a TRANSPARENT <a> whose pill is painted by a .btn-bg child that fully covers it.
-  // Emitting background-color on the anchor put the colour BEHIND that child, so picking a colour
-  // changed nothing on screen. ANCHOR_PAINT_TARGETS redirects the declaration to the painting child.
-  it("targets the painting descendant for anchors that don't paint their own background", () => {
-    const css = paletteStyle({ overrides: { "nav.cta.color": { bg: "#ff0000" } } })!;
-    expect(css).toContain('[data-sx-c="nav.cta.color"] .btn-bg{background-color:#ff0000}');
-  });
-
-  // The anchorId charset permits "__proto__"/"constructor", so a bare index into the paint map would
-  // walk the prototype chain instead of missing — these must fall back to the anchor selector.
-  it("does not resolve paint targets through the prototype chain", () => {
-    for (const evil of ["__proto__", "constructor", "toString"]) {
-      const css = paletteStyle({ overrides: { [evil]: { bg: "#ff0000" } } })!;
-      expect(css).toBe(`[data-sx-c="${evil}"]{background-color:#ff0000}`);
-    }
-  });
-
-  // text INHERITS to the descendants that render the glyphs, so it must stay on the anchor even
-  // though this anchor redirects its bg — splitting per-role is the whole point of the map.
-  it("keeps a non-redirected role on the anchor itself", () => {
+  it("emits one rule per override, roles grouped", () => {
     const css = paletteStyle({
-      overrides: { "nav.cta.color": { bg: "#ff0000", text: "#ffffff" } },
+      overrides: [{ selector: '[data-sx-c="hero.cta"]', bg: "#ff0000", text: "#ffffff" }],
     })!;
-    expect(css).toContain('[data-sx-c="nav.cta.color"]{color:#ffffff}');
-    expect(css).toContain('[data-sx-c="nav.cta.color"] .btn-bg{background-color:#ff0000}');
+    expect(css).toContain('[data-sx-c="hero.cta"]{background-color:#ff0000;color:#ffffff}');
   });
 
-  // NOTE (F1 security fix): anchorId is now charset-constrained (schema regex + emitter reject) —
-  // a valid anchorId can never contain selector metacharacters or newlines, so the previous
-  // "escape it" behaviour was superseded by "reject it entirely" (defense in depth: never trust an
-  // already-persisted snapshot). These two tests were adapted from asserting escaped output to
-  // asserting the hostile anchor is dropped — see the F1 stored-XSS test below for the core case.
-  it("drops an anchorId with selector metacharacters (outside the allowed charset)", () => {
-    const css = paletteStyle({ overrides: { 'a"]{}': { bg: "#000000" } } });
-    expect(css).toBeNull();
-  });
-
-  it("drops an anchorId containing a newline/CR (outside the allowed charset)", () => {
-    const css = paletteStyle({ overrides: { "a\nb": { bg: "#000000" } } });
-    expect(css).toBeNull();
-  });
-
-  it("drops a hostile anchorId that would break out of the <style> element (stored XSS)", () => {
+  it("emits the selector verbatim, including a descendant path", () => {
     const css = paletteStyle({
-      overrides: { "</style><script>alert(1)</script>": { bg: "#000000" } },
-    });
-    // Escaping is not enough — the HTML parser ignores CSS escapes inside a raw-text element, so a
-    // hostile anchorId must be REJECTED entirely, never merely escaped into the output.
-    expect(css === null || !css.includes("<")).toBe(true);
+      overrides: [{ selector: '[data-sx-block="nav"] .btn-bg', bg: "#ff0000" }],
+    })!;
+    expect(css).toContain('[data-sx-block="nav"] .btn-bg{background-color:#ff0000}');
+  });
+
+  // Defence in depth: the schema rejects these on save, but a snapshot written before this rule
+  // (or straight to the DB) must still be rejected here — never escaped. <style> is raw text.
+  it("drops an override whose stored selector is not in the grammar", () => {
+    const css = paletteStyle({
+      overrides: [
+        { selector: "</style><script>alert(1)</script>", bg: "#000000" },
+        { selector: ".ok", bg: "#111111" },
+      ] as never,
+    })!;
+    expect(css).not.toContain("<script>");
+    expect(css).toContain(".ok{background-color:#111111}");
+  });
+
+  it("skips invalid hex defensively (never trusts caller)", () => {
+    expect(
+      paletteStyle({ overrides: [{ selector: ".a", bg: "javascript:alert(1)" }] as never }),
+    ).toBeNull();
   });
 });
