@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { asSegment, rgbToHex } from "./color-engine.ts";
+import { asSegment, declarationSets, rgbToHex } from "./color-engine.ts";
 import { pickSegment } from "./selector-path.ts";
 import { CLASS_COLOR_HOVER, CLASS_FLASH } from "./overlay-classes.ts";
 
@@ -108,6 +108,79 @@ test("reads a custom property's value as AUTHORED — hex is what defaultStateCo
   assert.equal(rgbToHex("  #0d2b44  "), "#0d2b44"); // decls come back whitespace-padded
   assert.equal(rgbToHex("#FFF"), "#ffffff");
   assert.equal(rgbToHex("#0D2B44"), "#0d2b44");
+});
+
+// ── declarationSets ───────────────────────────────────────────────────────────
+// The transient gate's predicate, minus the DOM. It decides, for one declared property name in one
+// `:hover`/`:focus` rule, whether that rule can move the colour being read — and therefore whether
+// the live computed value is trusted or handed to the declaration walk. Both answers are wrong in
+// their own way (color-engine.ts: defaultStateColor), so which names it accepts IS the gate.
+
+test("a property matches itself", () => {
+  assert.equal(declarationSets("background-color", "background-color"), true);
+  assert.equal(declarationSets("color", "color"), true);
+  assert.equal(declarationSets("border-color", "border-color"), true);
+});
+
+// THE case the gate exists for, from the other side. `.text-field` is `border: 1px solid var(--…)`
+// and has NO `:hover` rule; `.btn-bg` is the same shorthand and DOES (`.btn-bg:hover` moves the
+// border). A shorthand carrying a var() is held pending substitution, so asking such a rule for a
+// VALUE (`getPropertyValue("border-color")` → "") would answer "moves nothing" for both. Names can't
+// be fooled that way — which is why the gate reads names.
+test("a shorthand matches the longhand it carries", () => {
+  assert.equal(declarationSets("border", "border-color"), true);
+  assert.equal(declarationSets("border-top", "border-color"), true);
+  assert.equal(declarationSets("border-top-color", "border-color"), true);
+  assert.equal(declarationSets("border-inline-start-color", "border-color"), true);
+  assert.equal(declarationSets("background", "background-color"), true);
+});
+
+// The other direction is the one that fabricates: a name accepted here sends a read that was already
+// correct down the walk, which for a var-bearing shorthand answers `.w-input { border: 1px solid
+// #ccc }` — an opaque #cccccc for a transparent border, and, via isPainted, a border role invented
+// on an element that has none.
+test("a neighbouring property in the same family does NOT match", () => {
+  for (const name of [
+    "border-width",
+    "border-style",
+    "border-radius",
+    "border-collapse",
+    "border-image",
+    "border-image-source",
+    "border-top-width",
+    "border-bottom-style",
+  ]) {
+    assert.equal(declarationSets(name, "border-color"), false, `${name} does not set border-color`);
+  }
+  for (const name of ["background-image", "background-position", "background-size", "backdrop-filter"]) {
+    assert.equal(declarationSets(name, "background-color"), false, `${name} does not set background-color`);
+  }
+  // `color` has no shorthand at all — nothing else in CSS reaches it. Notably `font`, which looks
+  // like it should and doesn't, and the text decoration/fill colours, which are other properties.
+  for (const name of ["font", "caret-color", "-webkit-text-fill-color", "text-decoration-color", "accent-color"]) {
+    assert.equal(declarationSets(name, "color"), false, `${name} does not set color`);
+  }
+});
+
+// Roles do not bleed into each other: a `:hover` rule moving the background must not open the gate
+// on the border read, or the fabrication returns by a side door.
+test("the three roles are answered independently", () => {
+  assert.equal(declarationSets("background-color", "color"), false);
+  assert.equal(declarationSets("background-color", "border-color"), false);
+  assert.equal(declarationSets("border-color", "background-color"), false);
+  assert.equal(declarationSets("color", "border-color"), false);
+  assert.equal(declarationSets("border", "background-color"), false);
+});
+
+test("reads the name as the CSSOM hands it over", () => {
+  // style.item() returns lowercase, but a hand-authored `BORDER-COLOR` costs nothing to accept and
+  // an anchored regex would otherwise silently reject the whole rule — the trusting direction.
+  assert.equal(declarationSets("BORDER-COLOR", "border-color"), true);
+  assert.equal(declarationSets(" border ", "border-color"), true);
+  // Anchored at both ends: a custom property that merely CONTAINS the name is not the name.
+  assert.equal(declarationSets("--my-border-color", "border-color"), false);
+  assert.equal(declarationSets("--color", "color"), false);
+  assert.equal(declarationSets("", "color"), false);
 });
 
 test("refuses what it cannot read rather than guessing at it", () => {

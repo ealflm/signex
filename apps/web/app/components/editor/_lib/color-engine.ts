@@ -256,11 +256,15 @@ export function resolveMeaningfulBlock(x: number, y: number): HTMLElement | null
   );
 }
 
-const ROLE_PROP: Record<ColorRole, string> = {
+const ROLE_PROP = {
   bg: "background-color",
   text: "color",
   border: "border-color",
-};
+} as const satisfies Record<ColorRole, string>;
+/** The three CSS properties this engine ever asks about. A closed union, not `string`, so the
+ *  PROP_SETTERS table below is total BY TYPE: adding a role without saying which declarations can
+ *  move it is a compile error rather than a silently mis-gated read. */
+export type RoleProp = (typeof ROLE_PROP)[ColorRole];
 const ROLE_COMPUTED: Record<ColorRole, "backgroundColor" | "color" | "borderTopColor"> = {
   bg: "backgroundColor",
   text: "color",
@@ -355,33 +359,107 @@ function painterFor(block: HTMLElement, role: ColorRole): HTMLElement | null {
  * would do so only INTERMITTENTLY, since whether a pointer-events:auto hotspot in .sx-edit-layer
  * happens to overlap the click point decides whether :hover matches the content beneath.
  *
- * `(?![\w-])` makes this a pseudo-class NAME match, not a substring match: `:hover` here, but never
- * `:hovercard`. Longest alternatives lead so `:focus-visible` isn't clipped to `:focus`. Class
- * names cannot be swallowed by accident — `.is-hover-card` carries no colon. `:where(…)` and
- * `:nth-*` deliberately survive: the template's `.w-variant-*` rules are genuine VARIANT selectors
- * (primary vs secondary button), not state, and dropping them would lose the secondary tokens.
+ * ONE list, two derived shapes, because the same state set is asked about in two grammars and a
+ * literal spelled twice is how they drift apart:
+ *
+ *   • STATE_PSEUDO_RE — asked of a RULE's selector text. winningDecl drops the rules it matches;
+ *     transientlyMoves goes looking for exactly them. `(?![\w-])` makes it a pseudo-class NAME
+ *     match, not a substring match: `:hover` here, but never `:hovercard`. Longest alternatives
+ *     lead so `:focus-visible` isn't clipped to `:focus`. Class names cannot be swallowed by
+ *     accident — `.is-hover-card` carries no colon. `:where(…)` and `:nth-*` deliberately survive:
+ *     the template's `.w-variant-*` rules are genuine VARIANT selectors (primary vs secondary
+ *     button), not state, and dropping them would lose the secondary tokens.
+ *   • TRANSIENT_SEL — asked of an ELEMENT. See transientlyMoves.
+ *
+ * `:visited` is the one name the two do not share, and it is not drift: a RULE can be gated on it,
+ * but an ELEMENT can never be asked about it — `matches(":visited")` is hard-wired to false for
+ * privacy — so putting it in TRANSIENT_SEL would add a term that is false by construction.
  */
-const STATE_PSEUDO_RE = /:(?:hover|focus-visible|focus-within|focus|active|visited|target)(?![\w-])/i;
+const STATE_PSEUDOS = ["hover", "focus-visible", "focus-within", "focus", "active", "target"] as const;
+const STATE_PSEUDO_RE = new RegExp(`:(?:visited|${STATE_PSEUDOS.join("|")})(?![\\w-])`, "i");
+const TRANSIENT_SEL = STATE_PSEUDOS.map((p) => `:${p}`).join(",");
 
 /**
- * The same set as STATE_PSEUDO_RE, asked of an ELEMENT instead of a selector string: is `el` in a
- * transient state RIGHT NOW — i.e. is anything the default-state cascade excludes currently applying
- * to it? `:visited` is absent because `matches(":visited")` is hard-wired to false for privacy, so
- * asking is meaningless rather than merely redundant.
+ * Which DECLARED property names can move `prop` — `prop` itself, plus every shorthand that carries
+ * it. Consulted by NAME rather than by value, because a shorthand holding a var() is kept pending
+ * substitution and `getPropertyValue(<longhand>)` on it returns "" (see winningDecl). Reading
+ * `.btn-bg:hover { border: 1px solid var(--x) }` for a value would say "this rule doesn't move
+ * border-color" about a rule that does; reading it for a name cannot.
  *
- * `withAncestors` asks the question INHERITANCE needs — "is anything up the tree in a transient
- * state?" — for the properties that inherit. See defaultStateColor for which, and why.
- *
- * A selector this browser cannot parse answers "assume it is": that costs accuracy (the declaration
- * walk is an approximation) but never honesty, which is the right way round.
+ * Written as the real CSS shorthand tree for these three properties, so a name CSS actually has is
+ * classified correctly. Where it is loose it is loose OUTWARD — `border-bottom-color` cannot move
+ * the border-TOP colour ROLE_COMPUTED measures, yet it is accepted here. That direction only ever
+ * hands the reading to the declaration walk, and both directions are wrong in their own way (see
+ * defaultStateColor), so the tie goes to the smaller, better-understood error.
  */
-const TRANSIENT_SEL = ":hover, :active, :focus, :focus-visible, :focus-within, :target";
-function inTransientState(el: HTMLElement, withAncestors = false): boolean {
+const PROP_SETTERS: Record<RoleProp, RegExp> = {
+  "background-color": /^background(-color)?$/,
+  color: /^color$/,
+  "border-color": /^border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-color)?$/,
+};
+
+/**
+ * Does a declaration of the CSS property `name` set `prop`?
+ *
+ * Exported for color-engine.test.mjs: this is the whole of the gate's new predicate that needs no
+ * DOM, and apps/web has no jsdom to drive the rest.
+ */
+export const declarationSets = (name: string, prop: RoleProp): boolean =>
+  PROP_SETTERS[prop].test(name.trim().toLowerCase());
+
+const declaresProp = (style: CSSStyleDeclaration, prop: RoleProp): boolean => {
+  for (let i = 0; i < style.length; i++) if (declarationSets(style.item(i), prop)) return true;
+  return false;
+};
+
+/**
+ * Is `el`'s LIVE computed `prop` contaminated by a transient state — i.e. does some rule the
+ * default-state cascade excludes currently declare `prop` for it?
+ *
+ * This is the question, and getting its SHAPE right is the whole of the gate. The predicate this
+ * replaces asked "is the pointer on `el`", which is a different question with a different answer:
+ * `.text-field` has no `:hover` rule at all (only `:focus`), so its border under the pointer is
+ * ALREADY the resting truth — and the old shape threw that truth away and sent the read down the
+ * declaration walk, which cannot see `.text-field`'s var-bearing `border` shorthand and answers
+ * `.w-input { border: 1px solid #ccc }` instead. `#cccccc`: opaque, therefore storable, therefore a
+ * Save button, for a border that is actually transparent. Hovering an element is not evidence that
+ * hovering it changes anything.
+ *
+ * `inherited` is for the properties INHERITANCE spreads. `background-color`/`border-color` do not:
+ * only a rule matching `el` itself can move them. `color` does — a child of a hovered element is not
+ * itself `:hover`, yet it inherits the hovered colour — so there a rule matching any ANCESTOR
+ * contaminates `el` too, which is what `closest` (which starts at `el`) asks.
+ *
+ * TRANSIENT_SEL is a cheap pre-filter, not the answer: painterFor reads a colour off every element
+ * in the block's subtree, and a CSSOM walk each is ~600 walks of a 1300-rule sheet per click. Nothing
+ * transient anywhere up `el`'s ancestry means no transient rule matches it — the hover/focus chain IS
+ * an element and its ancestors — unless a rule reaches sideways (`.a:hover + .b`, `:has(:hover)`).
+ * This template has none, and the predicate this replaces could not see them either; if one ever
+ * lands, this walks past it and reads the live value, which is where we started. A selector this
+ * browser cannot parse loses only the fast path.
+ */
+function inTransientChain(el: HTMLElement): boolean {
   try {
-    return withAncestors ? !!el.closest(TRANSIENT_SEL) : el.matches(TRANSIENT_SEL);
+    return !!el.closest(TRANSIENT_SEL);
   } catch {
     return true;
   }
+}
+function transientlyMoves(el: HTMLElement, prop: RoleProp, inherited: boolean): boolean {
+  if (!inTransientChain(el)) return false;
+  for (const sheet of Array.from(document.styleSheets)) {
+    for (const rule of styleRules(sheet)) {
+      if (!rule.selectorText || !rule.style) continue;
+      if (!STATE_PSEUDO_RE.test(rule.selectorText)) continue;
+      if (!declaresProp(rule.style, prop)) continue;
+      try {
+        if (inherited ? el.closest(rule.selectorText) : el.matches(rule.selectorText)) return true;
+      } catch {
+        continue; // a selector this browser can't parse is a rule it isn't applying either
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -490,15 +568,16 @@ function detectToken(el: HTMLElement, prop: string): string | undefined {
  * a color-mix) while detectToken, correctly skipping that same rule, reported `btnPrimaryBg` =
  * `#0d2b44`. Two answers, one element, and the measurement was the wrong one.
  *
- * But the computed value is only WRONG while something transient is actually applying — and that is
- * one element per click, the one under the pointer. So ASK (inTransientState) instead of assuming.
- * When nothing transient matches `el`, its computed value IS its default-state value by definition,
- * and it is the REAL cascade — specificity, `@layer`, shorthands and all — which the walk below only
+ * But the computed value is only WRONG while a transient rule is actually MOVING THIS PROPERTY on
+ * this element. So ask that (transientlyMoves) — not the far broader "is the pointer on `el`", which
+ * is true of every element the user can click and answers a question nobody asked. When no transient
+ * rule declares `prop` here, `el`'s computed value IS its default-state value by definition, and it
+ * is the REAL cascade — specificity, `@layer`, shorthands and all — which the walk below only
  * approximates. It is also the cheap answer, and the one almost every candidate painterFor tests
  * will take.
  *
- * Only when `el` really is in a transient state do we read the cascade ourselves: winningDecl, the
- * same walk detectToken uses, with the state rules dropped. Both forms of declaration then resolve
+ * Only when a transient rule really is moving `prop` do we read the cascade ourselves: winningDecl,
+ * the same walk detectToken uses, with the state rules dropped. Both forms of declaration then resolve
  * WITHOUT asking the element how it currently looks — which is what makes this work without
  * suppressing the hover, since we cannot: the pointer is the user's.
  *
@@ -522,23 +601,27 @@ function detectToken(el: HTMLElement, prop: string): string | undefined {
  * back the last rule it CAN see, Webflow's base `.w-input { border: 1px solid #ccc }`, which loses
  * the real cascade. Trusted unconditionally, the walk therefore reports `#cccccc` for the border of
  * every text input on the site — opaque, hence storable, hence a Save button — where the element
- * actually computes to fully transparent. Confining it to the element whose computed value we
- * already know is lying keeps the blind spot where it cannot invent a role, and buys the smaller
- * error: a colour off by a cascade approximation instead of one off by an entire state.
+ * actually computes to fully transparent. Worse than a hex off by a state: `isPainted("#cccccc")` is
+ * true, and painterFor's `find` stops at the first candidate that paints, so a fabricated colour can
+ * INVENT a role on an element that has none.
+ *
+ * So the walk is confined to the reads whose live value is provably contaminated — which is what
+ * makes the gate's shape load-bearing rather than a tuning knob. It does NOT make the blind spot
+ * harmless, and no comment here should claim it does: what is left is the overlap, where a transient
+ * rule moves `prop` AND the resting winner is a var-bearing shorthand. The template has exactly one
+ * — a `.text-field` under `:focus` (`.text-field:focus { border-color: … }` over the `border`
+ * shorthand), where this still answers `#cccccc`. Hover, which is what every click parks on it, no
+ * longer reaches it. Both remaining errors are real; this buys the rarer one.
  */
 function defaultStateColor(
   el: HTMLElement,
-  prop: string,
+  prop: RoleProp,
   computedKey: "backgroundColor" | "color" | "borderTopColor",
 ): string {
   const cs = getComputedStyle(el);
-  // Which elements a transient state can lie ABOUT depends on whether the property inherits.
-  // `background-color`/`border-color` do not: only `el`'s own state can move them. `color` does — a
-  // child of the hovered element is not itself `:hover`, yet it inherits the hovered colour — so
-  // there the question is whether anything in `el`'s ANCESTRY is in a transient state. That covers
-  // both halves: the hover chain is the hovered element plus its ancestors, so a member of the chain
-  // matches on itself and a descendant of it finds it by walking up.
-  if (!inTransientState(el, computedKey === "color")) return cs[computedKey];
+  // `color` is the one of the three that INHERITS, so it is the one a transient rule can lie about
+  // from an ancestor rather than from `el` — see transientlyMoves.
+  if (!transientlyMoves(el, prop, computedKey === "color")) return cs[computedKey];
   const decl = winningDecl(el, prop);
   // Nothing declares `color` here, and `color` inherits: this element's default-state colour IS its
   // parent's, so ask the parent the same question. Falling through to cs[computedKey] instead would
