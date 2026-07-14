@@ -63,6 +63,27 @@ export const PaletteOverridesSchema = z.record(
   PaletteOverrideRolesSchema,
 );
 
+/**
+ * Anchors whose colour is painted by a DESCENDANT rather than by the anchor element itself, mapped
+ * role → the descendant's selector.
+ *
+ * Why this exists: a per-element override normally emits `[data-sx-c="<id>"]{background-color:…}`,
+ * which is correct when the anchor paints its own box. The nav CTA doesn't — it's a transparent
+ * `<a class="cta_primary">` whose navy pill is painted by a `.btn-bg` child that fully covers it, so
+ * the override landed BEHIND the child and the user saw nothing change. Appending the descendant
+ * selector puts the declaration on the element that actually paints.
+ *
+ * This is a STATIC, code-owned map (never user data), so palette-style.ts may interpolate these
+ * values into CSS directly — unlike anchorId, which comes from the snapshot and stays regex-guarded.
+ *
+ * Only add an entry for a role that is genuinely painted by a child. Roles that INHERIT (text) must
+ * NOT be listed: setting `color` on the anchor already reaches the descendants that render the text.
+ */
+export const ANCHOR_PAINT_TARGETS: Record<string, Partial<Record<"bg" | "text" | "border", string>>> =
+  {
+    "nav.cta.color": { bg: ".btn-bg" },
+  };
+
 export const PaletteSchema = z
   .object({
     seeds: PaletteSeedsSchema.optional(),

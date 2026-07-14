@@ -30,6 +30,33 @@ describe("paletteStyle", () => {
     expect(paletteStyle({ seeds: { accentAqua: "javascript:alert(1)" } as never })).toBeNull();
   });
 
+  // The nav CTA is a TRANSPARENT <a> whose pill is painted by a .btn-bg child that fully covers it.
+  // Emitting background-color on the anchor put the colour BEHIND that child, so picking a colour
+  // changed nothing on screen. ANCHOR_PAINT_TARGETS redirects the declaration to the painting child.
+  it("targets the painting descendant for anchors that don't paint their own background", () => {
+    const css = paletteStyle({ overrides: { "nav.cta.color": { bg: "#ff0000" } } })!;
+    expect(css).toContain('[data-sx-c="nav.cta.color"] .btn-bg{background-color:#ff0000}');
+  });
+
+  // The anchorId charset permits "__proto__"/"constructor", so a bare index into the paint map would
+  // walk the prototype chain instead of missing — these must fall back to the anchor selector.
+  it("does not resolve paint targets through the prototype chain", () => {
+    for (const evil of ["__proto__", "constructor", "toString"]) {
+      const css = paletteStyle({ overrides: { [evil]: { bg: "#ff0000" } } })!;
+      expect(css).toBe(`[data-sx-c="${evil}"]{background-color:#ff0000}`);
+    }
+  });
+
+  // text INHERITS to the descendants that render the glyphs, so it must stay on the anchor even
+  // though this anchor redirects its bg — splitting per-role is the whole point of the map.
+  it("keeps a non-redirected role on the anchor itself", () => {
+    const css = paletteStyle({
+      overrides: { "nav.cta.color": { bg: "#ff0000", text: "#ffffff" } },
+    })!;
+    expect(css).toContain('[data-sx-c="nav.cta.color"]{color:#ffffff}');
+    expect(css).toContain('[data-sx-c="nav.cta.color"] .btn-bg{background-color:#ff0000}');
+  });
+
   // NOTE (F1 security fix): anchorId is now charset-constrained (schema regex + emitter reject) —
   // a valid anchorId can never contain selector metacharacters or newlines, so the previous
   // "escape it" behaviour was superseded by "reject it entirely" (defense in depth: never trust an

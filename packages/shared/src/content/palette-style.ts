@@ -1,4 +1,4 @@
-import { PALETTE_ANCHOR_ID_RE, PALETTE_VARS, TOKEN_VARS, Hex } from "./palette";
+import { ANCHOR_PAINT_TARGETS, PALETTE_ANCHOR_ID_RE, PALETTE_VARS, TOKEN_VARS, Hex } from "./palette";
 import type { Palette } from "./palette";
 
 /** Reuse the exported Hex schema as the single source of truth (avoids regex drift). */
@@ -33,14 +33,30 @@ export function paletteStyle(palette: Palette | undefined | null): string | null
     if (meta && isHex(val)) rootDecls.push(`${meta.cssVar}:${val}`);
   }
 
+  const ROLE_PROP = { bg: "background-color", text: "color", border: "border-color" } as const;
+
   const rules: string[] = [];
   for (const [anchorId, roles] of Object.entries(palette.overrides ?? {})) {
     if (!isSafeAnchorId(anchorId)) continue; // reject, never escape — see isSafeAnchorId doc above
-    const parts: string[] = [];
-    if (isHex(roles.bg)) parts.push(`background-color:${roles.bg}`);
-    if (isHex(roles.text)) parts.push(`color:${roles.text}`);
-    if (isHex(roles.border)) parts.push(`border-color:${roles.border}`);
-    if (parts.length) rules.push(`[data-sx-c="${anchorId}"]{${parts.join(";")}}`);
+    const base = `[data-sx-c="${anchorId}"]`;
+    // Most roles land on the anchor, but a role listed in ANCHOR_PAINT_TARGETS is painted by a
+    // descendant and must be declared THERE instead (see that map's doc). Roles for one anchor can
+    // therefore split across selectors, so group declarations by the selector they belong to.
+    const bySelector = new Map<string, string[]>();
+    for (const [role, prop] of Object.entries(ROLE_PROP) as [keyof typeof ROLE_PROP, string][]) {
+      const val = roles[role];
+      if (!isHex(val)) continue;
+      // hasOwn, not a bare index: anchorId comes from the stored snapshot and the charset permits
+      // "__proto__"/"constructor", which would otherwise walk the prototype chain instead of missing.
+      const paintedBy = Object.hasOwn(ANCHOR_PAINT_TARGETS, anchorId)
+        ? ANCHOR_PAINT_TARGETS[anchorId][role]
+        : undefined;
+      const selector = paintedBy ? `${base} ${paintedBy}` : base;
+      const decls = bySelector.get(selector) ?? [];
+      decls.push(`${prop}:${val}`);
+      bySelector.set(selector, decls);
+    }
+    for (const [selector, decls] of bySelector) rules.push(`${selector}{${decls.join(";")}}`);
   }
 
   let css = rootDecls.length ? `:root{${rootDecls.join(";")}}` : "";
