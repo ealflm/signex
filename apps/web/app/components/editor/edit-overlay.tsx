@@ -23,7 +23,7 @@
 // postMessage protocol (both directions use { source: "signex-editor", ... }):
 //   preview → admin:  { source, type: "edit", field, mediaKind: "image"|"video" }      // open media drawer
 //                     { source, type: "textEdit", field, value }                       // committed inline text edit
-//                     { source, type: "colorEdit", field, token, roles }                // colour zone clicked → open colour popover (Task 6)
+//                     { source, type: "colorEdit", field, token, roles, rect, computed } // colour zone clicked → open colour popover (Task 6)
 //                     { source, type: "highlight", field }                             // canvas leaf focused (→ flash panel field)
 //                     { source, type: "ready" }                                        // handshake on mount — admin re-applies pending edits
 //   admin   → preview: { source, type: "refresh" }                                     // reload to show the just-saved working state
@@ -41,6 +41,8 @@
 
 import { useEffect } from "react";
 
+import { ANCHOR_PAINT_TARGETS } from "@signex/shared";
+
 const SOURCE = "signex-editor";
 
 // The two known locales (kept literal — i18n-config is a server module; the overlay is a tiny
@@ -48,6 +50,45 @@ const SOURCE = "signex-editor";
 const LOCALES = ["en", "vi"] as const;
 
 type MediaEntry = { el: HTMLElement; hot: HTMLDivElement; onScreen: boolean };
+
+/**
+ * getComputedStyle always resolves a colour to `rgb(…)`/`rgba(…)` — convert to the `#rrggbb` an
+ * <input type="color"> needs. Returns undefined for anything not fully opaque: the template derives
+ * most tokens as `color-mix(… N%, transparent)`, and hex can't carry that alpha, so showing one
+ * would claim a colour the element doesn't actually have.
+ */
+function rgbToHex(v: string): string | undefined {
+  const m = v.match(/^rgba?\(([^)]+)\)$/);
+  if (!m) return undefined;
+  const parts = m[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+  const [r, g, b, a] = parts;
+  if (![r, g, b].every((n) => Number.isFinite(n))) return undefined;
+  if (a !== undefined && a !== 1) return undefined;
+  return `#${[r, g, b].map((n) => Math.round(n).toString(16).padStart(2, "0")).join("")}`;
+}
+
+/**
+ * The zone's CURRENT rendered colour per role — what the admin's popover shows as its value.
+ *
+ * Reads each role from the element that actually PAINTS it: for an anchor in ANCHOR_PAINT_TARGETS
+ * (e.g. the nav CTA, a transparent <a> whose pill is painted by a .btn-bg child) the anchor's own
+ * background is rgba(0,0,0,0), so reading it would report "no colour" for a visibly navy button.
+ * This mirrors exactly where paletteStyle writes the override, so what the swatch shows is what an
+ * override would replace.
+ */
+function computedColors(el: HTMLElement, anchorId: string): Record<string, string | undefined> {
+  const paint = ANCHOR_PAINT_TARGETS[anchorId] ?? {};
+  const read = (role: "bg" | "text" | "border", prop: "backgroundColor" | "color" | "borderTopColor") => {
+    const sel = paint[role];
+    const source = (sel ? el.querySelector<HTMLElement>(sel) : null) ?? el;
+    return rgbToHex(getComputedStyle(source)[prop]);
+  };
+  return {
+    bg: read("bg", "backgroundColor"),
+    text: read("text", "color"),
+    border: read("border", "borderTopColor"),
+  };
+}
 
 type EditState = {
   el: HTMLElement;
@@ -556,6 +597,11 @@ export function EditOverlay() {
       if (colorEl) {
         e.preventDefault();
         e.stopPropagation();
+        // Ship the zone's box (this iframe's viewport coords). The admin adds the iframe's own
+        // offset and hands the result to the popover as its anchor, so the popover opens BESIDE the
+        // element you clicked instead of at a fixed corner that covers it. The preview iframe is
+        // width-constrained but never transform-scaled, so these coords map 1:1 into the admin.
+        const r = colorEl.getBoundingClientRect();
         window.parent.postMessage(
           {
             source: SOURCE,
@@ -563,6 +609,11 @@ export function EditOverlay() {
             field: colorEl.getAttribute("data-edit-field") ?? "",
             token: colorEl.getAttribute("data-edit-color-token") ?? "",
             roles: (colorEl.getAttribute("data-edit-color-roles") ?? "").split(",").filter(Boolean),
+            rect: { x: r.left, y: r.top, width: r.width, height: r.height },
+            // Most tokens are UNSET in the palette (they derive from a seed), so the stored value
+            // can't answer "what colour is this now?" — the user clicks a blue button and the
+            // swatch reads empty. The computed style can answer it, and only this frame knows it.
+            computed: computedColors(colorEl, colorEl.getAttribute("data-edit-field") ?? ""),
           },
           "*",
         );

@@ -23,7 +23,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PALETTE_VARS, paletteStyle, type BlockKey, type ReleaseSnapshot } from "@signex/shared";
+import {
+  PALETTE_VARS,
+  TOKEN_VARS,
+  paletteStyle,
+  type BlockKey,
+  type ReleaseSnapshot,
+  type SeedKey,
+  type TokenKey,
+} from "@signex/shared";
 
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -50,7 +58,7 @@ import { Toolbar } from "./toolbar";
 import { SectionsNav } from "./sections-nav";
 import { ContextPanel } from "./context-panel";
 import { PalettePanel } from "./palette-panel";
-import { ColorPopover, type ColorEditTarget } from "./color-popover";
+import { ColorPopover, type ColorEditTarget, type ColorRole } from "./color-popover";
 import {
   DEVICE_MAX_WIDTH,
   SURFACE_PATH_BY_BLOCK,
@@ -282,6 +290,10 @@ export function EditorShell(props: EditorShellProps) {
   // without re-subscribing on every palette change. Same pattern as pendingRef.
   const pendingPaletteRef = useRef(pendingPalette);
   pendingPaletteRef.current = pendingPalette;
+  // A staged reset is an unsaved change whose patch is EMPTY, so the `ready` handler can't infer it
+  // from pendingPalette alone (same reason saveDraft/paletteDirty check it separately).
+  const paletteResetRef = useRef(paletteReset);
+  paletteResetRef.current = paletteReset;
   // Live locale for the once-subscribed listener (inbound textEdit appends `.${langRef.current}`;
   // `ready` re-posts only this locale's pending text). Same pattern as mediaPreviewRef.
   const langRef = useRef(lang);
@@ -743,10 +755,28 @@ export function EditorShell(props: EditorShellProps) {
       } else if (data.type === "colorEdit" && typeof data.field === "string") {
         // A colour-zone click (Task 6) — open the popover. `token` is "" for element-only zones;
         // `roles` are the CSS custom-property roles ("bg"/"text"/"border") the zone can override.
+        // `rect` is the zone's box in the IFRAME's viewport; add the iframe's own offset so the
+        // popover can anchor to the real element (the iframe is width-capped, never scaled, so the
+        // translation is a plain offset). Falls back to a zero box at the iframe's origin if an
+        // older preview build sends no rect.
+        const ir = iframeRef.current?.getBoundingClientRect();
+        const r = (data.rect ?? null) as
+          | { x: number; y: number; width: number; height: number }
+          | null;
         setColorTarget({
           field: data.field,
           token: typeof data.token === "string" ? data.token : "",
           roles: Array.isArray(data.roles) ? data.roles : [],
+          rect: {
+            x: (ir?.left ?? 0) + (r?.x ?? 0),
+            y: (ir?.top ?? 0) + (r?.y ?? 0),
+            width: r?.width ?? 0,
+            height: r?.height ?? 0,
+          },
+          // The zone's rendered colour per role, straight from the preview's computed style. Most
+          // tokens carry no stored value (they derive from a seed), so this is the only thing that
+          // can show what the clicked element actually looks like right now.
+          computed: (data.computed ?? {}) as Partial<Record<ColorRole, string>>,
         });
       } else if (data.type === "textEdit" && typeof data.field === "string") {
         // A committed inline text edit. `field` is the snapshot path WITHOUT locale; append the live
@@ -782,15 +812,24 @@ export function EditorShell(props: EditorShellProps) {
           .map((t) => ({ field: t.field, kind: "text" as const, text: t.value }));
         const all: ApplyEdit[] = [...media, ...text];
         if (all.length > 0) postApplyEdits(all);
-        // Re-apply the unsaved palette patch after a (re)load / remount, same as media/text above.
-        iframeRef.current?.contentWindow?.postMessage(
-          {
-            source: SOURCE,
-            type: "applyPalette",
-            css: paletteStyle(pendingPaletteRef.current) ?? "",
-          },
-          webOrigin,
-        );
+        // Re-apply the unsaved palette patch after a (re)load / remount, same as media/text above —
+        // and note the `all.length > 0` guard those get. The palette needs the same guard: the
+        // preview SERVER-RENDERS the saved palette into #signex-palette, and posting
+        // unconditionally sent `css: ""` on every clean load (pending is empty whenever there's
+        // nothing unsaved — including right after a save), which blanked that node and showed the
+        // site WITHOUT its own saved colours. Only speak when we have something to say.
+        // A staged reset is the one empty patch that IS a change: it must still post "" so the
+        // cleared preview survives the reload.
+        if (!isEmptyPalette(pendingPaletteRef.current) || paletteResetRef.current) {
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              source: SOURCE,
+              type: "applyPalette",
+              css: paletteStyle(pendingPaletteRef.current) ?? "",
+            },
+            webOrigin,
+          );
+        }
         // A select that changed the surface remounted the iframe — scroll once it's ready.
         if (scrollOnReadyRef.current) {
           postScrollToBlock(scrollOnReadyRef.current);
@@ -1051,7 +1090,18 @@ export function EditorShell(props: EditorShellProps) {
       {colorTarget && (
         <ColorPopover
           target={colorTarget}
-          anchor={{ x: window.innerWidth - 340, y: 120 }}
+          // Show what the zone is ACTUALLY painted with today, not a placeholder: a seed always
+          // resolves (override ?? template default); a token is sparse, so undefined = "derives from
+          // the seeds" and the swatch renders as unset rather than inventing a colour.
+          tokenValue={
+            colorTarget.token in PALETTE_VARS
+              ? (pendingPalette.seeds?.[colorTarget.token as SeedKey] ??
+                PALETTE_VARS[colorTarget.token as SeedKey].default)
+              : colorTarget.token in TOKEN_VARS
+                ? pendingPalette.tokens?.[colorTarget.token as TokenKey]
+                : undefined
+          }
+          elementValueFor={(role) => pendingPalette.overrides?.[colorTarget.field]?.[role]}
           onPickToken={(tokenKey, hex) => {
             const isSeed = tokenKey in PALETTE_VARS;
             applyPalette(
