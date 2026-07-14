@@ -303,7 +303,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           a-124 id 6a32e52a) + 4 centered cards, each a numbered badge (1–4) + title + description.
           Reuses signex's light-gray card surface + accent blue (#4956e3) for the number badge.
           Custom scoped .about-steps_* in globals.css; dict-driven EN+VI (aboutPage.process). */}
-      <section className="section_home-about">
+      <section className="section_home-about" data-sx-block="aboutPage">
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="headline_home-about" data-w-id="6a32e52a-664f-8b1c-94cf-2d1d90c61659" style={{ opacity: 0, filter: 'blur(5px)' }}>

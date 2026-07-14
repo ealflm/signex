@@ -56,7 +56,7 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
   const dict = await getSiteContent(lang); // localised copy for the sections being customised (EN + VI)
   return (
     <>
-      <section className="section_hero-contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18">
+      <section className="section_hero-contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18" data-sx-block="contactPage">
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="headline_contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb1b" style={{ opacity: 0, filter: 'blur(5px)' }}>
@@ -131,7 +131,7 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
         formWid="a7c263a0-bae9-4cd0-4784-0bc0e59ff63b"
         showCards={false}
       />
-      <section className="section_faq">
+      <section className="section_faq" data-sx-block="contactPage">
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="headline_faq-v1" data-w-id="9dfc7646-5801-a3d5-162a-aebf30a19078">

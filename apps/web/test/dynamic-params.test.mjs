@@ -108,19 +108,71 @@ test("marketing tags come from the GTM container constant, not the theme meta bl
 
 // data-sx-block — the scope every generated colour-override selector is anchored to. Must be
 // rendered on the PUBLIC site (unconditionally), not just in /preview, since the override CSS
-// has to match there. Spot-checks three block roots; every other block root is stamped too (see
-// Task 3 report) but this suite stays STATIC (readFileSync, no server/network), so the full
+// has to match there. This suite stays STATIC (readFileSync, no server/network), so the full
 // runtime assertion (and the data-edit-* leak check) lives in the E2E task.
+//
+// Every file that is supposed to carry a stamp is covered below (see Task 3 report's file→key
+// mapping), not just a spot-check — a prior version of this test only checked navbar/hero/footer
+// and missed that about-sections.tsx's 7th sibling `<section>` (the "Manufacturing Approach"
+// process section) had no stamp at all (code-review finding #1). To make that class of bug
+// non-vacuously detectable, `SECTION_ROOT_FILES` below asserts the count of top-level `<section`
+// opens in the file equals the count of `data-sx-block="<key>"` occurrences — a file with an
+// unstamped sibling section fails on the count mismatch, not just a presence check.
+const SECTION_ROOT_FILES = [
+  // [pathPartsFromApp, blockKey, expectedTopLevelSectionCount]
+  [["components", "home", "hero.tsx"], "hero", 1],
+  [["components", "home", "features.tsx"], "features", 1],
+  [["components", "home", "home-about.tsx"], "about", 1],
+  [["components", "home", "product-categories.tsx"], "productsHeader", 1],
+  [["components", "footer.tsx"], "footer", 1],
+  [["components", "home", "contact.tsx"], "contactPage", 1],
+  // 7 sibling <section>s in a Fragment (no wrapping element) — the file that had the miss.
+  [["components", "about", "about-sections.tsx"], "aboutPage", 7],
+  // contactPage.hero.* / contactPage.map.* are authored inline in the route files, not inside
+  // a components/ file (Task 3 report, deviation #3 / code-review finding #2) — 2 own <section>s
+  // each (hero + FAQ/map); the shared <Contact> component's section is covered by the
+  // "home/contact.tsx" row above.
+  [["[lang]", "contact", "page.tsx"], "contactPage", 2],
+  [["preview", "[lang]", "contact", "page.tsx"], "contactPage", 2],
+];
+
+// Block roots that are not `<section>` elements (so the sibling-count check above doesn't apply)
+// — each of these files has exactly one such root.
+const OTHER_ROOT_FILES = [
+  [["components", "navbar.tsx"], "nav"],
+  [["components", "not-found-view.tsx"], "notFound"],
+  [["components", "not-found-preview.tsx"], "notFound"],
+];
+
 test("block roots are stamped with data-sx-block, unconditionally", () => {
-  for (const [file, key] of [
-    ["navbar.tsx", "nav"],
-    ["home/hero.tsx", "hero"],
-    ["footer.tsx", "footer"],
-  ]) {
-    const s = src("components", file);
-    assert.match(s, new RegExp(`data-sx-block="${key}"`), `${file}: block root not stamped`);
+  for (const [pathParts, key, expectedSectionCount] of SECTION_ROOT_FILES) {
+    const file = pathParts.join("/");
+    const s = src(...pathParts);
+    const sectionOpens = s.match(/<section\b/g) ?? [];
+    const stamped = s.match(new RegExp(`data-sx-block="${key}"`, "g")) ?? [];
+    assert.equal(
+      sectionOpens.length,
+      expectedSectionCount,
+      `${file}: expected ${expectedSectionCount} top-level <section> root(s), found ${sectionOpens.length} — update this test's expected count if the markup intentionally changed`,
+    );
+    assert.equal(
+      stamped.length,
+      sectionOpens.length,
+      `${file}: ${sectionOpens.length - stamped.length} <section> root(s) missing data-sx-block="${key}"`,
+    );
     // It must NOT be gated on `editable` — generated override selectors are scoped to this
     // attribute, so it has to exist on the public site, not just in preview.
+    assert.doesNotMatch(
+      s,
+      new RegExp(`editable[^\\n]*data-sx-block="${key}"`),
+      `${file}: data-sx-block must not be conditional on editable`,
+    );
+  }
+
+  for (const [pathParts, key] of OTHER_ROOT_FILES) {
+    const file = pathParts.join("/");
+    const s = src(...pathParts);
+    assert.match(s, new RegExp(`data-sx-block="${key}"`), `${file}: block root not stamped`);
     assert.doesNotMatch(
       s,
       new RegExp(`editable[^\\n]*data-sx-block="${key}"`),

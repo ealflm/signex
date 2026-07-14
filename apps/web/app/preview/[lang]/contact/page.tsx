@@ -66,7 +66,7 @@ async function PreviewContact({
     <div className="page-wrapper">
       <Navbar dict={dict.nav} editable />
       <main id="main" className="main-wrapper">
-        <section className="section_hero-contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18">
+        <section className="section_hero-contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18" data-sx-block="contactPage">
           <div className="padding-global">
             <div className="w-layout-blockcontainer container-large w-container">
               <div className="headline_contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb1b" style={{ opacity: 0, filter: 'blur(5px)' }}>
@@ -138,7 +138,7 @@ async function PreviewContact({
           showCards={false}
           editable
         />
-        <section className="section_faq">
+        <section className="section_faq" data-sx-block="contactPage">
           <div className="padding-global">
             <div className="w-layout-blockcontainer container-large w-container">
               <div className="headline_faq-v1" data-w-id="9dfc7646-5801-a3d5-162a-aebf30a19078">
