@@ -117,6 +117,23 @@ test("isEditMode rejects anything that is not one of the four", () => {
   }
 });
 
+// The CSS half of the contract is the half the type system cannot reach. EDIT_MODES now comes from
+// @signex/shared, so `tsc` rejects a drifted mode in any TS position on either side of the bridge —
+// but the gates below are spelled inside a template STRING (`body[data-sx-mode="color"]`), where a
+// typo is just characters. It would compile, ship, match no element, and turn the affordance off in
+// the one mode that dispatches it. So the gates are checked against the shared vocabulary here.
+test("every mode gate in the CSS names a mode from the shared vocabulary", () => {
+  const gated = [...MODE_AFFORDANCE_CSS.matchAll(/\[data-sx-mode="([^"]*)"\]/g)].map((m) => m[1]);
+  assert.ok(gated.length > 0, "no mode gates found — the parser below is asserting over nothing");
+  for (const mode of gated) {
+    assert.ok(
+      isEditMode(mode),
+      `CSS gates on "${mode}", which is not in the shared vocabulary ` +
+        `(${EDIT_MODES.join(", ")}) — this rule can never match`,
+    );
+  }
+});
+
 test("modeScope builds a gate that carries its own descendant combinator", () => {
   // capSel pastes the prefix on verbatim, so a missing combinator would silently produce a
   // COMPOUND selector (body[…][data-edit-caps=…]) that matches only a <body> — i.e. nothing.

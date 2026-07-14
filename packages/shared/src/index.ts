@@ -40,6 +40,7 @@ export * from "./content/release";
 export * from "./content/selector";
 export * from "./auth";
 export * from "./analytics";
+export * from "./edit-mode";
 
 /** Re-export zod so consumers can build/extend schemas without their own dep. */
 export { z };

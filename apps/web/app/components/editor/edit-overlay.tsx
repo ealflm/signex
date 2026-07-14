@@ -54,7 +54,13 @@ import { useEffect } from "react";
 
 import { resolveMeaningfulBlock, resolveRoles } from "./_lib/color-engine";
 import { capSel, hasCap, type EditCap } from "./_lib/edit-caps";
-import { MODE_AFFORDANCE_CSS, isEditMode, modeScope, type EditMode } from "./_lib/edit-mode";
+import {
+  MODE_AFFORDANCE_CSS,
+  DEFAULT_EDIT_MODE,
+  isEditMode,
+  modeScope,
+  type EditMode,
+} from "./_lib/edit-mode";
 // Page-stamped marks come from overlay-classes.ts as CONSTANTS, never as literals here: the class
 // names and the selector-generation filter that must ignore them are one decision, and a literal
 // spelled at the point of use is how they drift apart. See the rule stated there.
@@ -98,8 +104,11 @@ export function EditOverlay() {
     // every listener below subscribes once, so they must read the LIVE value, and re-running this
     // effect per mode change would tear down and rebuild the whole hotspot layer. The CSS half of
     // the gate reads it off body.dataset.sxMode instead (kept in step by onMessage, below).
-    // "content" is the default: until the admin says otherwise, the canvas is read-only.
-    let mode: EditMode = "content";
+    // The default is DEFAULT_EDIT_MODE ("content"): until the admin says otherwise, the canvas is
+    // read-only. It comes from @signex/shared rather than a literal because the admin toolbar boots
+    // from the same constant — a preview that never receives a `setMode` has to agree with the
+    // toolbar, and two independently-spelled defaults is exactly how that stops being true.
+    let mode: EditMode = DEFAULT_EDIT_MODE;
 
     // ---- styles (injected once) ----------------------------------------------------------
     const style = document.createElement("style");

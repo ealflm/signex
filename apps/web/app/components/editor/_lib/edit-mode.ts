@@ -15,20 +15,17 @@
 // CSS half lives here so a static test can read the cascade it produces (edit-mode.test.mjs); the
 // dispatch half stays in the overlay, where it needs the live DOM.
 
+import { EDIT_MODES, isEditMode, DEFAULT_EDIT_MODE, type EditMode } from "@signex/shared";
 import { capSel } from "./edit-caps";
 import { CLASS_COLOR_HOVER } from "./overlay-classes";
 
-export type EditMode = "media" | "text" | "color" | "content";
-
-export const EDIT_MODES = ["media", "text", "color", "content"] as const;
-
-/**
- * `setMode` crosses the postMessage bridge, so `typeof mode === "string"` is not validation: an
- * unrecognised value would be written to body.dataset.sxMode, match none of the gates below, and
- * leave every affordance off with dispatch in a state no branch owns. Narrow to the four, or ignore.
- */
-export const isEditMode = (v: unknown): v is EditMode =>
-  typeof v === "string" && (EDIT_MODES as readonly string[]).includes(v);
+// The vocabulary itself, the `isEditMode` guard over it, and the boot default are NOT declared here:
+// they are the contract with apps/admin's toolbar, which spells the same four words on the other
+// side of a postMessage bridge that `tsc` cannot see across. They live in @signex/shared so there is
+// exactly one declaration for both workspaces to compile against — see the note in
+// packages/shared/src/edit-mode.ts for why a comment was not enough. Re-exported so the overlay and
+// these tests keep importing modes from one local module.
+export { EDIT_MODES, isEditMode, DEFAULT_EDIT_MODE, type EditMode };
 
 /** The ancestor gate for `mode`, as a capSel prefix. capSel pastes a prefix on verbatim, so the
  *  trailing descendant combinator is part of the contract — without it the result is a compound

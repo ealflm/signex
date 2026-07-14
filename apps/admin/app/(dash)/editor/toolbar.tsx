@@ -200,14 +200,48 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
         {/* ── Mode segmented control ───────────────────────────────────────
             Centred, deliberately NOT grouped with VI/EN + the device icons: those change how you
             VIEW the page, mode changes WHAT YOU EDIT.
-            Measured: 425px free at a 1600px window; four labelled buttons ≈ 340px. Below 1280px
-            the labels are dropped for icon + tooltip (same treatment as the device toggle) — hence
-            the aria-label, which is the only accessible name each button has at those widths. */}
-        <div className="flex flex-1 justify-center">
+
+            The `2xl` breakpoint is MEASURED in a browser, not derived — the arithmetic that
+            produced the old `xl` (and the design doc's 1440) was wrong twice over. The (dash)
+            sidebar takes a fixed 256px, so this bar only ever gets viewport−256:
+              • below 1373px the whole admin document grows a horizontal scrollbar and PUBLISH —
+                the primary action — is pushed off-screen (81px off at 1280px, i.e. at the old
+                breakpoint the labels turned on at);
+              • 1373–1488px does not overflow, but only because "Nội dung" wraps to two lines
+                inside an h-12 bar. The group's 275px there is a wrapped measurement; its real
+                unwrapped width is 297px, which is why the doc's "340px fits at 1440" never held.
+              • 1489px is the first width where every label and the status pill sit on one line.
+            2xl (1536px) is the first standard breakpoint clear of that, with ~47px to spare.
+
+            Below it the labels are dropped for icon + tooltip (same treatment as the device
+            toggle) — hence the aria-label, the only accessible name each button has at those
+            widths.
+
+            The degrade for widths nobody measured needs BOTH an unlocked shrink and an explicit
+            floor, one per level. Every clause below is a browser measurement, not a deduction —
+            each of the simpler spellings was tried first and observed to fail:
+              • group `min-w-0` is what permits the shrink at all. A flex item's min-content
+                CONTRIBUTION counts the full nowrap label even when truncate clips it (min-width is
+                a floor, never a cap), so with min-width:auto anywhere on this chain the group's
+                min-content stays 297px, nothing yields, and the document overflows regardless.
+              • button `min-w-[34px]` stops that shrink exactly at the measured icon-only button —
+                the 14px shrink-0 icon + its 2×10px padding. With min-w-0 there instead the buttons
+                squeeze to 21px and clip the icons at 1280.
+              • wrapper `min-w-[140px]` (= 4×34 + the group's 2×2 padding) stops the WRAPPER at the
+                group's own floor. Without it the wrapper shrinks past the group, which then spills
+                out of its justify-center box and overlaps the status pill by 19px at 1280 —
+                trading the document overflow for the very collision this control was accused of.
+            The pill's column keeps min-width:auto, so it is free to wrap and absorb the rest;
+            that is what keeps 1280 clean. Under pressure the labels ellipsise, the group bottoms
+            out at icon-only, and only then does anything overflow. The group yields FIRST by
+            design: a label is redundant with its icon + tooltip, whereas the status pill and
+            Publish have no fallback. whitespace-nowrap (via truncate) is also what makes the
+            1373–1488 two-line band unreachable at any width. */}
+        <div className="flex min-w-[140px] flex-1 justify-center">
           <div
             role="group"
             aria-label="Chế độ chỉnh sửa"
-            className="flex items-center rounded-md border border-input bg-background p-0.5"
+            className="flex min-w-0 shrink items-center rounded-md border border-input bg-background p-0.5"
           >
             {EDIT_MODES.map((m) => (
               <Tooltip key={m.key}>
@@ -218,14 +252,14 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
                     aria-pressed={mode === m.key}
                     onClick={() => onModeChange(m.key)}
                     className={cn(
-                      "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                      "flex min-w-[34px] items-center justify-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
                       mode === m.key
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     <m.Icon className="h-3.5 w-3.5 shrink-0" />
-                    <span className="hidden xl:inline">{m.label}</span>
+                    <span className="hidden min-w-0 truncate 2xl:inline">{m.label}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>{m.label}</TooltipContent>

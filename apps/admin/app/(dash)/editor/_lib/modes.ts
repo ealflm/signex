@@ -3,16 +3,18 @@
 // Mode is admin-side UI state — the toolbar owns it and pushes it into the preview iframe over the
 // postMessage bridge (`setMode`). It is never persisted and never reaches the public render.
 //
-// ⚠️ The `key`s below are a CONTRACT with the preview overlay: they must match
-// `apps/web/app/components/editor/_lib/edit-mode.ts` exactly. The overlay validates the incoming
-// mode (isEditMode) and IGNORES anything it doesn't recognise rather than defaulting, so a typo here
-// fails silently — the canvas simply keeps the mode it already had, with no error on either side.
-// The labels are ours alone; only the keys cross the bridge.
+// The mode VOCABULARY is not declared here. It is a contract with the preview overlay in
+// apps/web, which validates the incoming mode (isEditMode) and IGNORES anything it does not
+// recognise rather than defaulting — so a typo on either side fails silently, the canvas simply
+// keeping the mode it already had, with no error anywhere. `tsc` cannot see across workspaces, so
+// the two spellings used to be held together by a comment. They now come from ONE declaration in
+// @signex/shared, which both apps compile against; see packages/shared/src/edit-mode.ts.
+// What IS ours alone: the labels, the icons, and the canvas order below.
 
 import { ImageIcon, TypeIcon, PaletteIcon, ListIcon } from "lucide-react";
+import { EDIT_MODES as EDIT_MODE_KEYS, DEFAULT_EDIT_MODE, type EditMode } from "@signex/shared";
 
-/** The single axis that decides what the canvas exposes and what the right panel shows. */
-export type EditMode = "media" | "text" | "color" | "content";
+export type { EditMode };
 
 /** Canvas order: the three direct-manipulation modes first, then the form. */
 export const EDIT_MODES = [
@@ -23,6 +25,13 @@ export const EDIT_MODES = [
 ] as const satisfies readonly { key: EditMode; label: string; Icon: unknown }[];
 
 /** Content = today's section form, so the editor opens exactly as it did before modes existed.
- *  The overlay independently starts in "content" too, so a preview that never receives a `setMode`
+ *  The overlay boots from this same shared constant, so a preview that never receives a `setMode`
  *  still agrees with the toolbar rather than showing affordances the toolbar isn't claiming. */
-export const DEFAULT_MODE: EditMode = "content";
+export const DEFAULT_MODE: EditMode = DEFAULT_EDIT_MODE;
+
+/** The shared vocabulary, re-exported for the drift test.
+ *
+ *  `satisfies` above proves every key IS a mode; it does NOT prove every mode HAS a button — an
+ *  omission would silently drop a mode from the toolbar while still typechecking. modes.test.ts
+ *  closes that half by comparing the two lists. */
+export { EDIT_MODE_KEYS };
