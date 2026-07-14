@@ -49,6 +49,8 @@ import { useEffect } from "react";
 
 import { ANCHOR_PAINT_TARGETS } from "@signex/shared";
 
+import { capSel, hasCap, type EditCap } from "./_lib/edit-caps";
+
 const SOURCE = "signex-editor";
 
 // The two known locales (kept literal — i18n-config is a server module; the overlay is a tiny
@@ -56,23 +58,6 @@ const SOURCE = "signex-editor";
 const LOCALES = ["en", "vi"] as const;
 
 type MediaEntry = { el: HTMLElement; hot: HTMLDivElement; onScreen: boolean };
-
-type EditCap = "image" | "video" | "text" | "color";
-
-/**
- * `data-edit-caps` is COMMA-joined ("text,color"), so CSS's `~=` (space-separated word match) does
- * not apply and `*=` would be a substring match — it happens not to false-positive on today's four
- * cap names, but it silently would the day a cap contains another as a substring. These four
- * matchers pin the value's boundaries, so they match a whole cap and nothing else.
- */
-const capSel = (cap: EditCap, suffix = "") =>
-  [`="${cap}"`, `^="${cap},"`, `$=",${cap}"`, `*=",${cap},"`]
-    .map((m) => `[data-edit-caps${m}]${suffix}`)
-    .join(",");
-
-/** JS-side equivalent: split on "," and compare whole values (never `includes()` on the string). */
-const hasCap = (el: Element, cap: EditCap): boolean =>
-  (el.getAttribute("data-edit-caps") ?? "").split(",").includes(cap);
 
 /** The capability-aware `closest()`: nearest ancestor-or-self DECLARING `cap`. A plain
  *  `closest("[data-edit-caps]")` would stop at the first stamped element even when it lacks `cap`,

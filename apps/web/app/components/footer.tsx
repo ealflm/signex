@@ -54,7 +54,8 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
           background-color: var(--_🎨-color--base---accent--deep-navy) i.e. the accentDeepNavy
           SEED. (The base--dark-100 nearby is a re-declaration of the ink--base token for
           descendants, not this element's own background — likely what the wrong token was read off.)
-          detectToken() resolves seeds as well as tokens, so it answers this correctly. */}
+          Declaring nothing beats declaring a lie; the colour engine resolves seeds as well as
+          tokens, so it will answer this one once wired in. */}
       <div className="master_footer" {...editableAttrs(editable, "footer.bar.color", { color: { roles: ["bg"] } })}>
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">

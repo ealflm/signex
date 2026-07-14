@@ -56,11 +56,11 @@ export type EditColorRole = "bg" | "text" | "border";
 
 export interface EditColorSpec {
   /** Palette token key (from @signex/shared TOKEN_VARS/PALETTE_VARS) this element paints from.
-   *  Now REDUNDANT: color-engine.ts's detectToken() reads the winning CSS rule at click time and
-   *  resolves the driving var() back to a seed/token key, which is both more accurate and immune to
-   *  drift. Declare one only when it has been verified against the CSS that actually paints the
-   *  role — a hand-declared token that disagrees with the stylesheet is worse than none, because
-   *  nothing downstream can tell it is lying. Omit to let the engine answer. */
+   *  Declare one only when it has been verified against the CSS that actually paints the role — a
+   *  hand-declared token that disagrees with the stylesheet is worse than none, because nothing
+   *  downstream can tell it is lying. Omit rather than guess: colour-engine.ts's detectToken() is
+   *  written to resolve the driving var() from the winning CSS rule at click time, and once the
+   *  colour panel wires it in it will answer for the elements that declare nothing here. */
   token?: string;
   /** Which CSS roles on this element are overridable (drives the popover's role chooser). */
   roles: EditColorRole[];

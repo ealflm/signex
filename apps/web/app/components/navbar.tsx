@@ -137,8 +137,8 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
                 href="/contact"
                 /* `token` VERIFIED against the stylesheet: the .btn-bg child that paints this pill
                    declares background-color: var(--_🎨-color--tokens---button--primary--default--background),
-                   which is exactly TOKEN_VARS.btnPrimaryBg. Kept because it is true, though
-                   detectToken() now derives the same answer at click time. */
+                   which is exactly TOKEN_VARS.btnPrimaryBg. Kept because it is true — the colour
+                   engine should derive the same answer once wired in. */
                 {...editableAttrs(editable, "nav.cta.color", {
                   color: { token: "btnPrimaryBg", roles: ["bg", "text"] },
                 })}

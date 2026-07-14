@@ -33,8 +33,8 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                           text: { maxLength: 80 },
                           // No `token`: .tone-medium reads --_🎨-color--tokens---tone--medium, which
                           // is in neither TOKEN_VARS nor PALETTE_VARS (it derives from base--*-64).
-                          // The old `token: "accentAqua"` was simply false. detectToken() reads the
-                          // winning rule at click time and answers honestly.
+                          // The old `token: "accentAqua"` was simply false, so it is gone; the
+                          // colour engine will read the winning rule at click time once wired in.
                           color: { roles: ["text"] },
                         })}
                       >
