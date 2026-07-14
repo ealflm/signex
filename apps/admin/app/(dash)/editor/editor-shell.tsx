@@ -1069,8 +1069,10 @@ export function EditorShell(props: EditorShellProps) {
           >
             {/* The panel is MODE-dynamic: colour mode owns this zone, every other mode leaves the
                 section form in it — under that mode's LENS (MODE_LENS: Media lists the section's
-                media, Text its strings, Content everything, as before modes existed). One
-                ContextPanel with a filter, not one copy per mode: the header, the ScrollArea, the
+                media, Text its strings, Content everything, as before modes existed). The lens
+                recurses, so media/text nested inside an array or object is listed too — which for
+                sections like `features` is the ONLY route to it, the canvas not offering one. One
+                ContextPanel with a lens, not one copy per mode: the header, the ScrollArea, the
                 FieldEditor loop and the flash wiring are identical in all three, and three copies of
                 them would be three places to fix the next flash bug.
                 Not a third, independent selection — that was the old "Bảng màu"

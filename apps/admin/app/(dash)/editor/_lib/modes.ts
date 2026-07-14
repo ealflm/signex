@@ -37,6 +37,8 @@ export const DEFAULT_MODE: EditMode = DEFAULT_EDIT_MODE;
 // Both predicates are keyed off `FieldPlan.kind` — the same discriminant FieldEditor already
 // switches on to choose a renderer. A second, parallel notion of "what kind of field is this"
 // would be free to drift from the thing doing the rendering; this one cannot.
+//
+// They are LEAF predicates. Containers are not their business; `lensFields` below owns those.
 
 /**
  * Media = the two structural media shapes: AssetRef ({assetId, alt?}) and VideoRef
@@ -61,16 +63,62 @@ export function isTextField(f: FieldPlan): boolean {
   );
 }
 
-// `array` / `object` are CONTAINERS and belong to neither: they may hold media and text leaves at
-// once, and FieldEditor renders a container whole — so keeping one would smuggle the other lens's
-// leaves in with it. Recursing into them would mean teaching FieldEditor to render a partial
-// container, which is a bigger change than this lens is worth; their leaves stay reachable in
-// Content mode, which is exactly what that mode is for.
+// ─── Containers ───────────────────────────────────────────────────────────────
+// `array` / `object` are CONTAINERS, and both predicates above answer `false` for them — because
+// they are leaf predicates and a container is no kind of leaf, not because a container has nothing
+// to offer a lens. The distinction is load-bearing: most of this site's media lives INSIDE a
+// container (`features.video.media`, `features.featured.image`, `aboutPage.hero.video`,
+// `contactPage.hero.image`, `meta.favicons.asset`), so a lens that dropped containers would list
+// NOTHING in Media mode for three of the site's sections.
+//
+// It would also defeat its own rationale. Array items and slider-internal media are deliberately
+// NOT click-editable on the canvas, so this panel's list is their ONLY route — which is precisely
+// why the spec has the Media/Text panel "list the whole section" (decision 6,
+// docs/superpowers/specs/2026-07-14-editor-modes-design.md).
+//
+// So the lens RECURSES, and the "smuggling" worry is answered by pruning rather than by exclusion:
+// `lensFields` rebuilds each container with only its surviving descendants, so a container in the
+// Media lens carries its media and nothing else.
+
+/**
+ * Narrow a field-plan tree to one lens: keep the leaves `keepLeaf` claims, keep a container only
+ * when a descendant survived, and prune everything else.
+ *
+ * Pure, and bounded by the plan tree rather than by a depth limit of its own: it recurses as far as
+ * `deriveFields` built (which caps itself at MAX_OBJECT_DEPTH), so it handles the two-level nesting
+ * the registry has today — `features.video.media` — and anything deeper a future schema adds,
+ * with no second limit here to drift from that one.
+ *
+ * A surviving container keeps its `name` untouched, so a nested field's dotted path — the identity
+ * that the canvas highlight, the value read and the value write ALL key off — is byte-identical to
+ * the one Content mode builds. This lens decides what is RENDERED; it never touches how a value is
+ * addressed, which is what keeps a filtered view from changing what a save produces.
+ */
+export function lensFields(
+  fields: FieldPlan[],
+  keepLeaf: (f: FieldPlan) => boolean,
+): FieldPlan[] {
+  const out: FieldPlan[] = [];
+  for (const f of fields) {
+    if (f.kind === "array" || f.kind === "object") {
+      const children = lensFields(f.children ?? [], keepLeaf);
+      // An empty container is dropped, not rendered: a header with nothing under it reads as a
+      // broken section rather than as an absence.
+      if (children.length > 0) out.push({ ...f, children });
+    } else if (keepLeaf(f)) {
+      out.push(f);
+    }
+  }
+  return out;
+}
 
 /** What one mode does to the section form. */
 export interface ModeLens {
-  /** Which fields it lists. */
-  filter: (f: FieldPlan) => boolean;
+  /**
+   * Which LEAVES it lists. Not an `Array.prototype.filter` callback — containers are never asked;
+   * `lensFields` keeps one iff this claims some descendant of it.
+   */
+  keepLeaf: (f: FieldPlan) => boolean;
   /** What to call the list — replaces the block label in the panel header. */
   title: string;
 }
@@ -84,8 +132,8 @@ export interface ModeLens {
  * (ColorPanel owns that zone); the value is never read.
  */
 export const MODE_LENS: Record<EditMode, ModeLens | null> = {
-  media: { filter: isMediaField, title: "Hình ảnh & video" },
-  text: { filter: isTextField, title: "Nội dung chữ" },
+  media: { keepLeaf: isMediaField, title: "Hình ảnh & video" },
+  text: { keepLeaf: isTextField, title: "Nội dung chữ" },
   color: null,
   content: null,
 };
