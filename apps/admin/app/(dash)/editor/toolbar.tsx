@@ -26,6 +26,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Locale, DeviceWidth, ToolbarStatus } from "./_lib/blocks";
+import { EDIT_MODES, type EditMode } from "./_lib/modes";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,8 @@ export interface ToolbarProps {
   onLangChange: (l: Locale) => void;
   device: DeviceWidth;
   onDeviceChange: (d: DeviceWidth) => void;
+  mode: EditMode;
+  onModeChange: (m: EditMode) => void;
   status: ToolbarStatus;
   draftAheadOf: { draftRevision: number; publishedRevision: number } | null;
   canPublish: boolean;
@@ -89,6 +92,8 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
     onLangChange,
     device,
     onDeviceChange,
+    mode,
+    onModeChange,
     status,
     draftAheadOf,
     canPublish,
@@ -192,8 +197,42 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
           </Tooltip>
         </ToggleGroup>
 
-        {/* ── Spacer ───────────────────────────────────────────────────────── */}
-        <div className="flex-1" />
+        {/* ── Mode segmented control ───────────────────────────────────────
+            Centred, deliberately NOT grouped with VI/EN + the device icons: those change how you
+            VIEW the page, mode changes WHAT YOU EDIT.
+            Measured: 425px free at a 1600px window; four labelled buttons ≈ 340px. Below 1280px
+            the labels are dropped for icon + tooltip (same treatment as the device toggle) — hence
+            the aria-label, which is the only accessible name each button has at those widths. */}
+        <div className="flex flex-1 justify-center">
+          <div
+            role="group"
+            aria-label="Chế độ chỉnh sửa"
+            className="flex items-center rounded-md border border-input bg-background p-0.5"
+          >
+            {EDIT_MODES.map((m) => (
+              <Tooltip key={m.key}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={m.label}
+                    aria-pressed={mode === m.key}
+                    onClick={() => onModeChange(m.key)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                      mode === m.key
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <m.Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="hidden xl:inline">{m.label}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{m.label}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </div>
 
         {/* ── Status pill + draft-ahead note ───────────────────────────────── */}
         <div className="flex flex-col items-end gap-0.5">

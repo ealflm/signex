@@ -67,6 +67,7 @@ import {
   type Selection,
   type ToolbarStatus,
 } from "./_lib/blocks";
+import { DEFAULT_MODE, type EditMode } from "./_lib/modes";
 import type { FieldAssetRow } from "./_fields/field-editor";
 import {
   MediaPickerDialog,
@@ -244,6 +245,9 @@ export function EditorShell(props: EditorShellProps) {
   // Colour-zone click popover target (Task 10) — set by the inbound `colorEdit` message, cleared on
   // pick/close. Mutually independent of `selection`/`paletteOpen`: it floats over whatever's shown.
   const [colorTarget, setColorTarget] = useState<ColorEditTarget | null>(null);
+  // Which capability a canvas click invokes. Admin-side UI state, never persisted; the preview only
+  // learns it from the `setMode` messages posted below (onModeChange + the `ready` handshake).
+  const [mode, setMode] = useState<EditMode>(DEFAULT_MODE);
   const [draftRevision, setDraftRevision] = useState(initialDraftRevision);
   const [publishedRevision, setPublishedRevision] = useState(initialPublishedRevision);
   const [saving, setSaving] = useState(false);
@@ -313,6 +317,10 @@ export function EditorShell(props: EditorShellProps) {
   // `ready` re-posts only this locale's pending text). Same pattern as mediaPreviewRef.
   const langRef = useRef(lang);
   langRef.current = lang;
+  // Live mode for the once-subscribed listener, so `ready` re-posts the mode the toolbar shows RIGHT
+  // NOW — not the one captured when the listener subscribed. Same pattern as langRef.
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
 
   const workingBlockData = useCallback(
     (key: BlockKey): Record<string, unknown> => {
@@ -381,6 +389,30 @@ export function EditorShell(props: EditorShellProps) {
       );
     },
     [webOrigin],
+  );
+
+  // Mode lives here but is ENFORCED in the iframe, so every mode change has to be posted. This is
+  // best-effort by nature: a preview that is still loading (or reloading) has no listener yet and
+  // drops the message. The `ready` handler below is what makes that safe — it re-posts modeRef on
+  // every (re)load, so the last mode the toolbar shows always wins. Both halves are needed: `ready`
+  // alone would ignore mode changes made while the preview sits loaded, and this alone would lose
+  // any change racing a reload.
+  const postSetMode = useCallback(
+    (m: EditMode) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { source: SOURCE, type: "setMode", mode: m },
+        webOrigin,
+      );
+    },
+    [webOrigin],
+  );
+
+  const onModeChange = useCallback(
+    (m: EditMode) => {
+      setMode(m);
+      postSetMode(m);
+    },
+    [postSetMode],
   );
 
   // Updates the palette working patch AND live-applies it to the preview (same postMessage idiom as
@@ -815,6 +847,14 @@ export function EditorShell(props: EditorShellProps) {
         const [blockKey, ...rest] = (data.field as string).split(".") as [BlockKey, ...string[]];
         onCanvasHighlight(blockKey, rest.join("."));
       } else if (data.type === "ready") {
+        // Push the live mode into the fresh overlay. This is the ONLY way a (re)loaded preview
+        // learns the mode: it boots in "content" and postSetMode's earlier posts died with the
+        // previous document. Read modeRef, not `mode` — a mode changed WHILE the iframe was
+        // reloading was dropped on the floor, and this re-post is what recovers it.
+        // Deliberately unguarded, unlike the palette below: mode is pure UI state that the preview
+        // has no other source for, so re-asserting it can only ever restore agreement. (The palette
+        // is the opposite — the preview server-renders its own, so speaking unprompted DESTROYS it.)
+        postSetMode(modeRef.current);
         // Re-apply live media swaps AND this-locale pending inline TEXT after a (re)load / remount.
         const media = [...mediaPreviewRef.current.values()];
         const text: ApplyEdit[] = [...textPreviewRef.current.values()]
@@ -854,6 +894,7 @@ export function EditorShell(props: EditorShellProps) {
     openMediaPicker,
     postApplyEdits,
     postScrollToBlock,
+    postSetMode,
     applyFieldEdit,
     onCanvasHighlight,
   ]);
@@ -977,6 +1018,8 @@ export function EditorShell(props: EditorShellProps) {
           onLangChange={setLang}
           device={device}
           onDeviceChange={setDevice}
+          mode={mode}
+          onModeChange={onModeChange}
           status={status}
           draftAheadOf={draftAhead}
           canPublish={canPublish}
