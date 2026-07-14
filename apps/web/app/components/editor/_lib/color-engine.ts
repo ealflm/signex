@@ -113,46 +113,82 @@ export function rgbToHex(v: string): string | undefined {
  * with no overlay mounted; it is safe for the same reason a body-child is never enumerated — the
  * block walk only ever visits nodes strictly inside a `[data-sx-block]` root — but the layer is the
  * placement that needs no such argument.
+ *
+ * TWO nested elements, because the probe's answer is only trustworthy if we can prove it did not
+ * come from the probe. The outer one is a `color` context normalizeColor sets to a known value, and
+ * the inner one — returned here — is where the value under test goes. See normalizeColor.
  */
 let probeEl: HTMLElement | null = null;
 function colorProbe(): HTMLElement | null {
   if (probeEl?.isConnected) return probeEl;
   const host = document.querySelector(".sx-edit-layer") ?? document.body;
   if (!host) return null;
-  probeEl = document.createElement("span");
-  probeEl.setAttribute("aria-hidden", "true");
-  probeEl.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:0;height:0;pointer-events:none";
-  host.appendChild(probeEl);
+  const context = document.createElement("span");
+  context.setAttribute("aria-hidden", "true");
+  context.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:0;height:0;pointer-events:none";
+  probeEl = context.appendChild(document.createElement("span"));
+  host.appendChild(context);
   return probeEl;
 }
 
 /**
- * A CSS colour value → the browser's own serialisation of it.
+ * What `value`, declared for `prop`, would MEAN — as the browser's own serialisation of it. "" when
+ * that cannot be answered away from the element it was declared on.
  *
- * Needed because a custom property's computed value comes back AS AUTHORED, and this template
- * authors colours every way CSS allows: `#0d2b44` for the seeds, the bare keyword `white` for
- * `--…button--primary--default--text`, `color-mix(in srgb, white 8%, transparent)` for
- * `--…primary--default--border`. Hand-parsing that set is a losing game — `white` alone would have
- * cost the nav CTA's TEXT role its editor, and it is a real, opaque, site-wide token (btnPrimaryText)
- * — so the question goes to the only authority on CSS colour syntax: CSS.
+ * Needed because a declaration and a custom property's computed value both come back AS AUTHORED,
+ * and this template authors colours every way CSS allows: `#0d2b44` for the seeds, the bare keyword
+ * `white` for `--…button--primary--default--text`, `color-mix(in srgb, white 8%, transparent)` for
+ * `--…primary--default--border`, and — after Next's CSS minifier rewrites globals.css's
+ * `.sx-upload__btn { background: transparent }` — the keyword `initial`. Hand-parsing that set is a
+ * losing game (`white` alone would have cost the nav CTA's TEXT role its editor, and it is a real,
+ * opaque, site-wide token, btnPrimaryText), so the question goes to the only authority on CSS colour
+ * syntax: CSS.
  *
- * The value arrives already var-substituted (that is what a computed custom property IS), so it
- * needs no element context — only a parser. A `var(` that somehow survived is refused rather than
- * resolved: it would resolve against the PROBE, where the property is unset, and quietly yield the
- * probe's inherited colour instead of the element's.
+ * `prop` is not decoration. The probe answers by DECLARING the value, so it must declare it as the
+ * property it came from: the CSS-wide keywords are property-relative, and `background-color: initial`
+ * (transparent) is not `color: initial` (black). Asking every value through `color`, as this once
+ * did, silently answered a different question than the one posed.
+ *
+ * The harder half is that some values are not colours at all — they name the ELEMENT'S context.
+ * `currentColor`, `inherit` (globals.css really does declare `.sx-upload__btn { color: inherit }`),
+ * and `border-color: initial`, whose initial value IS `currentColor`. On the probe these do not
+ * fail; they quietly return the PROBE's colour dressed up as the element's — the same lying hex from
+ * a new direction. So rather than keep a list of them (a list this file got wrong once already —
+ * `initial` was on it, which cost `.sx-upload__btn` the very fix it was the example for), ASK: run
+ * the value twice against two different inherited colours and keep the answer only if it did not
+ * move. A colour cannot notice; anything context-dependent must. `var()` is refused up front and
+ * separately — it is unexpected here (a computed custom property arrives already substituted) and it
+ * would resolve against the probe, where the property is unset.
+ *
+ * A refusal is not a failure: defaultStateColor falls through to the computed value, which is where
+ * an inherited colour was always going to have to come from.
  */
-function normalizeColor(value: string): string {
+function normalizeColor(
+  prop: string,
+  computedKey: "backgroundColor" | "color" | "borderTopColor",
+  value: string,
+): string {
   const v = value.trim();
   if (!v || v.includes("var(")) return "";
   const probe = colorProbe();
   if (!probe) return v; // no DOM to ask — parseColor still reads the literal forms itself
-  probe.style.removeProperty("color");
-  // An invalid value is simply not accepted by the CSSOM, which leaves `color` empty — that is the
-  // rejection, read back below, and it costs nothing to ask. `important` so no page rule can outrank
-  // the thing we are asking about.
-  probe.style.setProperty("color", v, "important");
-  if (!probe.style.color) return "";
-  return getComputedStyle(probe).color;
+  const context = probe.parentElement;
+  if (!context) return v;
+  const read = (inherited: string): string => {
+    context.style.setProperty("color", inherited, "important");
+    // Wipe the probe's own declarations, not just this prop's: a `color` left over from an earlier
+    // call would anchor a later `currentColor` to a stale value and make it look context-FREE.
+    probe.style.cssText = "";
+    // An invalid value is simply not accepted by the CSSOM, which leaves the property empty — that
+    // is the rejection, read back below, and it costs nothing to ask. `important` so no page rule
+    // can outrank the thing we are asking about.
+    probe.style.setProperty(prop, v, "important");
+    if (!probe.style.getPropertyValue(prop)) return "";
+    return getComputedStyle(probe)[computedKey];
+  };
+  const onBlack = read("rgb(0, 0, 0)");
+  const onWhite = read("rgb(255, 255, 255)");
+  return onBlack === onWhite ? onBlack : "";
 }
 
 /**
@@ -165,8 +201,15 @@ function normalizeColor(value: string): string {
  * `.btn-bg` was not even CONSIDERED a painter; the bg role then resolved to nothing and the panel
  * said "not editable by hex" — the very words it uses for a colour that legitimately has alpha.
  *
- * Candidacy is about what the element PAINTS. Representability is decided afterwards, on the
+ * Candidacy is about what the element PAINTS. Representability is decided afterwards, on the same
  * DEFAULT-state colour, and can only ever cost a role its editor — never its existence.
+ *
+ * Asked of the LIVE colour, candidacy is the lie one layer down: `.sx-upload__btn` is
+ * `background: transparent` at rest and `rgba(255,255,255,0.12)` under `:hover` (globals.css), so a
+ * live read INVENTS a bg role the element does not have — and, the alpha being unstorable, the panel
+ * then prints "this colour has alpha" for a role that at rest is not there at all. That is the exact
+ * pair resolveRoles keeps apart, collapsed from the other side. So candidacy asks defaultStateColor
+ * (below) too, and every question this file answers about a colour is answered about ONE state.
  */
 function isPainted(v: string): boolean {
   const c = parseColor(v);
@@ -213,17 +256,37 @@ export function resolveMeaningfulBlock(x: number, y: number): HTMLElement | null
   );
 }
 
+const ROLE_PROP: Record<ColorRole, string> = {
+  bg: "background-color",
+  text: "color",
+  border: "border-color",
+};
+const ROLE_COMPUTED: Record<ColorRole, "backgroundColor" | "color" | "borderTopColor"> = {
+  bg: "backgroundColor",
+  text: "color",
+  border: "borderTopColor",
+};
+/** What `role` is in the DEFAULT state on `el`, for the two callers below. Shorthand for the pair of
+ *  lookups every one of them would otherwise repeat. */
+const roleColor = (el: HTMLElement, role: ColorRole): string =>
+  defaultStateColor(el, ROLE_PROP[role], ROLE_COMPUTED[role]);
+
 /** The element that actually PAINTS `role` for `block`. For `bg`/`border`, colour does NOT
  *  inherit, so the block itself is frequently transparent — the nav CTA is a transparent <a>
  *  whose pill is painted by a .btn-bg child — and searching the subtree finds the real painter
- *  by construction. `text` is the opposite case: see the comment inside that branch. */
+ *  by construction. `text` is the opposite case: see the comment inside that branch.
+ *
+ *  Every colour read here goes through defaultStateColor (below), never getComputedStyle: the
+ *  pointer is parked on `block` at click time, so a live read decides CANDIDACY from the hovered
+ *  state — see isPainted. Sizes are the same hazard and get the same answer: layoutBox, not
+ *  getBoundingClientRect. */
 function painterFor(block: HTMLElement, role: ColorRole): HTMLElement | null {
   const candidates = [block, ...Array.from(block.querySelectorAll<HTMLElement>("*"))];
   if (role === "bg") {
     const box = layoutBox(block);
     return (
       candidates.find((el) => {
-        if (!isPainted(getComputedStyle(el).backgroundColor)) return false;
+        if (!isPainted(roleColor(el, "bg"))) return false;
         const r = layoutBox(el);
         return r.w >= box.w - 1 && r.h >= box.h - 1;
       }) ?? null
@@ -259,16 +322,22 @@ function painterFor(block: HTMLElement, role: ColorRole): HTMLElement | null {
     // Subsumes the old no-glyph gate: the navbar shell, a bg-only <a> and an icon-only button all
     // have a computed `color` that never paints a pixel, so there is no text colour to edit.
     if (glyphBearers.length === 0) return null;
-    // Compare the computed strings getComputedStyle already resolved and serialized — NOT hex.
-    // Hex would drop every non-opaque colour to undefined and make unequal colours compare equal.
-    const blockColor = getComputedStyle(block).color;
-    return glyphBearers.every((el) => getComputedStyle(el).color === blockColor) ? block : null;
+    // Compare BROWSER-SERIALISED colour strings — NOT hex. Hex would drop every non-opaque colour
+    // to undefined and make unequal colours compare equal. And compare the DEFAULT state on both
+    // sides: `.hero-quote_upload:hover { color: #ffffff }` recolours a block whose children
+    // re-declare their own colour, so a live comparison would find them equal only while the pointer
+    // is on it — handing back `block`, and with it a hex no glyph under the pointer has.
+    const blockColor = roleColor(block, "text");
+    return glyphBearers.every((el) => roleColor(el, "text") === blockColor) ? block : null;
   }
   return (
-    candidates.find((el) => {
-      const cs = getComputedStyle(el);
-      return parseFloat(cs.borderTopWidth) > 0 && isPainted(cs.borderTopColor);
-    }) ?? null
+    candidates.find(
+      (el) =>
+        // Width is layout, not paint, and no state rule in this template moves it — the live read
+        // is the right one. The COLOUR beside it is not: `.hero-quote_upload:hover` declares a
+        // border-color the element only has under the pointer.
+        parseFloat(getComputedStyle(el).borderTopWidth) > 0 && isPainted(roleColor(el, "border")),
+    ) ?? null
   );
 }
 
@@ -293,6 +362,27 @@ function painterFor(block: HTMLElement, role: ColorRole): HTMLElement | null {
  * (primary vs secondary button), not state, and dropping them would lose the secondary tokens.
  */
 const STATE_PSEUDO_RE = /:(?:hover|focus-visible|focus-within|focus|active|visited|target)(?![\w-])/i;
+
+/**
+ * The same set as STATE_PSEUDO_RE, asked of an ELEMENT instead of a selector string: is `el` in a
+ * transient state RIGHT NOW — i.e. is anything the default-state cascade excludes currently applying
+ * to it? `:visited` is absent because `matches(":visited")` is hard-wired to false for privacy, so
+ * asking is meaningless rather than merely redundant.
+ *
+ * `withAncestors` asks the question INHERITANCE needs — "is anything up the tree in a transient
+ * state?" — for the properties that inherit. See defaultStateColor for which, and why.
+ *
+ * A selector this browser cannot parse answers "assume it is": that costs accuracy (the declaration
+ * walk is an approximation) but never honesty, which is the right way round.
+ */
+const TRANSIENT_SEL = ":hover, :active, :focus, :focus-visible, :focus-within, :target";
+function inTransientState(el: HTMLElement, withAncestors = false): boolean {
+  try {
+    return withAncestors ? !!el.closest(TRANSIENT_SEL) : el.matches(TRANSIENT_SEL);
+  } catch {
+    return true;
+  }
+}
 
 /**
  * Every style rule in the document, in source order, including those nested in a grouping block
@@ -331,10 +421,18 @@ function* styleRules(node: CSSStyleSheet | CSSGroupingRule): Generator<CSSStyleR
  * be two mechanisms answering one question and they disagreed: detection skipped `:hover` (rightly),
  * measurement was a plain getComputedStyle that did not, so a click on the nav CTA reported token
  * `btnPrimaryBg` beside a hex measured off `.btn-bg:hover`. Anything this returns, they now cannot
- * disagree about.
+ * disagree about. (defaultStateColor asks only for an element actually IN a transient state; for
+ * every other element the computed value is already the default-state one and is strictly better
+ * than this walk. See there — the reasons are this walk's two approximations, below.)
  *
  * "Later wins" approximates the cascade — it ignores specificity — and it is the approximation this
  * file has always made; the template is single-class Webflow output, where source order IS the order.
+ *
+ * The second approximation is not a choice: a shorthand carrying a var() is held pending
+ * substitution, and `getPropertyValue(<longhand>)` on such a rule returns "". So a rule like
+ * `.text-field { border: 1px solid var(--…) }` is INVISIBLE here, and the walk happily returns an
+ * earlier rule that the real cascade overrode. Callers must treat what this returns as the best
+ * reading of the default state available, not as fact.
  */
 function winningDecl(el: HTMLElement, prop: string): string | undefined {
   let decl: string | undefined;
@@ -375,38 +473,87 @@ function detectToken(el: HTMLElement, prop: string): string | undefined {
 }
 
 /**
- * The colour `prop` paints on `el` IN THE DEFAULT STATE — the only state colour mode edits.
+ * The colour `prop` paints on `el` IN THE DEFAULT STATE — the only state colour mode edits — as a
+ * CSS colour string.
+ *
+ * Read by BOTH questions this file asks about a colour: painterFor's "does this element paint the
+ * role at all?" (isPainted) and resolveRoles' "can the user store it?" (rgbToHex). One answer, so
+ * the two can never disagree about which STATE they are describing.
  *
  * Deliberately not a bare `getComputedStyle(el)[computedKey]`, which reports the CURRENT state.
  * Colour mode hides every hotspot (`display:none !important`, MODE_AFFORDANCE_CSS in edit-mode.ts)
  * and `.sx-edit-layer` itself is `pointer-events:none`, so nothing intercepts the pointer: the
  * element the user just clicked is genuinely under `:hover` while we introspect it — verified, not
  * assumed (`.btn-bg.matches(":hover")` is true at click time). And `.btn-bg` carries
- * `transition: background-color .3s`, so the live value is not even a STABLE wrong answer. That is how the nav CTA measured `color(srgb … / 0.88)` off
- * `.btn-bg:hover` (which reads `--base--dark-88`, a color-mix) while detectToken, correctly skipping
- * that same rule, reported `btnPrimaryBg` = `#0d2b44`. Two answers, one element, and the measurement
- * was the wrong one.
+ * `transition: background-color .3s`, so the live value is not even a STABLE wrong answer. That is
+ * how the nav CTA measured `color(srgb … / 0.88)` off `.btn-bg:hover` (which reads `--base--dark-88`,
+ * a color-mix) while detectToken, correctly skipping that same rule, reported `btnPrimaryBg` =
+ * `#0d2b44`. Two answers, one element, and the measurement was the wrong one.
  *
- * So both read the same declaration. When it is a `var()` — how this template declares every colour
- * — the custom property's own computed value is the answer, and it is state-INDEPENDENT: a `:hover`
- * rule changes which var is read, never what the var holds. That is what makes this work without
- * suppressing the hover, which we cannot do: the pointer is the user's. The value is normalised
- * through the browser (normalizeColor) because a custom property comes back as AUTHORED — `white` is
- * as likely as `#0d2b44`.
+ * But the computed value is only WRONG while something transient is actually applying — and that is
+ * one element per click, the one under the pointer. So ASK (inTransientState) instead of assuming.
+ * When nothing transient matches `el`, its computed value IS its default-state value by definition,
+ * and it is the REAL cascade — specificity, `@layer`, shorthands and all — which the walk below only
+ * approximates. It is also the cheap answer, and the one almost every candidate painterFor tests
+ * will take.
  *
- * Everything else falls through to the computed value: a literal declaration needs no resolving, and
- * an inherited `color` has no declaration on `el` at all to find. Neither is contradicted by a state
- * rule in this template, and the computed value is the browser's own normalisation — which is how a
- * named colour (`white`) still reads back as a hex.
+ * Only when `el` really is in a transient state do we read the cascade ourselves: winningDecl, the
+ * same walk detectToken uses, with the state rules dropped. Both forms of declaration then resolve
+ * WITHOUT asking the element how it currently looks — which is what makes this work without
+ * suppressing the hover, since we cannot: the pointer is the user's.
+ *
+ *   • `var(--x)` — the custom property's own computed value, state-INDEPENDENT: a `:hover` rule
+ *     changes WHICH var the property reads, never what the var holds.
+ *   • a literal — the declaration IS the colour; there is nothing to resolve.
+ *
+ * The literal branch is the one that was missing. It fell through to the computed value on the claim
+ * that no state rule in this template contradicts a literal; the template contradicts it three times
+ * over, all in globals.css — `.hero-quote_upload--filled .sx-upload__btn:hover { color: #ffffff }`
+ * over a resting `rgba(255,255,255,0.7)`, `.hero-quote_upload:hover { border-color:
+ * rgba(255,255,255,0.55) }` over a resting `…0.25`, and `.product-zoom_controls button:hover {
+ * background-color: rgba(…,0.24) }` over a resting `…0.12`. Both forms go through the browser
+ * (normalizeColor) rather than a hand-parser: a custom property comes back AS AUTHORED, and a
+ * literal is authored however CSS allows.
+ *
+ * Why the walk is the fallback and not the primary, even though it is the state-correct one: it is
+ * blind to a shorthand carrying a var(). `.text-field` is `border: 1px solid
+ * var(--…input--default--border)`, and the CSSOM keeps a var-bearing shorthand pending substitution
+ * — `getPropertyValue("border-color")` on that rule returns "" — so the walk cannot see it and hands
+ * back the last rule it CAN see, Webflow's base `.w-input { border: 1px solid #ccc }`, which loses
+ * the real cascade. Trusted unconditionally, the walk therefore reports `#cccccc` for the border of
+ * every text input on the site — opaque, hence storable, hence a Save button — where the element
+ * actually computes to fully transparent. Confining it to the element whose computed value we
+ * already know is lying keeps the blind spot where it cannot invent a role, and buys the smaller
+ * error: a colour off by a cascade approximation instead of one off by an entire state.
  */
 function defaultStateColor(
   el: HTMLElement,
   prop: string,
   computedKey: "backgroundColor" | "color" | "borderTopColor",
-): string | undefined {
+): string {
   const cs = getComputedStyle(el);
-  const varName = varNameOf(winningDecl(el, prop));
-  return rgbToHex(varName ? normalizeColor(cs.getPropertyValue(varName)) : cs[computedKey]);
+  // Which elements a transient state can lie ABOUT depends on whether the property inherits.
+  // `background-color`/`border-color` do not: only `el`'s own state can move them. `color` does — a
+  // child of the hovered element is not itself `:hover`, yet it inherits the hovered colour — so
+  // there the question is whether anything in `el`'s ANCESTRY is in a transient state. That covers
+  // both halves: the hover chain is the hovered element plus its ancestors, so a member of the chain
+  // matches on itself and a descendant of it finds it by walking up.
+  if (!inTransientState(el, computedKey === "color")) return cs[computedKey];
+  const decl = winningDecl(el, prop);
+  // Nothing declares `color` here, and `color` inherits: this element's default-state colour IS its
+  // parent's, so ask the parent the same question. Falling through to cs[computedKey] instead would
+  // read the parent's CURRENT colour — the very read this function exists to avoid, one level up.
+  // Terminates at <html>, which has no parentElement.
+  if (!decl && computedKey === "color" && el.parentElement) {
+    return defaultStateColor(el.parentElement, prop, computedKey);
+  }
+  const varName = varNameOf(decl);
+  const resting = normalizeColor(prop, computedKey, varName ? cs.getPropertyValue(varName) : (decl ?? ""));
+  // normalizeColor refuses what it cannot resolve away from the element (`inherit`, `currentColor`,
+  // a `var()` shape VAR_RE doesn't cover). Nothing better is available then: back to the live value,
+  // which for this element is exactly the value we came here to avoid. It is the best answer left,
+  // not a correct one — and the case is narrow enough to say so rather than paper over.
+  return resting || cs[computedKey];
 }
 
 /**
@@ -463,17 +610,6 @@ function verify(sel: string, el: HTMLElement): string | null {
   return found.length === 1 && found[0] === el ? sel : null;
 }
 
-const ROLE_PROP: Record<ColorRole, string> = {
-  bg: "background-color",
-  text: "color",
-  border: "border-color",
-};
-const ROLE_COMPUTED: Record<ColorRole, "backgroundColor" | "color" | "borderTopColor"> = {
-  bg: "backgroundColor",
-  text: "color",
-  border: "borderTopColor",
-};
-
 /**
  * One entry per colour role the block ACTUALLY HAS — which is what the admin's color-target.ts has
  * always documented this as, and what it now is.
@@ -494,7 +630,9 @@ export function resolveRoles(block: HTMLElement): RoleInfo[] {
     if (!painter) continue;
     out.push({
       role,
-      hex: defaultStateColor(painter, ROLE_PROP[role], ROLE_COMPUTED[role]),
+      // Undefined when the DEFAULT-state colour isn't representable as hex (alpha) — read-only, and
+      // a different fact from the role being absent, which is the `continue` above.
+      hex: rgbToHex(roleColor(painter, role)),
       tokenKey: detectToken(painter, ROLE_PROP[role]),
       selector: buildSelector(painter) ?? undefined,
     });
