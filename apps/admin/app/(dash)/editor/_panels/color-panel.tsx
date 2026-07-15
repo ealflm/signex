@@ -19,10 +19,17 @@
 // silently skips this element forever. Both are offered; the order and the copy say which is which.
 //
 // EVERY EMPTY STATE HERE IS HONEST, NOT AN ERROR:
-//   • no tokenKey  → NORMAL. hero.titleBottom's winning rule reads --…tone--medium, a var in
-//     neither PALETTE_VARS nor TOKEN_VARS, so auto-detection reports none. The per-element
-//     override is then simply the only path — offered as such, not as a failure. (The old popover
-//     used token === "" to HIDE its site-wide mode; this is the same fact, without the pretence.)
+//   • no tokenKey  → NORMAL. nav.logo's winning background-color rule reads
+//     `var(--_🎨-color--tokens---tone--strong)`, a var in neither PALETTE_VARS nor TOKEN_VARS, so
+//     auto-detection reports none — while `.signex-logo-nav` still gives buildSelector a unique
+//     target. The per-element override is then simply the only path — offered as such, not as a
+//     failure. (The old popover used token === "" to HIDE its site-wide mode; this is the same
+//     fact, without the pretence.) Verify with nav.logo, NOT hero.titleBottom: that one's colour
+//     has alpha, so it short-circuits to read-only below and never reaches this path at all.
+//   • no tokenKey + an override already set → says NOTHING about the palette, because it cannot:
+//     our own override IS the winning rule, so detectToken is reading us and its silence is not
+//     evidence. See RoleRow — this is the one case where absent tokenKey is not a fact about the
+//     element.
 //   • no hex       → the colour has alpha (the template derives most tokens via color-mix) or is a
 //     gradient. Hex carries neither, so the row says so instead of showing a colour the element
 //     does not have. This is the ONLY thing that sentence may mean: a role the element does not
@@ -258,10 +265,20 @@ function RoleRow({
             onCommit={onPickElement}
             onClear={onClearElement}
           />
+          {/* Three cases, and the middle one is why this isn't a two-way ternary. Once THIS role
+              carries an override, our own rule is the one detectToken reads — so it reports no
+              token for an element that may well be token-driven, and did: override the nav CTA's
+              background (btnPrimaryBg), click it again, and the old copy told the user this colour
+              was never in the palette while the Chữ role beside it still showed its token. An
+              override does not un-token an element; it only blinds the detector. So when an
+              override is set we state what we know — this element has its own colour — and claim
+              nothing about the palette in either direction. */}
           <p className="text-xs text-muted-foreground">
             {info.tokenKey
               ? "Tách riêng phần tử này khỏi màu chung — đổi màu chung sau này sẽ không còn ảnh hưởng nó."
-              : "Màu này không thuộc bảng màu chung, nên chỉ đổi được riêng phần tử này."}
+              : overrideValue !== undefined
+                ? "Phần tử này đang dùng màu riêng. Xoá (×) để nó trở lại màu mặc định."
+                : "Màu này không thuộc bảng màu chung, nên chỉ đổi được riêng phần tử này."}
           </p>
         </div>
       ) : (
@@ -366,14 +383,40 @@ export function ColorPanel({ target, palette, broken, onChange, onReset }: Color
               <p className="text-xs text-muted-foreground">
                 Phần tử gắn màu này không còn trên trang (thường do thêm/bớt mục trong danh sách).
               </p>
+              {/* `wrap-anywhere`, and NOT `truncate` — the delete button's reachability rides on it.
+                  Radix's ScrollArea viewport wraps content in a display:table box, and a table is
+                  shrink-to-fit: its used width can never go below its MIN-CONTENT. `truncate` sets
+                  white-space:nowrap, which makes a 100-char selector's min-content the whole ~484px
+                  string, so the table grew to 888px inside a 190px panel and the viewport's
+                  overflow-x:hidden (Radix leaves it hidden — we mount no horizontal ScrollBar)
+                  clipped "Xoá" away entirely: past the viewport edge, elementFromPoint → null, no
+                  mouse route to it at all. Tab still reached it (focus scrolls), which is what made
+                  a dead control look merely ugly. min-w-0 does NOT fix this, up this chain or any
+                  other: min-width is a FLOOR, and a floor of 0 cannot pull a min-content
+                  CONTRIBUTION down — only shrinking the content's own min-content can, which is the
+                  same trick `size={1}` plays for the hex inputs above. overflow-wrap:anywhere is
+                  the one property that does that for text (break-word explicitly does NOT affect
+                  min-content), taking it to one character.
+                  Wrapping also beats an ellipsis on its own merits: the selectors that collide are
+                  siblings sharing a long prefix and differing in the LEAF — `.txt_gone-a` vs
+                  `-b` — which is exactly the end an ellipsis eats. The full string is shown, and
+                  `title` repeats it for hovering without scrolling. */}
               {broken.map((sel) => (
-                <div key={sel} className="flex items-center gap-2">
-                  <code className="min-w-0 flex-1 truncate font-mono text-xs" title={sel}>
+                // STACKED, and boxed per row — the same two reasons ColorRow stacks. Side-by-side,
+                // the button's 51px + gap leaves the selector ~59px in a narrow rail, which wraps a
+                // 100-char selector into ~17 lines of 8 characters: reachable, but no longer
+                // READABLE, and readable is the entire job of this string. Stacking gives it the
+                // rail's full width. The border is not decoration: with two rows and a shared gap,
+                // a button sitting under a selector is ambiguous about which one it deletes — and
+                // deleting the wrong override is unrecoverable from here.
+                <div key={sel} className="flex flex-col gap-2 rounded-md border border-border/60 p-3">
+                  <code className="wrap-anywhere font-mono text-xs leading-relaxed" title={sel}>
                     {sel}
                   </code>
                   <Button
                     size="sm"
                     variant="outline"
+                    className="self-end"
                     onClick={() => onChange(clearOverride(palette, sel))}
                   >
                     Xoá
