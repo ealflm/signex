@@ -77,7 +77,7 @@ import {
   type MediaRef,
 } from "@/app/(dash)/visual/media-picker-dialog";
 import { adminApi, stripBasePath } from "@/app/lib/base-path";
-import { rebasePalette, type PalettePatch } from "./_lib/palette-patch";
+import { rebasePalette, type PaletteWorkingSet } from "./_lib/palette-working-set";
 import { createPaletteAuditor } from "./_lib/palette-audit";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
@@ -199,6 +199,7 @@ export function EditorShell(props: EditorShellProps) {
   // Unlike `pending` (a PATCH layered on baseRef per block), the palette is held as TWO values that
   // compose into ONE the panel and the preview both read: `savedPalette` (what the server has) and
   // `pendingPalette` (the COMPLETE palette the user is working on, once they've touched it).
+  // Hence `PaletteWorkingSet`, not a patch type — see _lib/palette-working-set.ts.
   //
   // Why complete rather than a patch: a patch cannot express a DELETION (both merges — here and in
   // theme.service.ts — are additive-only), and it cannot be shown. The old palette rail panel bound
@@ -207,8 +208,8 @@ export function EditorShell(props: EditorShellProps) {
   // the canvas about what colour the site is. Same defect, one layer down, is why `applyPalette`
   // must post the COMPLETE css: it REPLACES #signex-palette wholesale, so posting a patch after a
   // save would blank every colour the patch didn't mention.
-  const [savedPalette, setSavedPalette] = useState<PalettePatch>(initialSnapshot.palette ?? {});
-  const [pendingPalette, setPendingPalette] = useState<PalettePatch>({});
+  const [savedPalette, setSavedPalette] = useState<PaletteWorkingSet>(initialSnapshot.palette ?? {});
+  const [pendingPalette, setPendingPalette] = useState<PaletteWorkingSet>({});
   // Has the user touched the palette this session? An empty `pendingPalette` is ambiguous on its own
   // — it is both "nothing changed" and "reset everything" — so the flag is what distinguishes them,
   // and what makes a reset-only change dirty, saveable, and re-postable. It also says pendingPalette
@@ -400,7 +401,7 @@ export function EditorShell(props: EditorShellProps) {
   // #signex-palette node, so anything missing from `next` would vanish from the canvas — and what
   // lets the save be a `replacePalette`, which is the only way a removal can ever reach the server.
   const applyPalette = useCallback(
-    (next: PalettePatch) => {
+    (next: PaletteWorkingSet) => {
       setPendingPalette(next);
       setPaletteTouched(true);
       bridge.postApplyPalette(paletteStyle(next) ?? "");

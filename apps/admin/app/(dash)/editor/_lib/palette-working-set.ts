@@ -1,18 +1,30 @@
-// app/(dash)/editor/_lib/palette-patch.ts
-// Pure, immutable reducers over the client-held palette working patch (mirrors the `pending` Map
-// pattern for block edits, but palette is a single small object rather than a per-block map).
-// `PalettePatch` aliases `@signex/shared`'s `Palette` — the same shape persisted on
+// app/(dash)/editor/_lib/palette-working-set.ts
+// Pure, immutable reducers over the client-held palette WORKING SET.
+//
+// A working set, explicitly NOT a patch — the opposite of `pending`, the per-block Map these
+// reducers used to be described as mirroring. `pending` layers a PATCH on baseRef per block; the
+// palette is one COMPLETE value. The difference is load-bearing in both directions:
+//   • a patch cannot express a DELETION (both merges — the shell's and theme.service.ts's — are
+//     additive-only), so a reset could never reach the server under one;
+//   • a patch cannot be SHOWN. Binding the panel to one is a bug this branch already shipped and
+//     fixed: the moment a save cleared the patch the panel fell back to the TEMPLATE defaults while
+//     the preview correctly rendered the saved colours.
+// So the value these reducers take and return is always the whole palette, and `replacePalette:
+// true` is correct precisely because of it. If you find yourself reaching for `pendingPalette` to
+// feed one of these, re-read editor-shell.tsx's palette section first — that is the bug above.
+//
+// `PaletteWorkingSet` aliases `@signex/shared`'s `Palette` — the same shape persisted on
 // ReleaseSnapshot.palette and rendered via `paletteStyle`.
 
 import { PALETTE_VARS, TOKEN_VARS, type Palette } from "@signex/shared";
 
-export type PalettePatch = Palette;
+export type PaletteWorkingSet = Palette;
 
-export function setSeed(p: PalettePatch, key: string, hex: string): PalettePatch {
+export function setSeed(p: PaletteWorkingSet, key: string, hex: string): PaletteWorkingSet {
   return { ...p, seeds: { ...(p.seeds ?? {}), [key]: hex } };
 }
 
-export function setToken(p: PalettePatch, key: string, hex: string): PalettePatch {
+export function setToken(p: PaletteWorkingSet, key: string, hex: string): PaletteWorkingSet {
   return { ...p, tokens: { ...(p.tokens ?? {}), [key]: hex } };
 }
 
@@ -25,7 +37,7 @@ export function setToken(p: PalettePatch, key: string, hex: string): PalettePatc
  * and this is it. An unrecognised key is a no-op rather than a write: it would 422 the entire
  * save-draft batch, and the caller has already been told (readColorTarget) that it isn't a token.
  */
-export function setTokenColor(p: PalettePatch, tokenKey: string, hex: string): PalettePatch {
+export function setTokenColor(p: PaletteWorkingSet, tokenKey: string, hex: string): PaletteWorkingSet {
   // Object.hasOwn, never `in` — `"toString" in PALETTE_VARS` is true.
   if (Object.hasOwn(PALETTE_VARS, tokenKey)) return setSeed(p, tokenKey, hex);
   if (Object.hasOwn(TOKEN_VARS, tokenKey)) return setToken(p, tokenKey, hex);
@@ -33,11 +45,11 @@ export function setTokenColor(p: PalettePatch, tokenKey: string, hex: string): P
 }
 
 export function setOverride(
-  p: PalettePatch,
+  p: PaletteWorkingSet,
   selector: string,
   role: "bg" | "text" | "border",
   hex: string,
-): PalettePatch {
+): PaletteWorkingSet {
   const list = p.overrides ?? [];
   const i = list.findIndex((o) => o.selector === selector);
   const next =
@@ -62,11 +74,11 @@ export function setOverride(
  * "broken" the moment its element moved.
  */
 export function clearOverrideRole(
-  p: PalettePatch,
+  p: PaletteWorkingSet,
   selector: string,
   role: "bg" | "text" | "border",
-): PalettePatch {
-  const next: PalettePatch["overrides"] = [];
+): PaletteWorkingSet {
+  const next: PaletteWorkingSet["overrides"] = [];
   for (const o of p.overrides ?? []) {
     if (o.selector !== selector) {
       next.push(o);
@@ -82,7 +94,7 @@ export function clearOverrideRole(
 
 /** Clear an ENTIRE entry — every role on it. The broken-override row's "Xoá": its element is gone
  *  from the page, so there is no role on it left to mean anything. A role's × is the other function. */
-export function clearOverride(p: PalettePatch, selector: string): PalettePatch {
+export function clearOverride(p: PaletteWorkingSet, selector: string): PaletteWorkingSet {
   return { ...p, overrides: (p.overrides ?? []).filter((o) => o.selector !== selector) };
 }
 
@@ -135,32 +147,32 @@ const rolesOf = (o: { selector: string } | undefined): Slice => {
  * two people can own separately.
  */
 export function rebasePalette(
-  ours: PalettePatch,
-  base: PalettePatch,
-  theirs: PalettePatch,
-): PalettePatch {
-  const bySelector = (l: PalettePatch["overrides"]) =>
+  ours: PaletteWorkingSet,
+  base: PaletteWorkingSet,
+  theirs: PaletteWorkingSet,
+): PaletteWorkingSet {
+  const bySelector = (l: PaletteWorkingSet["overrides"]) =>
     new Map((l ?? []).map((o) => [o.selector, o] as const));
   const O = bySelector(ours.overrides);
   const B = bySelector(base.overrides);
   const T = bySelector(theirs.overrides);
 
-  const overrides: NonNullable<PalettePatch["overrides"]> = [];
+  const overrides: NonNullable<PaletteWorkingSet["overrides"]> = [];
   for (const sel of new Set([...T.keys(), ...B.keys(), ...O.keys()])) {
     const roles = rebaseSlice(rolesOf(O.get(sel)), rolesOf(B.get(sel)), rolesOf(T.get(sel)));
     // An entry whose every role went is an entry that is gone — same rule as clearOverrideRole.
     if (Object.values(roles).some((v) => v !== undefined)) {
-      overrides.push({ selector: sel, ...roles } as NonNullable<PalettePatch["overrides"]>[number]);
+      overrides.push({ selector: sel, ...roles } as NonNullable<PaletteWorkingSet["overrides"]>[number]);
     }
   }
 
   return {
-    seeds: rebaseSlice(ours.seeds ?? {}, base.seeds ?? {}, theirs.seeds ?? {}) as PalettePatch["seeds"],
+    seeds: rebaseSlice(ours.seeds ?? {}, base.seeds ?? {}, theirs.seeds ?? {}) as PaletteWorkingSet["seeds"],
     tokens: rebaseSlice(
       ours.tokens ?? {},
       base.tokens ?? {},
       theirs.tokens ?? {},
-    ) as PalettePatch["tokens"],
+    ) as PaletteWorkingSet["tokens"],
     overrides,
   };
 }

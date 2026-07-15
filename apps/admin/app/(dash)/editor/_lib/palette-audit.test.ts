@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createPaletteAuditor } from "./palette-audit";
-import { setOverride, clearOverride, clearOverrideRole, setSeed } from "./palette-patch";
+import { setOverride, clearOverride, clearOverrideRole, setSeed } from "./palette-working-set";
 
 /** Records the questions asked, which is the whole observable behaviour. */
 function spy() {

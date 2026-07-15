@@ -7,9 +7,9 @@ import {
   clearOverride,
   clearOverrideRole,
   rebasePalette,
-} from "./palette-patch";
+} from "./palette-working-set";
 
-describe("palette-patch reducers", () => {
+describe("palette-working-set reducers", () => {
   it("setSeed adds/updates a seed immutably", () => {
     const a = setSeed({}, "accentAqua", "#111111");
     expect(a.seeds).toEqual({ accentAqua: "#111111" });

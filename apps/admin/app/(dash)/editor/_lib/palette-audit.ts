@@ -12,7 +12,7 @@
 // is not asking the same question twice for nothing. Hence the dedupe, and hence `force` for the one
 // case where the same question genuinely has a new answer: a fresh document.
 
-import type { PalettePatch } from "./palette-patch";
+import type { PaletteWorkingSet } from "./palette-working-set";
 
 /** Selectors cannot contain a NUL (the grammar in @signex/shared's selector.ts is far narrower than
  *  that), so joining on one is a faithful identity for "the same set, in the same order". */
@@ -22,7 +22,7 @@ export interface PaletteAuditor {
   /** Ask about `palette`'s override targets, unless that exact question is already outstanding.
    *  `force` re-asks regardless — for a (re)loaded preview, where the DOM the selectors must match
    *  is a different DOM. */
-  (palette: PalettePatch, opts?: { force?: boolean }): void;
+  (palette: PaletteWorkingSet, opts?: { force?: boolean }): void;
 }
 
 /**

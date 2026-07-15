@@ -52,8 +52,8 @@ import {
   setOverride,
   clearOverride,
   clearOverrideRole,
-  type PalettePatch,
-} from "../_lib/palette-patch";
+  type PaletteWorkingSet,
+} from "../_lib/palette-working-set";
 import { ROLE_LABEL, tokenLabel, type ColorRole, type ColorTarget, type RoleInfo } from "../_lib/color-target";
 
 const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -302,15 +302,16 @@ export interface ColorPanelProps {
   /** The last colour-mode click, as resolved by the preview. Null = nothing clicked yet. */
   target: ColorTarget | null;
   /**
-   * The EFFECTIVE palette (saved ∪ unsaved), not the unsaved patch. The old palette rail panel bound to
-   * the patch, so the moment a save cleared it the panel fell back to the TEMPLATE defaults while
-   * the preview correctly rendered the saved colours — the panel disagreeing with the canvas about
-   * what colour the site is. See the shell for how the two are kept as one value.
+   * The EFFECTIVE palette (saved ∪ unsaved) — a COMPLETE working set, never a patch. The old palette
+   * rail panel bound to the unsaved patch, so the moment a save cleared it the panel fell back to the
+   * TEMPLATE defaults while the preview correctly rendered the saved colours — the panel disagreeing
+   * with the canvas about what colour the site is. See the shell for how the two are kept as one
+   * value; the type name says the rest.
    */
-  palette: PalettePatch;
+  palette: PaletteWorkingSet;
   /** Stored override selectors the preview reports as matching 0 or >1 elements. */
   broken: string[];
-  onChange: (next: PalettePatch) => void;
+  onChange: (next: PaletteWorkingSet) => void;
   /**
    * Distinct from `onChange({})`: a plain merge patch can never DELETE a previously-saved key (see
    * theme.service.ts saveDraft's additive merge), so the reset button needs its own signal.
@@ -331,7 +332,7 @@ export function ColorPanel({ target, palette, broken, onChange, onReset }: Color
       return palette.seeds?.[tokenKey as keyof typeof PALETTE_VARS] ??
         PALETTE_VARS[tokenKey as keyof typeof PALETTE_VARS].default;
     }
-    return palette.tokens?.[tokenKey as keyof NonNullable<PalettePatch["tokens"]>];
+    return palette.tokens?.[tokenKey as keyof NonNullable<PaletteWorkingSet["tokens"]>];
   };
 
   return (
