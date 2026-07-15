@@ -167,8 +167,22 @@ overrides.** Without it every pick mints an override, and later changing a brand
 skips everything already hard-overridden. Hence decision 7: picking a colour edits the **token** by
 default; "Chỉ phần tử này" is the deliberate escape hatch.
 
-Colours the picker cannot represent (alpha via `color-mix`, gradients) are shown read-only with the
-reason — never coerced into a lying hex.
+Colours the picker cannot represent (gradients, non-sRGB spaces, an unresolved `color-mix`) are shown
+read-only with the reason — never coerced into a lying hex.
+
+> **Deviation, as shipped (commit f35067e).** This clause originally read "alpha via `color-mix`,
+> gradients". **Alpha is now editable, not read-only.** Terminal palette values — the tier-B tokens
+> and the per-element overrides — take `HexA` (`#rrggbbaa`); `rgbToHex` reads a translucent computed
+> colour as 8-digit hex instead of returning "no colour". The design intent is unchanged, because the
+> clause is conditioned on *cannot represent* and 8-digit hex represents alpha exactly: what changed
+> is that alpha moved out of that set. Why it is safe to widen: no token or override is ever an
+> operand of a `color-mix()` (all 16 calls in the template consume a **seed**), so a terminal alpha
+> is the alpha rendered, not a multiplier. **Seeds stay opaque (`Hex`)** for precisely that reason —
+> a seed at 0.5 read back through `--base--dark-64` measured 0.32 (0.5 × 0.64), i.e. a translucent
+> seed means "every derived shade is translucent by a different, silently compounded amount".
+> What still yields a read-only row is what hex genuinely cannot carry (above). Motivating case: a
+> user clicked `aboutPage.hero.title.accent` (a `.tone-medium` span → `color-mix(… 64%, transparent)`)
+> and the panel said "Không đổi được bằng mã hex" with nothing to do about it.
 
 ### 3.3 Selector generation (element identity)
 
@@ -294,7 +308,8 @@ touches:
 | Selector cannot be proven unique | Refuse to anchor; panel explains; token-only editing offered |
 | Stored selector matches 0 or >1 elements at edit time | Panel flags the override as broken + offers removal |
 | Array length changes → `nth-of-type` drifts | Surfaces as the broken-selector case above |
-| Colour has alpha / is a gradient | Read-only row with the reason |
+| Colour has alpha | **Editable** — read as `#rrggbbaa`; stored on the token/override, which is terminal. (Was "read-only row"; changed in f35067e — see §3.2.) |
+| Colour is a gradient / non-sRGB / an unresolved `color-mix` | Read-only row with the reason |
 | Malformed selector from the DB | Emitter rejects it (never escapes); other rules still emit |
 | >200 overrides | Save rejected with a clear message |
 | Mode switched mid text-edit | Commit the in-flight edit first (reuses the existing commit path) |

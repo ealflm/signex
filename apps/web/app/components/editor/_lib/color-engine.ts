@@ -4,7 +4,7 @@
 // @signex/shared's selector grammar. What's here needs a live DOM + CSSOM, and apps/web has no
 // jsdom, so it is verified in the browser (see the plan's Task 12).
 
-import { PALETTE_VARS, TOKEN_VARS, isSafeSelector } from "@signex/shared";
+import { PALETTE_VARS, ROOT_SELECTOR, TOKEN_VARS, isSafeSelector } from "@signex/shared";
 import { isOverlayClass } from "./overlay-classes";
 import { pickSegment, type SegmentInput } from "./selector-path";
 
@@ -617,9 +617,10 @@ function tokenReaches(el: HTMLElement, tokenKey: string): boolean {
   const host = document.head ?? document.documentElement;
   if (!host) return false;
   const st = document.createElement("style");
-  // Must match paletteStyle()'s ROOT_SELECTOR exactly — this probe is only worth anything because it
-  // asks about the rule we really emit, `html body` specificity included.
-  st.textContent = `:root, html body{${cssVar}:${REACH_SENTINEL}}`;
+  // paletteStyle()'s own ROOT_SELECTOR, imported rather than re-typed — this probe is only worth
+  // anything because it asks about the rule we really emit, `html body` specificity included, and a
+  // second copy would silently keep answering for a rule that is no longer emitted.
+  st.textContent = `${ROOT_SELECTOR}{${cssVar}:${REACH_SENTINEL}}`;
   host.appendChild(st);
   try {
     return getComputedStyle(el).getPropertyValue(cssVar).trim() === REACH_SENTINEL;

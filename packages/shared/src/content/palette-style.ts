@@ -39,8 +39,16 @@ const isHexA = (v: unknown): v is string => typeof v === "string" && HexA.safePa
  * Section-scoped re-declarations (`.master_footer`, `.wrap_home-a`, …) are UNAFFECTED and must stay
  * that way: they declare the token directly on their own element, and a direct declaration always
  * beats an inherited one, whatever the specificity. Their local re-theming is by design.
+ *
+ * EXPORTED because the editor's `tokenReaches` probe (apps/web color-engine.ts) inserts a throwaway
+ * rule on this exact selector to ask "would a site-wide token edit actually move this element?" —
+ * the answer is only true of the rule we REALLY emit, `html body` specificity included. Two copies
+ * of this string drift in the one direction nothing catches: the emitter's copy is pinned by tests
+ * and fails loudly, while a stale probe keeps measuring a rule that is no longer emitted and starts
+ * offering dead site-wide routes — the accentAqua/token-shadow bug class this feature exists to
+ * remove. One definition, imported, is the only version of this that cannot drift.
  */
-const ROOT_SELECTOR = ":root, html body";
+export const ROOT_SELECTOR = ":root, html body";
 
 /**
  * Build the CSS text for a palette, or null when there is nothing to emit.

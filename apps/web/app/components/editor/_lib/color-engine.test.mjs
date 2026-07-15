@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { HexA } from "@signex/shared";
 import { asSegment, declarationSets, rgbToHex } from "./color-engine.ts";
 import { pickSegment } from "./selector-path.ts";
 import { CLASS_COLOR_HOVER, CLASS_FLASH } from "./overlay-classes.ts";
@@ -139,14 +140,21 @@ test("still refuses what hex genuinely CANNOT carry — the read-only row's real
 // engine and the schema that no type checks: color-engine lives in apps/web, HexA in shared, and
 // the two meet only over postMessage → PaletteSchema, where a mismatch is a 422 on save-draft that
 // takes the whole batch (including unrelated block edits) with it.
+//
+// So this MUST import the real HexA, not re-type its regex. A local copy asserts rgbToHex agrees
+// with this file — which nothing outside this file believes — and passes just as green after the
+// real HexA is narrowed to 6-digit and every alpha value starts 422ing the batch. Mutation-checked
+// in both directions: narrowing HexA in shared (+ `npm run build -w @signex/shared`) turns this red.
+// Importing across the workspace is what makes the assertion about the join it names.
+const storable = (v) => HexA.safeParse(v).success;
+
 test("every hex it emits is accepted by the schema that will store it", () => {
-  const HEXA = /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
   for (let a = 0; a <= 255; a++) {
     const out = rgbToHex(`rgba(13, 43, 68, ${a / 255})`);
-    assert.ok(HEXA.test(out), `rgbToHex produced an unstorable ${out} at alpha byte ${a}`);
+    assert.ok(storable(out), `rgbToHex produced an unstorable ${out} at alpha byte ${a}`);
   }
   for (const v of ["rgb(0,0,0)", "color(srgb 1 1 1 / 0.64)", "#FFF", "#0d2b4480"]) {
-    assert.ok(HEXA.test(rgbToHex(v)), `unstorable output for ${v}`);
+    assert.ok(storable(rgbToHex(v)), `unstorable output for ${v}`);
   }
 });
 
