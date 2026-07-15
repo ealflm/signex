@@ -7,7 +7,10 @@ export const Hex = z
   .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "must be a #rgb or #rrggbb hex colour");
 
 // ── Tier A: the 8 seed swatches. Overriding these re-themes the whole site. ──
-// cssVar values are copied VERBATIM from caladan-template.shared.*.css (emoji is literal).
+// cssVar values are copied VERBATIM from caladan-template.shared.*.css (emoji is literal). A name
+// that matches nothing in that stylesheet fails NOWHERE — the override emits, parses, applies, and
+// paints nothing, site-wide. apps/web/app/lib/palette-template.test.mjs reads the template and
+// holds every name below to it; it lives there because only apps/web can legally see both halves.
 export const PALETTE_VARS = {
   accentAqua:      { cssVar: "--_🎨-color--base---accent--aqua",      default: "#2ec4b6", label: "Màu nhấn (aqua)" },
   accentOcean:     { cssVar: "--_🎨-color--base---accent--ocean",     default: "#0f4c81", label: "Đại dương" },

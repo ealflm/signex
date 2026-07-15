@@ -68,13 +68,22 @@ describe("PALETTE_VARS / TOKEN_VARS", () => {
     }
   });
 
-  it("maps accentAqua to the exact template variable", () => {
+  // These two PIN the spelling; they do NOT verify it against the template, and cannot: the template
+  // lives in apps/web and this package must never depend on an app. Re-typing the implementation's
+  // own literal only catches an edit to one side — it is worthless against the risk that matters (a
+  // name matching nothing in the stylesheet, i.e. a silent site-wide no-op), which is why renaming a
+  // cssVar once left every test here green.
+  //
+  // THE REAL GUARD IS apps/web/app/lib/palette-template.test.mjs — it reads the stylesheet and
+  // asserts all 20 names are declared there. Change a cssVar and that is what will fail. Keep these
+  // as change-detectors for the two anchor names, and do not mistake them for the contract.
+  it("pins accentAqua's variable name (spelling only — see palette-template.test.mjs)", () => {
     expect(PALETTE_VARS.accentAqua.cssVar).toBe(
       "--_🎨-color--base---accent--aqua",
     );
   });
 
-  it("maps inkBase to the ink token variable", () => {
+  it("pins inkBase's variable name (spelling only — see palette-template.test.mjs)", () => {
     expect(TOKEN_VARS.inkBase.cssVar).toBe("--_🎨-color--tokens---ink--base");
   });
 });
