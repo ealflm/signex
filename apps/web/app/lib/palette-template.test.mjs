@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PALETTE_VARS, TOKEN_VARS } from "@signex/shared";
+import { PALETTE_VARS, TOKEN_VARS, SEED_KEYS, INERT_SEED_KEYS } from "@signex/shared";
 
 // ---------------------------------------------------------------------------------------------
 //  The palette's contract with the template.
@@ -94,4 +94,79 @@ test("a cssVar is matched as a declaration, not as a var() reference", () => {
   // token the template merely consumes would look declared and the no-op would slip through.
   assert.equal(isDeclared("--a: var(--b);", "--b"), false);
   assert.equal(isDeclared("--a: var(--b);", "--a"), true);
+});
+
+// ---------------------------------------------------------------------------------------------
+//  The OTHER half of the same contract: declared is not the same as READ.
+//
+//  A seed can be declared exactly as the registry spells it and still paint nothing, because no
+//  rule anywhere resolves it with var(). accentAqua is that case — declared 1x, read 0x — and it
+//  was the colour panel's FIRST swatch. The panel now marks such seeds inert, driven by
+//  INERT_SEED_KEYS. That list is a claim about the template, so it is checked against the
+//  template, here, rather than trusted.
+//
+//  Set EQUALITY in both directions, deliberately:
+//    • a seed that goes live (someone points a var() at accentAqua) and is still listed  → FAIL,
+//      "drop it from INERT_SEED_KEYS" — the swatch comes back instead of staying dead forever.
+//    • a seed that goes dead (a var() is refactored away) and is not listed              → FAIL,
+//      which is the original silent bug caught the moment it is introduced, not by a user.
+//  A one-way subset check would let either rot in.
+// ---------------------------------------------------------------------------------------------
+
+/** Every stylesheet the site actually loads — a var() read in ANY of them makes a seed live, so
+ *  scoping this to the template alone could call a live seed inert. */
+function allSiteCss() {
+  const appCss = fileURLToPath(new URL("../globals.css", import.meta.url));
+  const cssFiles = readdirSync(CSS_DIR)
+    .filter((f) => f.endsWith(".css"))
+    .map((f) => join(CSS_DIR, f));
+  assert.ok(cssFiles.length > 0, `no stylesheets found in ${CSS_DIR} — nothing to read`);
+  return [...cssFiles, appCss].map((f) => readFileSync(f, "utf8")).join("\n");
+}
+
+/** True when some rule RESOLVES `name` — `var(--name)` or `var(--name, fallback)`. Whitespace is
+ *  legal on both sides of the name inside var(). */
+function isRead(css, name) {
+  const esc = name.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
+  return new RegExp(`var\\(\\s*${esc}\\s*[,)]`).test(css);
+}
+
+test("INERT_SEED_KEYS is exactly the set of seeds no stylesheet reads via var()", () => {
+  const css = allSiteCss();
+
+  // Anchor the loop — a failed import would make both sets empty and the equality vacuously true.
+  assert.ok(SEED_KEYS.length > 0, "no seeds — nothing asserted");
+
+  const deadInTemplate = SEED_KEYS.filter((k) => !isRead(css, PALETTE_VARS[k].cssVar)).sort();
+  const listedInert = [...INERT_SEED_KEYS].sort();
+
+  assert.deepEqual(
+    deadInTemplate,
+    listedInert,
+    `INERT_SEED_KEYS disagrees with the stylesheets.\n` +
+      `  no var() reads it (so it paints nothing): ${deadInTemplate.join(", ") || "none"}\n` +
+      `  INERT_SEED_KEYS says:                     ${listedInert.join(", ") || "none"}\n` +
+      `If a seed became LIVE, drop it from INERT_SEED_KEYS in packages/shared/src/content/palette.ts ` +
+      `and its swatch returns to the colour panel. If a seed became DEAD, add it — otherwise the ` +
+      `panel offers a control that silently paints nothing.`,
+  );
+});
+
+test("the read-probe can fail — and tells a declaration apart from a var() read", () => {
+  // Guards the guard, like the isDeclared probe above. If isRead() matched everything, EVERY seed
+  // would look live and INERT_SEED_KEYS would have to be empty to pass — inverting the test into a
+  // demand that we un-mark accentAqua. If it matched nothing, all 8 would look dead. Both arms are
+  // pinned, and the positive one is harvested from the stylesheet so a registry-wide rename cannot
+  // make the probe and its input agree with each other about nothing.
+  const css = allSiteCss();
+  assert.equal(isRead(css, "--_🎨-color--base---accent--NOT-A-REAL-NAME"), false);
+
+  const readName = css.match(/var\(\s*(--_[^\s,)]+)\s*[,)]/)?.[1];
+  assert.ok(readName, "no var() reference found in the stylesheets — the probe has nothing to prove");
+  assert.equal(isRead(css, readName), true);
+
+  // The distinction the whole test rests on: accentAqua IS declared and is NOT read. If isRead()
+  // were secretly matching declarations, the two would be indistinguishable and the inert set empty.
+  assert.equal(isRead("--a: #fff; var(--b);", "--a"), false);
+  assert.equal(isRead("--a: #fff; var(--b);", "--b"), true);
 });

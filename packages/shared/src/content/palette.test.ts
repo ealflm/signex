@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   PaletteSchema,
+  PaletteSeedsSchema,
   PALETTE_VARS,
   TOKEN_VARS,
   SEED_KEYS,
+  INERT_SEED_KEYS,
+  isInertSeed,
 } from "./palette";
+import { paletteStyle } from "./palette-style";
 
 describe("PaletteSchema", () => {
   it("accepts a full valid palette (seeds + tokens + overrides)", () => {
@@ -85,5 +89,52 @@ describe("PALETTE_VARS / TOKEN_VARS", () => {
 
   it("pins inkBase's variable name (spelling only — see palette-template.test.mjs)", () => {
     expect(TOKEN_VARS.inkBase.cssVar).toBe("--_🎨-color--tokens---ink--base");
+  });
+});
+
+describe("INERT_SEED_KEYS", () => {
+  // WHICH set is inert is a fact about the template, and is asserted against the template by
+  // apps/web/app/lib/palette-template.test.mjs (this package cannot see it). What is pinned HERE is
+  // the invariant that survives whatever that set turns out to be: marking a seed inert changes
+  // what the UI OFFERS and NOTHING about what the system ACCEPTS. Existing snapshots already carry
+  // accentAqua values; if these ever fail, stored palettes are being dropped or 422'd.
+
+  it("only ever names real seeds", () => {
+    expect(INERT_SEED_KEYS.length).toBeGreaterThan(0); // else the tests below assert nothing
+    for (const k of INERT_SEED_KEYS) expect(SEED_KEYS).toContain(k);
+  });
+
+  it("does not mark every seed inert — the panel must still offer the working ones", () => {
+    expect(INERT_SEED_KEYS.length).toBeLessThan(SEED_KEYS.length);
+  });
+
+  it("isInertSeed agrees with the list, and is false for a live seed", () => {
+    for (const k of SEED_KEYS) expect(isInertSeed(k)).toBe(INERT_SEED_KEYS.includes(k));
+    expect(isInertSeed("baseLight")).toBe(false);
+  });
+
+  it("an inert seed is STILL a valid, storable key — zod accepts it exactly as before", () => {
+    for (const k of INERT_SEED_KEYS) {
+      expect(PaletteSeedsSchema.safeParse({ [k]: "#123456" }).success).toBe(true);
+      expect(PaletteSchema.safeParse({ seeds: { [k]: "#123456" } }).success).toBe(true);
+    }
+  });
+
+  it("an inert seed survives a parse round-trip — the value is kept, not stripped", () => {
+    for (const k of INERT_SEED_KEYS) {
+      expect(PaletteSchema.parse({ seeds: { [k]: "#123456" } })).toEqual({
+        seeds: { [k]: "#123456" },
+      });
+    }
+  });
+
+  it("the emitter still emits an inert seed's declaration, unchanged", () => {
+    // It paints nothing — that is the template's doing, not ours — but the emitter must not start
+    // filtering these out: dropping a declaration would be a behaviour change on the public render.
+    for (const k of INERT_SEED_KEYS) {
+      expect(paletteStyle({ seeds: { [k]: "#123456" } })).toContain(
+        `${PALETTE_VARS[k].cssVar}:#123456`,
+      );
+    }
   });
 });

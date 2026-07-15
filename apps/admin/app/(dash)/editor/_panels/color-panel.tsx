@@ -41,7 +41,7 @@
 
 import * as React from "react";
 
-import { SEED_KEYS, PALETTE_VARS } from "@signex/shared";
+import { SEED_KEYS, PALETTE_VARS, isInertSeed } from "@signex/shared";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -185,6 +185,62 @@ function ColorRow({
           </Button>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A brand seed this template declares but no rule ever reads — so overriding it emits, applies, and
+ * paints nothing, site-wide. WHICH seeds those are is not decided here: `isInertSeed` carries the
+ * fact, and apps/web/app/lib/palette-template.test.mjs holds it to the actual stylesheets. Point a
+ * `var()` at one and that test fails; drop it from INERT_SEED_KEYS and the editable row below
+ * returns on its own. Nothing in this file names a colour.
+ *
+ * SHOWN, NOT HIDDEN — the same principle as ReadOnlyRow, and for a stronger reason. Hiding it would
+ * be the honest thing only if the key were gone; it is not. accentAqua stays a valid, storable seed
+ * and snapshots already carry values for it, so a hidden row means a stored colour that the user
+ * cannot see, cannot explain, and cannot reach — invisible state, which is how this swatch became a
+ * problem in the first place. A visible dead control that SAYS it is dead answers the question the
+ * user actually has ("I set this — why did nothing happen?"). Cost: one non-interactive row.
+ *
+ * The stored value is rendered, so "Đặt lại toàn bộ màu" is a discoverable way to clear it — which
+ * is the only per-seed clear that has ever existed here (no seed row has an × : seeds always resolve
+ * to the template default, so there is no unset state for one to produce).
+ */
+function InertColorRow({ id, label, value }: { id: string; label: string; value: string }) {
+  // Per-row, not a constant: INERT_SEED_KEYS is a list, and two rows sharing one id would silently
+  // point every aria-describedby at the first row's sentence.
+  const reasonId = `${id}-reason`;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm text-muted-foreground">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        {/* Deliberately not the <input type="color"> Swatch: there is no picker to open. Dimmed so
+            the row reads as inert at a glance, before the sentence below is read. */}
+        <span
+          aria-hidden
+          className="block h-9 w-9 shrink-0 rounded-md border border-dashed border-muted-foreground/50 opacity-50"
+          style={{ backgroundColor: value }}
+        />
+        {/* readOnly, not disabled: a disabled input is skipped by keyboard nav and hidden from most
+            screen readers, so the stored value would be unreachable exactly for the users least able
+            to get it elsewhere. readOnly keeps it focusable and announced, and still uneditable. */}
+        <input
+          id={id}
+          type="text"
+          value={value}
+          readOnly
+          size={1}
+          spellCheck={false}
+          aria-describedby={reasonId}
+          className={cn(INPUT_CLASS, "cursor-not-allowed text-muted-foreground opacity-70")}
+        />
+      </div>
+      <p id={reasonId} className="text-xs text-muted-foreground">
+        Giao diện hiện tại không dùng màu này ở đâu cả — đổi nó sẽ không thay đổi gì trên site.
+      </p>
     </div>
   );
 }
@@ -432,16 +488,26 @@ export function ColorPanel({ target, palette, broken, onChange, onReset }: Color
             <p className="text-xs text-muted-foreground">
               Đổi một màu ở đây là đổi trên toàn site — mọi nút, chữ và nền dùng màu đó đều theo.
             </p>
-            {SEED_KEYS.map((k) => (
-              <ColorRow
-                key={k}
-                id={`palette-seed-${k}`}
-                label={PALETTE_VARS[k].label}
-                // A seed always resolves to a real value: the override, else the template default.
-                value={palette.seeds?.[k] ?? PALETTE_VARS[k].default}
-                onCommit={(hex) => onChange(setSeed(palette, k, hex))}
-              />
-            ))}
+            {SEED_KEYS.map((k) =>
+              // A seed always resolves to a real value: the override, else the template default —
+              // which is why neither branch has an unset state and neither carries an ×.
+              isInertSeed(k) ? (
+                <InertColorRow
+                  key={k}
+                  id={`palette-seed-${k}`}
+                  label={PALETTE_VARS[k].label}
+                  value={palette.seeds?.[k] ?? PALETTE_VARS[k].default}
+                />
+              ) : (
+                <ColorRow
+                  key={k}
+                  id={`palette-seed-${k}`}
+                  label={PALETTE_VARS[k].label}
+                  value={palette.seeds?.[k] ?? PALETTE_VARS[k].default}
+                  onCommit={(hex) => onChange(setSeed(palette, k, hex))}
+                />
+              ),
+            )}
           </fieldset>
 
           <Button variant="outline" size="sm" className="w-full" onClick={onReset}>

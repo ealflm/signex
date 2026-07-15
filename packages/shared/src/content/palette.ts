@@ -25,6 +25,36 @@ export const PALETTE_VARS = {
 export type SeedKey = keyof typeof PALETTE_VARS;
 export const SEED_KEYS = Object.keys(PALETTE_VARS) as SeedKey[];
 
+/**
+ * Seeds the template DECLARES but that no rule anywhere ever READS via `var()`.
+ *
+ * Being declared is only half of what makes an override paint (that half is held by
+ * palette-template.test.mjs). A name nothing reads is the other silent failure of the same family:
+ * the `<style>` emits, parses and applies, and the site does not change. accentAqua is declared
+ * once and read zero times — so the panel's most prominent swatch, "Màu nhấn (aqua)", painted
+ * nothing, silently.
+ *
+ * THIS IS A FACT ABOUT THE TEMPLATE, NOT ABOUT US. Point one `var()` at accentAqua and it becomes
+ * live. So it is DATA here, derived from the stylesheet and held to it by
+ * apps/web/app/lib/palette-template.test.mjs — the only workspace that may legally see both the
+ * registry and the template (shared must never depend on an app; see the root AGENTS.md build
+ * order). Make one live and that test fails, naming the key to drop from this list; the swatch
+ * comes back. The alternative — a hardcoded name in the admin panel — could only rot into a
+ * stale comment, because nothing would be checking it.
+ *
+ * SCOPE: this list changes what the UI OFFERS, and NOTHING about what the system ACCEPTS. These
+ * keys stay fully valid — PaletteSeedsSchema takes them, paletteStyle() emits them, and stored
+ * snapshots keep them untouched. palette.test.ts pins exactly that.
+ *
+ * Tier B has the same shape (inkLift, inkSemi are declared 31x, read 0x) but needs no list:
+ * detectToken can only ever surface a token whose var is actually READ, so those two are
+ * unreachable rather than merely inert, and no UI offers them.
+ */
+export const INERT_SEED_KEYS: readonly SeedKey[] = ["accentAqua"];
+
+/** True when overriding `key` provably paints nothing on this template. See INERT_SEED_KEYS. */
+export const isInertSeed = (key: SeedKey): boolean => INERT_SEED_KEYS.includes(key);
+
 // ── Tier B: :root-level semantic tokens worth overriding site-wide. ──
 // Allowlist only. Two things re-declare these tokens in the template, and they are NOT the same:
 //   1. `body` re-declares all 12 — page-wide, and therefore NOT a local override at all. An
