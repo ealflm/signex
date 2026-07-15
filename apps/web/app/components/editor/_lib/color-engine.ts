@@ -17,6 +17,10 @@ export type RoleInfo = {
   hex?: string;
   /** Seed/token key driving this role, when the winning rule reads a var(). */
   tokenKey?: string;
+  /** Whether a SITE-WIDE override of `tokenKey` would actually move this element, or is shadowed by
+   *  a section that re-declares the token for its own subtree. Only set when tokenKey is. See
+   *  tokenReaches — reading a token and following a site-wide change of it are different facts. */
+  tokenReaches?: boolean;
   /** Target for a per-element override; undefined when the element could not be anchored. */
   selector?: string;
 };
@@ -85,22 +89,36 @@ function parseColor(v: string): Rgba | undefined {
 }
 
 /**
- * A colour → #rrggbb. Undefined unless FULLY OPAQUE — and that is a designed outcome, not a failure.
+ * A colour → `#rrggbb`, or `#rrggbbaa` when it is translucent. Undefined only when parseColor could
+ * not read it at all — a gradient, a named colour, an unresolved `color-mix()`, another colour space.
  *
- * `Hex` is `#rgb`/`#rrggbb` only (packages/shared palette.ts: the token system derives transparency
- * from the seeds), so alpha is not storable and a translucent colour is genuinely not editable from
- * this panel. The caller says exactly that, read-only, WITH the reason — which is a different thing
- * from a role the element does not have, and resolveRoles keeps the two distinguishable by omitting
- * the latter entirely.
+ * ALPHA IS NOW EXPRESSED, and dropping it was the third of the three faults behind a real dead end:
+ * `.tone-medium` → `tone--medium` → a `color-mix(… 64%, transparent)`, which Chrome serialises as
+ * `color(srgb 1 1 1 / 0.64)`. This returned undefined for it, the panel read that as "you cannot
+ * write a colour here", and the user was shown "Không đổi được bằng mã hex" with no way forward. The
+ * template derives EVERY transparency through color-mix, so that was not an edge case — it was most
+ * of the token system.
+ *
+ * The storable type is now `HexA` (packages/shared palette.ts) for exactly the values this feeds:
+ * tokens and per-element overrides, both TERMINAL — no color-mix in this template takes either, so
+ * the alpha written here is the alpha rendered, with nothing compounding it. The seeds keep `Hex`
+ * and stay opaque, because they ARE the color-mix input; this function has no seed caller.
+ *
+ * "Undefined" therefore now means only what hex genuinely cannot carry, and the panel's read-only row
+ * finally names that reason instead of standing in for a colour it simply refused to read.
  *
  * Exported for color-engine.test.mjs: apps/web has no jsdom, and this is the half of the resolution
  * that needs no DOM at all.
  */
 export function rgbToHex(v: string): string | undefined {
   const c = parseColor(v);
-  if (!c || c.a !== 1) return undefined;
+  if (!c) return undefined;
   const byte = (n: number) => Math.min(255, Math.max(0, Math.round(n)));
-  return `#${[c.r, c.g, c.b].map((n) => byte(n).toString(16).padStart(2, "0")).join("")}`;
+  const rgb = `#${[c.r, c.g, c.b].map((n) => byte(n).toString(16).padStart(2, "0")).join("")}`;
+  // Opaque stays 6-digit: every stored palette today is, and an untouched colour re-saved through
+  // the picker must round-trip to the same bytes rather than churn every value to #rrggbbff.
+  if (c.a >= 1) return rgb;
+  return `${rgb}${byte(c.a * 255).toString(16).padStart(2, "0")}`;
 }
 
 /**
@@ -556,6 +574,60 @@ function detectToken(el: HTMLElement, prop: string): string | undefined {
   return undefined;
 }
 
+/** The cssVar behind a seed/token key, whichever tier it is in. */
+const cssVarOf = (key: string): string | undefined =>
+  (PALETTE_VARS as Record<string, { cssVar: string }>)[key]?.cssVar ??
+  (TOKEN_VARS as Record<string, { cssVar: string }>)[key]?.cssVar;
+
+/**
+ * Would a SITE-WIDE override of `tokenKey` actually move `el` — or is it shadowed here?
+ *
+ * detectToken says which token an element READS. It does NOT say that re-declaring that token
+ * site-wide reaches this element, and in this template those are routinely different facts. Each
+ * tier-B token is declared 31 times: `:root`, `body`, and 29 SECTION selectors (`.master_footer`,
+ * `.content_hero-home-c`, `.wrap_home-a`, …) that re-theme their own subtree. A custom property
+ * resolves from the nearest declaring ancestor, so for an element inside one of those sections the
+ * section's declaration wins over anything paletteStyle emits at `:root, html body` — and the
+ * override paints everything EXCEPT the element the user clicked.
+ *
+ * That is not hypothetical and it is not rare. Measured on /vi/about: a site-wide `tone--medium`
+ * override moves 105 elements, and not the `.tone-medium` span in `.content_hero-home-c` — which is
+ * precisely the element that sent a user looking for this feature. The panel promotes "đổi cả site"
+ * as the DEFAULT action, so offering it there would be the accentAqua bug exactly: a prominent
+ * control that emits, parses, applies, and paints nothing on the thing it is pointed at.
+ *
+ * ASKED, NOT DERIVED — for the same reason INERT_SEED_KEYS is data checked against the stylesheet
+ * rather than a hardcoded list. We could enumerate the 29 sections here and go stale silently; or
+ * compare the token's computed value on `el` against `body`'s, which is wrong in a way that reads as
+ * right (a section re-declaring a token to the SAME value still shadows an override, and the strings
+ * would match). So this runs the REAL mechanism: emit the exact rule paletteStyle emits, with a
+ * sentinel, and ask `el` what it resolves. Reads back the sentinel → the route reaches it. Reads back
+ * anything else → something between `body` and `el` re-declares it, and the route does not. No
+ * approximation, and nothing to keep in sync with the template.
+ *
+ * Cost is one style insert + one forced recalc per role per CLICK (≤3), and the node is removed
+ * inside the same task, so nothing paints and the user sees no flash. Verified in the browser
+ * against ground truth (does the colour actually move?) in BOTH directions: true for a free
+ * `.tone-medium`, false for the one inside `.content_hero-home-c`.
+ */
+const REACH_SENTINEL = "#010203";
+function tokenReaches(el: HTMLElement, tokenKey: string): boolean {
+  const cssVar = cssVarOf(tokenKey);
+  if (!cssVar) return false;
+  const host = document.head ?? document.documentElement;
+  if (!host) return false;
+  const st = document.createElement("style");
+  // Must match paletteStyle()'s ROOT_SELECTOR exactly — this probe is only worth anything because it
+  // asks about the rule we really emit, `html body` specificity included.
+  st.textContent = `:root, html body{${cssVar}:${REACH_SENTINEL}}`;
+  host.appendChild(st);
+  try {
+    return getComputedStyle(el).getPropertyValue(cssVar).trim() === REACH_SENTINEL;
+  } finally {
+    st.remove();
+  }
+}
+
 /**
  * The colour `prop` paints on `el` IN THE DEFAULT STATE — the only state colour mode edits — as a
  * CSS colour string.
@@ -717,12 +789,16 @@ export function resolveRoles(block: HTMLElement): RoleInfo[] {
   for (const role of ["bg", "text", "border"] as ColorRole[]) {
     const painter = painterFor(block, role);
     if (!painter) continue;
+    const tokenKey = detectToken(painter, ROLE_PROP[role]);
     out.push({
       role,
-      // Undefined when the DEFAULT-state colour isn't representable as hex (alpha) — read-only, and
-      // a different fact from the role being absent, which is the `continue` above.
+      // Undefined only when the DEFAULT-state colour isn't representable as hex AT ALL — a gradient
+      // or a colour space we don't read. Alpha is representable now (#rrggbbaa), so a translucent
+      // colour reports its real value instead of reading as "no colour here".
       hex: rgbToHex(roleColor(painter, role)),
-      tokenKey: detectToken(painter, ROLE_PROP[role]),
+      tokenKey,
+      // Only meaningful alongside a tokenKey, and asked only then: the probe costs a forced recalc.
+      tokenReaches: tokenKey ? tokenReaches(painter, tokenKey) : undefined,
       selector: buildSelector(painter) ?? undefined,
     });
   }

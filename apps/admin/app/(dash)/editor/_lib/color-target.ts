@@ -21,7 +21,7 @@
 // has its selector (the per-element path), and a role with neither is still worth showing as
 // read-only. Losing one field must never lose the click.
 
-import { Hex, PALETTE_VARS, TOKEN_VARS, isSafeSelector, type SeedKey, type TokenKey } from "@signex/shared";
+import { HexA, PALETTE_VARS, TOKEN_VARS, isSafeSelector, type SeedKey, type TokenKey } from "@signex/shared";
 
 export type ColorRole = "bg" | "text" | "border";
 
@@ -34,11 +34,15 @@ export const ROLE_LABEL: Record<ColorRole, string> = { bg: "Nền", text: "Chữ
  *  color-target.test.ts, which is written against the shape the overlay literally posts. */
 export interface RoleInfo {
   role: ColorRole;
-  /** The rendered colour, when representable as hex. Absent for an alpha/gradient colour: the
-   *  template derives most tokens via color-mix, and a hex cannot carry either. */
+  /** The rendered colour, as `#rrggbb` or — since alpha became storable — `#rrggbbaa`. Absent only
+   *  for what hex genuinely cannot carry, e.g. a gradient. */
   hex?: string;
   /** The seed/token key the winning CSS rule reads. Absent is NORMAL, not an error — see the panel. */
   tokenKey?: string;
+  /** Whether a site-wide edit of `tokenKey` would actually move this element. False when a section
+   *  re-declares the token for its own subtree, which shadows the override — see color-engine's
+   *  tokenReaches. Absent (from an older preview) is read as "no reason to think otherwise". */
+  tokenReaches?: boolean;
   /** A provably-unique per-element target. Absent when buildSelector could not prove one. */
   selector?: string;
 }
@@ -51,7 +55,13 @@ export interface ColorTarget {
   roles: RoleInfo[];
 }
 
-const isHex = (v: unknown): v is string => typeof v === "string" && Hex.safeParse(v).success;
+/**
+ * HexA, not Hex — and this line is load-bearing. `r.hex` is what the element RENDERS, which since
+ * rgbToHex learned alpha arrives as `#rrggbbaa` for every color-mix-derived colour in the template.
+ * Gating it on the seeds' opaque `Hex` would drop exactly those values back to undefined and rebuild
+ * the dead end this feature exists to remove, one layer further out.
+ */
+const isHex = (v: unknown): v is string => typeof v === "string" && HexA.safeParse(v).success;
 
 /** A key of PALETTE_VARS (tier A seed) or TOKEN_VARS (tier B token).
  *  Object.hasOwn, never `in`: `"toString" in PALETTE_VARS` is TRUE, and a truthy `in` here would
@@ -78,6 +88,10 @@ function readRoles(v: unknown): RoleInfo[] {
       role,
       hex: isHex(r.hex) ? r.hex : undefined,
       tokenKey: isTokenKey(r.tokenKey) ? r.tokenKey : undefined,
+      // Only a literal `false` suppresses the site-wide route. A preview that predates the field
+      // sends nothing, and "the field is missing" is not evidence the route is shadowed — the panel
+      // reads undefined as the status quo ante and still offers it.
+      tokenReaches: typeof r.tokenReaches === "boolean" ? r.tokenReaches : undefined,
       selector: isSafeSelector(r.selector) ? r.selector : undefined,
     });
   }

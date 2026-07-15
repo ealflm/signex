@@ -92,13 +92,62 @@ test("reads Chrome's color(srgb …) serialisation of a color-mix()", () => {
   assert.equal(rgbToHex("color(srgb 1 1 1 / 1)"), "#ffffff");
 });
 
-test("refuses alpha in EVERY form — Hex is #rgb/#rrggbb, and a lying hex is worse than a blank", () => {
-  // hero.titleBottom's real case: .tone-medium → --base--light-64 → color-mix(… 64%, transparent).
-  assert.equal(rgbToHex("color(srgb 1 1 1 / 0.64)"), undefined);
-  assert.equal(rgbToHex("color(srgb 0.05 0.17 0.27 / 0.88)"), undefined);
-  assert.equal(rgbToHex("rgba(13, 43, 68, 0.5)"), undefined);
-  assert.equal(rgbToHex("rgba(0, 0, 0, 0)"), undefined);
-  assert.equal(rgbToHex("#0d2b4480"), undefined);
+// WAS: "refuses alpha in EVERY form — Hex is #rgb/#rrggbb, and a lying hex is worse than a blank".
+// That premise died with the storable type. Tokens and per-element overrides now take HexA
+// (#rrggbbaa) because they are TERMINAL — no color-mix in this template consumes either, so the
+// alpha written is the alpha rendered. Only the SEEDS stay opaque, and they have no caller here.
+// Refusing alpha was the third of three faults behind a real dead end: a user clicked
+// aboutPage.hero.title.accent (a .tone-medium span → color-mix(… 64%, transparent)), this returned
+// undefined, and the panel said "Không đổi được bằng mã hex" with nothing to do about it.
+test("EXPRESSES alpha as #rrggbbaa — a translucent colour is a colour, not a blank", () => {
+  // The user's actual element: .tone-medium → --base--light-64 → color-mix(… 64%, transparent),
+  // which Chrome serialises exactly like this (measured on /vi/about).
+  assert.equal(rgbToHex("color(srgb 1 1 1 / 0.64)"), "#ffffffa3");
+  assert.equal(rgbToHex("color(srgb 0.0509804 0.168627 0.266667 / 0.88)"), "#0d2b44e0");
+  assert.equal(rgbToHex("rgba(13, 43, 68, 0.5)"), "#0d2b4480");
+  assert.equal(rgbToHex("#0d2b4480"), "#0d2b4480");
+  assert.equal(rgbToHex("#0d2b448a"), "#0d2b448a");
+});
+
+test("fully transparent is a real, distinct value — not the same answer as 'unreadable'", () => {
+  // isPainted treats alpha 0 as "no colour painted" and drops the role before it gets here, so this
+  // is about honesty of the primitive rather than a reachable panel state: 0 must not collide with
+  // undefined, or a caller distinguishing them would silently be reading a boolean.
+  assert.equal(rgbToHex("rgba(0, 0, 0, 0)"), "#00000000");
+  assert.equal(rgbToHex("color(srgb 1 1 1 / 0)"), "#ffffff00");
+});
+
+test("opaque still returns SIX digits — stored palettes are 6-digit and must not churn", () => {
+  // The backward-compat direction that actually gets exercised: an untouched opaque colour re-saved
+  // through the new picker has to round-trip to the bytes already in the snapshot.
+  assert.equal(rgbToHex("rgba(13, 43, 68, 1)"), "#0d2b44");
+  assert.equal(rgbToHex("color(srgb 1 1 1 / 1)"), "#ffffff");
+  assert.equal(rgbToHex("#0d2b44ff"), "#0d2b44");
+});
+
+test("still refuses what hex genuinely CANNOT carry — the read-only row's real reason", () => {
+  // These are what "no hex" is now allowed to mean, and the panel's copy names exactly this.
+  assert.equal(rgbToHex("linear-gradient(180deg, #fff, #000)"), undefined);
+  assert.equal(rgbToHex("color(display-p3 1 0 0)"), undefined); // wrong space — reading it as sRGB would be a lying hex
+  assert.equal(rgbToHex("color-mix(in srgb, white 64%, transparent)"), undefined); // unresolved
+  assert.equal(rgbToHex("rebeccapurple"), undefined);
+  assert.equal(rgbToHex("none"), undefined);
+  assert.equal(rgbToHex(""), undefined);
+});
+
+// The value this function produces is stored, so it must be storable. This is the join between the
+// engine and the schema that no type checks: color-engine lives in apps/web, HexA in shared, and
+// the two meet only over postMessage → PaletteSchema, where a mismatch is a 422 on save-draft that
+// takes the whole batch (including unrelated block edits) with it.
+test("every hex it emits is accepted by the schema that will store it", () => {
+  const HEXA = /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+  for (let a = 0; a <= 255; a++) {
+    const out = rgbToHex(`rgba(13, 43, 68, ${a / 255})`);
+    assert.ok(HEXA.test(out), `rgbToHex produced an unstorable ${out} at alpha byte ${a}`);
+  }
+  for (const v of ["rgb(0,0,0)", "color(srgb 1 1 1 / 0.64)", "#FFF", "#0d2b4480"]) {
+    assert.ok(HEXA.test(rgbToHex(v)), `unstorable output for ${v}`);
+  }
 });
 
 test("reads a custom property's value as AUTHORED — hex is what defaultStateColor gets back", () => {

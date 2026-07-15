@@ -40,10 +40,13 @@ describe("readColorTarget", () => {
   });
 
   it("keeps a role that resolved NO token — the per-element path is the normal case there", () => {
-    // hero.titleBottom's winning rule reads --_🎨-color--tokens---tone--medium, a var in neither
-    // PALETTE_VARS nor TOKEN_VARS, so detectToken honestly reports none. That role must still be
-    // editable via its selector; dropping it (or treating it as an error) is what the old popover
-    // did with token === "" and it is why hero.titleBottom was uneditable.
+    // NB: this used to cite `--_🎨-color--tokens---tone--medium` as the example of "a var in neither
+    // registry". It is in TOKEN_VARS now (as `toneMedium`) — the tone ladder was the registry's
+    // largest hole and its absence is what left .tone-medium elements with no site-wide route at
+    // all. The CASE this test covers is unchanged and still normal: a winning rule that reads a
+    // literal colour, or any var still outside both registries, resolves no token. That role must
+    // stay editable via its selector; dropping it (or treating it as an error) is what the old
+    // popover did with token === "" and it is why hero.titleBottom was uneditable.
     const t = readColorTarget(
       msg({
         roles: [{ role: "text", hex: "#ffffff", selector: '[data-sx-block="hero"] .heading' }],
@@ -52,6 +55,47 @@ describe("readColorTarget", () => {
     expect(t?.roles).toEqual([
       { role: "text", hex: "#ffffff", tokenKey: undefined, selector: '[data-sx-block="hero"] .heading' },
     ]);
+  });
+
+  it("keeps an 8-digit hex — the template's color-mix colours arrive with alpha", () => {
+    // THE regression that would rebuild the user's dead end one layer out. rgbToHex reports
+    // `#ffffffa3` for the .tone-medium span (color-mix(… 64%) → color(srgb 1 1 1 / 0.64)); if this
+    // parse still gated on the seeds' opaque `Hex`, it would drop that value back to undefined and
+    // the panel would be back to having no colour to show for exactly the elements this fixed.
+    for (const hex of ["#ffffffa3", "#0d2b4480", "#fff8", "#00000000"]) {
+      const t = readColorTarget(msg({ roles: [{ role: "text", hex }] }));
+      expect(t?.roles[0].hex, hex).toBe(hex);
+    }
+  });
+
+  it("still drops a value that is not a hex at all — this one is emitted into a <style>", () => {
+    for (const hex of ["rgba(0,0,0,0.5)", "#ffffff8", "red", "#fff;}</style><script>alert(1)</script>{x:"]) {
+      const t = readColorTarget(msg({ roles: [{ role: "text", hex }] }));
+      expect(t?.roles[0].hex, hex).toBeUndefined();
+    }
+  });
+
+  it("reads tokenReaches, and treats only a literal false as 'shadowed'", () => {
+    // The panel suppresses the site-wide route on `=== false`. A preview that predates the field
+    // sends nothing, and absence is not evidence of shadowing — it must read as undefined so the
+    // panel behaves exactly as it did before the field existed.
+    const read = (tokenReaches: unknown) =>
+      readColorTarget(msg({ roles: [{ role: "bg", hex: "#ffffff", tokenKey: "toneMedium", tokenReaches }] }))
+        ?.roles[0].tokenReaches;
+    expect(read(false)).toBe(false);
+    expect(read(true)).toBe(true);
+    for (const junk of [undefined, null, 0, 1, "false", "true", {}]) {
+      expect(read(junk), String(junk)).toBeUndefined();
+    }
+  });
+
+  it("accepts the tone keys as real tokens — they are in TOKEN_VARS now", () => {
+    for (const tokenKey of ["toneStrong", "toneGood", "toneMedium", "toneSubtle", "toneFaint"]) {
+      const t = readColorTarget(msg({ roles: [{ role: "text", hex: "#ffffffa3", tokenKey }] }));
+      expect(t?.roles[0].tokenKey, tokenKey).toBe(tokenKey);
+      // and the panel's label lookup must resolve them, or the site-wide row reads as a raw key
+      expect(tokenLabel(tokenKey)).not.toBe(tokenKey);
+    }
   });
 
   it("drops a tokenKey that is not a known seed/token key", () => {

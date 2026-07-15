@@ -19,33 +19,41 @@
 // silently skips this element forever. Both are offered; the order and the copy say which is which.
 //
 // EVERY EMPTY STATE HERE IS HONEST, NOT AN ERROR:
-//   • no tokenKey  → NORMAL. nav.logo's winning background-color rule reads
-//     `var(--_🎨-color--tokens---tone--strong)`, a var in neither PALETTE_VARS nor TOKEN_VARS, so
-//     auto-detection reports none — while `.signex-logo-nav` still gives buildSelector a unique
-//     target. The per-element override is then simply the only path — offered as such, not as a
-//     failure. (The old popover used token === "" to HIDE its site-wide mode; this is the same
-//     fact, without the pretence.) Verify with nav.logo, NOT hero.titleBottom: that one's colour
-//     has alpha, so it short-circuits to read-only below and never reaches this path at all.
+//   • no tokenKey  → NORMAL. A winning rule that reads a literal colour, or a var in neither
+//     PALETTE_VARS nor TOKEN_VARS, gives auto-detection nothing to report — while a classed element
+//     still gives buildSelector a unique target. The per-element override is then simply the only
+//     path — offered as such, not as a failure. (The old popover used token === "" to HIDE its
+//     site-wide mode; this is the same fact, without the pretence.)
 //   • no tokenKey + an override already set → says NOTHING about the palette, because it cannot:
 //     our own override IS the winning rule, so detectToken is reading us and its silence is not
 //     evidence. See RoleRow — this is the one case where absent tokenKey is not a fact about the
 //     element.
-//   • no hex       → the colour has alpha (the template derives most tokens via color-mix) or is a
-//     gradient. Hex carries neither, so the row says so instead of showing a colour the element
-//     does not have. This is the ONLY thing that sentence may mean: a role the element does not
-//     have at all (no border on a borderless box) is not in `roles` and gets no row — resolveRoles
-//     omits it. The two used to be one row saying the same words, which is how the nav CTA's
-//     background could vanish and still look like a designed read-only state.
+//   • tokenKey but NOT tokenReaches → the element reads a token that a SECTION re-declares for its
+//     own subtree, so a site-wide edit of it repaints everything except this element. Reading a
+//     token and following a site-wide change of it are different facts; the panel offers the route
+//     only when the preview has measured that it arrives. See RoleRow's `shadowed`.
+//   • no hex       → the colour is not expressible as hex AT ALL — a gradient. Alpha no longer
+//     qualifies: rgbToHex emits `#rrggbbaa` and tokens/overrides store it. And a missing hex never
+//     suppresses a ROUTE — writing an override needs only a selector, never the old value. A role
+//     the element does not have at all (no border on a borderless box) is not in `roles` and gets no
+//     row — resolveRoles omits it.
 //   • no selector  → buildSelector could not PROVE a unique target, so we refuse to anchor. A
 //     selector that isn't provably unique is never stored.
+//
+// ALPHA. Tokens and per-element overrides carry it (`#rrggbbaa`); the SEEDS deliberately do not.
+// Every color-mix in the template takes a seed and nothing else, so a seed's alpha would be
+// multiplied into each derived shade (0.5 seed → 0.321 through --base--dark-64); a token or an
+// override is terminal and renders at exactly the alpha picked. That split is why `alpha` is a
+// per-row prop and not a panel-wide mode. See shared's Hex vs HexA.
 
 import * as React from "react";
 
-import { SEED_KEYS, PALETTE_VARS, isInertSeed } from "@signex/shared";
+import { SEED_KEYS, PALETTE_VARS, isInertSeed, Hex, HexA, splitHexAlpha, joinHexAlpha } from "@signex/shared";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
 import {
   setSeed,
   setTokenColor,
@@ -56,8 +64,15 @@ import {
 } from "../_lib/palette-working-set";
 import { ROLE_LABEL, tokenLabel, type ColorRole, type ColorTarget, type RoleInfo } from "../_lib/color-target";
 
-const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-const isHex = (v: string) => HEX.test(v);
+// The two storable formats, taken from the schemas that will actually validate the save rather than
+// re-typed here — a third copy of the regex is how the panel and the API drift into disagreeing
+// about what the user is allowed to type.
+//   • isHexOpaque — the SEEDS. They feed every color-mix in the template, so their alpha would be
+//     multiplied into each derived shade; they stay `#rgb`/`#rrggbb`. See shared's Hex.
+//   • isHexAlpha  — the TOKENS and the per-element OVERRIDES. Terminal values, so alpha means what
+//     it says. `#rrggbbaa`. See shared's HexA.
+const isHexOpaque = (v: string) => Hex.safeParse(v).success;
+const isHexAlpha = (v: string) => HexA.safeParse(v).success;
 
 // Matches the input styling used by _fields/field-editor.tsx so the two panels agree.
 // min-w-0 + flex-1: the hex field takes the leftover width in its row and can still shrink below
@@ -71,13 +86,30 @@ const INPUT_CLASS =
  * The native <input type="color"> is laid over a swatch WE render (opacity-0), so the unset state
  * can be drawn honestly (dashed + checkerboard) instead of the browser painting a solid colour we
  * never chose. The input still supplies the OS picker and keyboard focus.
+ *
+ * WHY NOT AN RGBA PICKER COMPONENT. `<input type="color">` is `#rrggbb` only — it has no alpha
+ * channel in any browser — so alpha needs its own control regardless. The choice was between pulling
+ * in a colour-picker dependency and pairing the native input with a shadcn Slider we already ship.
+ * The pair wins on every axis that matters here: no new dependency, no bundle cost, the OS picker
+ * (with its eyedropper) instead of a hand-rolled canvas, real keyboard and screen-reader support from
+ * Radix, and it LOOKS like the rest of this panel because it is the rest of this panel. A picker
+ * library would have to be restyled to match the surface it replaced.
+ *
+ * The checkerboard is now permanent rather than the unset state's texture, and it is what makes alpha
+ * legible: a translucent colour composited over it reads as translucent, where over the panel's flat
+ * background it would read as a lighter opaque colour — the swatch lying about the value it shows,
+ * which is the failure this whole panel is written against.
  */
 function Swatch({
   value,
+  pick,
   label,
   onPick,
 }: {
+  /** The actual value, possibly translucent; undefined = not set (dashed + bare checkerboard). */
   value: string | undefined;
+  /** What the OS picker opens on — always an opaque `#rrggbb`, since the input accepts nothing else. */
+  pick: string;
   label: string;
   onPick: (hex: string) => void;
 }) {
@@ -87,16 +119,15 @@ function Swatch({
       <span
         aria-hidden
         className={cn(
-          "block h-9 w-9 rounded-md border",
-          isSet
-            ? "border-input"
-            : "border-dashed border-muted-foreground/50 bg-[repeating-conic-gradient(var(--muted)_0_25%,transparent_0_50%)] bg-[length:8px_8px]",
+          "absolute inset-0 overflow-hidden rounded-md border bg-[repeating-conic-gradient(var(--muted)_0_25%,transparent_0_50%)] bg-[length:8px_8px]",
+          isSet ? "border-input" : "border-dashed border-muted-foreground/50",
         )}
-        style={isSet ? { backgroundColor: value } : undefined}
-      />
+      >
+        {isSet ? <span className="block h-full w-full" style={{ backgroundColor: value }} /> : null}
+      </span>
       <input
         type="color"
-        value={isSet ? value : "#000000"}
+        value={pick}
         onChange={(e) => onPick(e.target.value)}
         aria-label={label}
         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
@@ -122,6 +153,7 @@ function ColorRow({
   label,
   value,
   fallbackHint,
+  alpha = false,
   onCommit,
   onClear,
 }: {
@@ -129,8 +161,12 @@ function ColorRow({
   label: string;
   /** undefined = not overridden. */
   value: string | undefined;
-  /** Shown as the hex placeholder when unset. */
+  /** Shown as the hex placeholder when unset, and what the picker opens on. */
   fallbackHint?: string;
+  /** May this value carry alpha? True for tokens/overrides (terminal), false for seeds (they feed
+   *  color-mix, which would multiply their alpha into every derived shade). Decides BOTH the
+   *  validator and whether the alpha slider exists at all. */
+  alpha?: boolean;
   onCommit: (hex: string) => void;
   onClear?: () => void;
 }) {
@@ -138,7 +174,23 @@ function ColorRow({
   // Re-sync when the value changes from outside this row (reset, another click, save adopt).
   React.useEffect(() => setDraft(value ?? ""), [value]);
 
-  const invalid = draft !== "" && !isHex(draft);
+  const accepts = alpha ? isHexAlpha : isHexOpaque;
+  const invalid = draft !== "" && !accepts(draft);
+
+  // What the controls OPERATE ON: this row's value if set, else the colour the element actually
+  // renders (fallbackHint), else black. Distinct from `value`, which stays undefined so the swatch
+  // can keep drawing the unset state honestly rather than claim a colour the user never picked.
+  const basis = (value ?? fallbackHint ?? "") || undefined;
+  const parts = basis ? splitHexAlpha(basis) : undefined;
+  const rgb = parts?.rgb ?? "#000000";
+  const a = parts?.alpha ?? 1;
+  const pct = Math.round(a * 100);
+
+  // Seeds never round-trip through joinHexAlpha: their row has no slider, so `a` is always 1 and it
+  // would be a no-op — but routing them past it entirely is what makes "seeds cannot carry alpha" a
+  // property of the code rather than of the arithmetic happening to work out.
+  const commit = (nextRgb: string, nextAlpha: number) =>
+    onCommit(alpha ? joinHexAlpha(nextRgb, nextAlpha) : nextRgb);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -146,12 +198,17 @@ function ColorRow({
         {label}
       </label>
       <div className="flex items-center gap-2">
-        <Swatch value={value} label={`${label} — chọn màu`} onPick={onCommit} />
+        <Swatch
+          value={value}
+          pick={rgb}
+          label={`${label} — chọn màu`}
+          onPick={(hex) => commit(hex, a)}
+        />
         <input
           id={id}
           type="text"
           value={draft}
-          placeholder={fallbackHint ?? "#rrggbb"}
+          placeholder={fallbackHint ?? (alpha ? "#rrggbbaa" : "#rrggbb")}
           spellCheck={false}
           // size=1 kills the input's default ~20-character intrinsic width. Radix's ScrollArea
           // viewport wraps content in a display:table element, which sizes to MIN-content — and an
@@ -163,7 +220,9 @@ function ColorRow({
           onChange={(e) => {
             const next = e.target.value;
             setDraft(next);
-            if (isHex(next)) onCommit(next);
+            // Committed VERBATIM, not through joinHexAlpha: the user typed a complete value, and
+            // re-deriving it from (rgb, alpha) would quietly rewrite `#abc` to `#aabbcc`.
+            if (accepts(next)) onCommit(next);
           }}
           onBlur={() => setDraft(value ?? "")}
           className={cn(
@@ -185,6 +244,22 @@ function ColorRow({
           </Button>
         ) : null}
       </div>
+      {alpha ? (
+        <div className="flex items-center gap-2">
+          <Slider
+            value={[pct]}
+            min={0}
+            max={100}
+            step={1}
+            aria-label={`${label} — độ đục`}
+            onValueChange={([next]) => commit(rgb, next / 100)}
+            className="min-w-0 flex-1"
+          />
+          <span className="w-8 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
+            {pct}%
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -276,11 +351,47 @@ function RoleRow({
 }) {
   const label = ROLE_LABEL[info.role];
 
-  // No hex → the colour has alpha (the template derives most tokens via color-mix) or is a
-  // gradient; hex cannot carry either, so say so rather than show a colour the element doesn't have.
-  if (!info.hex) return <ReadOnlyRow label={label} reason="Không đổi được bằng mã hex" />;
-  // No selector → buildSelector could not PROVE a unique target, so we refuse to anchor.
+  // No selector → buildSelector could not PROVE a unique target, so we refuse to anchor. This
+  // refusal is the load-bearing one and it stays: a selector that isn't provably unique is never
+  // stored.
   const canOverride = Boolean(info.selector);
+
+  // A token this element READS is only a site-wide ROUTE if editing it site-wide actually moves this
+  // element. 29 section selectors re-declare each tier-B token for their own subtree, which shadows
+  // the `:root, html body` rule paletteStyle emits — so for an element inside one, "đổi cả site"
+  // repaints the rest of the site and not the thing the user clicked. The preview measures it per
+  // click (color-engine's tokenReaches); only a literal false suppresses the route, so a preview that
+  // predates the field behaves exactly as before.
+  const shadowed = info.tokenKey !== undefined && info.tokenReaches === false;
+  const canToken = Boolean(info.tokenKey) && !shadowed;
+
+  // WHAT THIS GUARD USED TO BE, AND WHY THE ORDER IS THE FIX:
+  //     if (!info.hex) return <ReadOnlyRow reason="Không đổi được bằng mã hex" />;
+  //     const canOverride = Boolean(info.selector);   // ← never reached
+  // `info.hex` is the colour the element HAS. A route is what the user may WRITE. Writing an
+  // override needs `info.selector` and nothing else — it does not need the old value at all — so
+  // refusing on a missing hex refused elements that were perfectly overridable, and it did so with a
+  // sentence about hex that named the ENGINE's limitation as if it were the user's dead end. That is
+  // exactly what a real user hit on `.tone-medium`: a colour with alpha, unreadable by the old
+  // rgbToHex, hence "Không đổi được bằng mã hex", hence nothing to do. Both halves are fixed —
+  // rgbToHex reads alpha now — but the ordering was a bug on its own: a gradient is still unreadable,
+  // and a gradient-painted element with a selector is still overridable.
+  //
+  // So the row goes read-only only when there is genuinely NOTHING here: no site-wide route, no
+  // per-element route, AND no colour worth showing. With a colour but no route, the box below still
+  // renders and quotes it — a fact the user can act on elsewhere is not nothing.
+  if (!canToken && !canOverride && !info.hex) {
+    return (
+      <ReadOnlyRow
+        label={label}
+        reason={
+          shadowed
+            ? "Khu vực này tự đặt màu riêng nên đổi màu chung không ảnh hưởng nó, và cũng không xác định được vị trí riêng của phần tử — chưa đổi được từ đây."
+            : "Không đọc được màu này bằng mã hex (ví dụ: nền chuyển sắc), và cũng không xác định được vị trí riêng của phần tử — chưa đổi được từ đây."
+        }
+      />
+    );
+  }
 
   // What this role IS right now, best-known. Read through the palette first, not from info.hex:
   // info.hex was measured at CLICK time, and a pick re-themes the preview live without a new click,
@@ -291,10 +402,16 @@ function RoleRow({
     <div className="flex flex-col gap-3 rounded-md border border-border/60 p-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium text-foreground">{label}</span>
-        <code className="shrink-0 font-mono text-xs text-muted-foreground">{current}</code>
+        {current ? (
+          <code className="shrink-0 font-mono text-xs text-muted-foreground">{current}</code>
+        ) : (
+          // No readable colour, but a route exists (or we would not be here) — so the row is live
+          // and only the quote is missing. Saying which is better than an empty <code>.
+          <span className="shrink-0 text-xs text-muted-foreground">không đọc được</span>
+        )}
       </div>
 
-      {info.tokenKey ? (
+      {canToken && info.tokenKey ? (
         <div className="flex flex-col gap-1.5">
           <ColorRow
             id={`color-token-${info.role}`}
@@ -302,6 +419,8 @@ function RoleRow({
             // A seed always resolves (override ?? template default); a token is sparse, so it falls
             // back to what the element actually renders — which IS what the token resolves to.
             value={tokenValue ?? info.hex}
+            // A token is terminal — nothing color-mixes it — so alpha here renders as picked.
+            alpha
             onCommit={onPickToken}
           />
           <p className="text-xs text-muted-foreground">
@@ -318,34 +437,43 @@ function RoleRow({
             // Sparse by design: unset renders dashed/checkered, never a made-up #000000.
             value={overrideValue}
             fallbackHint={info.hex}
+            // An override is terminal — it IS the declaration — so alpha renders as picked.
+            alpha
             onCommit={onPickElement}
             onClear={onClearElement}
           />
-          {/* Three cases, and the middle one is why this isn't a two-way ternary. Once THIS role
-              carries an override, our own rule is the one detectToken reads — so it reports no
-              token for an element that may well be token-driven, and did: override the nav CTA's
-              background (btnPrimaryBg), click it again, and the old copy told the user this colour
-              was never in the palette while the Chữ role beside it still showed its token. An
-              override does not un-token an element; it only blinds the detector. So when an
-              override is set we state what we know — this element has its own colour — and claim
-              nothing about the palette in either direction. */}
+          {/* Four cases now, and each says something the others would get wrong. The `shadowed` one
+              is new and it is the reason this element had no honest copy before: the colour IS in
+              the palette, so "không thuộc bảng màu chung" would be a lie, but a site-wide edit of it
+              would visibly skip this element, so offering that route would be a worse one.
+              The `overrideValue` case is the subtle one. Once THIS role carries an override, our own
+              rule is the one detectToken reads — so it reports no token for an element that may well
+              be token-driven, and did: override the nav CTA's background (btnPrimaryBg), click it
+              again, and the old copy told the user this colour was never in the palette while the
+              Chữ role beside it still showed its token. An override does not un-token an element; it
+              only blinds the detector. So when an override is set we state what we know — this
+              element has its own colour — and claim nothing about the palette in either direction. */}
           <p className="text-xs text-muted-foreground">
-            {info.tokenKey
-              ? "Tách riêng phần tử này khỏi màu chung — đổi màu chung sau này sẽ không còn ảnh hưởng nó."
-              : overrideValue !== undefined
-                ? "Phần tử này đang dùng màu riêng. Xoá (×) để nó trở lại màu mặc định."
-                : "Màu này không thuộc bảng màu chung, nên chỉ đổi được riêng phần tử này."}
+            {shadowed
+              ? "Khu vực này tự đặt màu riêng, nên đổi màu chung không ảnh hưởng nó — chỉ đổi được riêng phần tử này."
+              : canToken
+                ? "Tách riêng phần tử này khỏi màu chung — đổi màu chung sau này sẽ không còn ảnh hưởng nó."
+                : overrideValue !== undefined
+                  ? "Phần tử này đang dùng màu riêng. Xoá (×) để nó trở lại màu mặc định."
+                  : "Màu này không thuộc bảng màu chung, nên chỉ đổi được riêng phần tử này."}
           </p>
         </div>
       ) : (
-        // Both halves are reachable and they must say DIFFERENT things. Observed on
-        // features.eyebrow: an unclassed text-hook <span> whose colour is declared with a literal
-        // hex, so there is no token AND buildSelector can prove no selector — and copy that says
-        // "chỉ đổi được cả site" in that case points at a control this row does not have.
+        // Every half is reachable and they must say DIFFERENT things. Observed on features.eyebrow:
+        // an unclassed text-hook <span> whose colour is declared with a literal hex, so there is no
+        // token AND buildSelector can prove no selector — and copy that says "chỉ đổi được cả site"
+        // in that case points at a control this row does not have.
         <p className="text-xs text-muted-foreground">
-          {info.tokenKey
+          {canToken
             ? "Không xác định được vị trí riêng của phần tử này, nên chỉ đổi được cả site."
-            : "Màu này không thuộc bảng màu chung, và cũng không xác định được vị trí riêng của phần tử — chưa đổi được từ đây."}
+            : shadowed
+              ? "Khu vực này tự đặt màu riêng nên đổi màu chung không ảnh hưởng nó, và cũng không xác định được vị trí riêng của phần tử — chưa đổi được từ đây."
+              : "Màu này không thuộc bảng màu chung, và cũng không xác định được vị trí riêng của phần tử — chưa đổi được từ đây."}
         </p>
       )}
     </div>
