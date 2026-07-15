@@ -9,7 +9,7 @@
 //   • TEXT  (cap text)         — the span itself becomes contentEditable IN PLACE; the committed
 //     value is postMessage'd back to the admin (no hotspot for text — Plan-4 gate (a)).
 //   • COLOUR (any element)     — resolved from the click's paint stack by color-engine.ts, not from
-//     a cap: a click reports its roles to the admin, which opens the colour popover.
+//     a cap: a click reports its roles to the admin, which renders them in the colour panel.
 //
 // CAPABILITIES vs MODE. An element declares what it CAN do via `data-edit-caps` (a comma-joined
 // list — see _lib/edit-caps.ts), and the active MODE (see _lib/edit-mode.ts) decides which of those
@@ -604,29 +604,23 @@ export function EditOverlay() {
         }
       }
 
-      // COLOUR: report what was clicked; the admin owns the popover. The target is resolved from the
-      // paint stack rather than from a cap — colour is editable on ANY element, so there is nothing
-      // to have stamped. Many candidates live inside an <a> (e.g. the nav CTA) — preventDefault /
-      // stopPropagation BEFORE the navigation interception below so the click never navigates.
+      // COLOUR: report what was clicked; the admin's colour panel renders it. The target is resolved
+      // from the paint stack rather than from a cap — colour is editable on ANY element, so there is
+      // nothing to have stamped. Many candidates live inside an <a> (e.g. the nav CTA) —
+      // preventDefault / stopPropagation BEFORE the navigation interception below so the click never
+      // navigates.
       if (mode === "color") {
         const block = resolveMeaningfulBlock(e.clientX, e.clientY);
         if (block) {
           e.preventDefault();
           e.stopPropagation();
-          // Ship the block's box (this iframe's viewport coords). The admin adds the iframe's own
-          // offset and hands the result to the popover as its anchor, so the popover opens BESIDE
-          // the element you clicked instead of at a fixed corner that covers it. The preview iframe
-          // is width-constrained but never transform-scaled, so these coords map 1:1 into the admin.
-          const r = block.getBoundingClientRect();
           const field = block.getAttribute("data-edit-field") ?? "";
           window.parent.postMessage(
             {
               source: SOURCE,
               type: "colorTarget",
-              field,
               blockKey: block.closest("[data-sx-block]")?.getAttribute("data-sx-block") ?? "",
               label: field || block.tagName.toLowerCase(),
-              rect: { x: r.left, y: r.top, width: r.width, height: r.height },
               // Per role: the rendered hex, the token driving it, and a selector for a per-element
               // override. Only this frame can answer any of it — most tokens carry no stored value
               // (they derive from a seed), so the palette cannot say what colour this element is.

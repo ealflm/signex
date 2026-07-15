@@ -135,13 +135,13 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
                 data-cta="nav-quote"
                 data-wf--cta-primary--variant="primary"
                 href="/contact"
-                /* `token` VERIFIED against the stylesheet: the .btn-bg child that paints this pill
-                   declares background-color: var(--_🎨-color--tokens---button--primary--default--background),
-                   which is exactly TOKEN_VARS.btnPrimaryBg. Kept because it is true — the colour
-                   engine should derive the same answer once wired in. */
-                {...editableAttrs(editable, "nav.cta.color", {
-                  color: { token: "btnPrimaryBg", roles: ["bg", "text"] },
-                })}
+                /* What the colour engine resolves here, VERIFIED against the stylesheet: the .btn-bg
+                   child that paints this pill declares
+                   background-color: var(--_🎨-color--tokens---button--primary--default--background),
+                   i.e. TOKEN_VARS.btnPrimaryBg (#0d2b44 via the accentDarkOcean seed). Recorded as
+                   the expected answer, NOT as a declaration — resolveRoles reads it from the live
+                   CSSOM at click time; see EditableOpts.color. */
+                {...editableAttrs(editable, "nav.cta.color", { color: true })}
               >
                 <div className="button_text-mask">
                   <div button-text="" className="text-button">

@@ -7,8 +7,6 @@ import {
   clearOverride,
   clearOverrideRole,
   rebasePalette,
-  resetAll,
-  isEmptyPalette,
 } from "./palette-patch";
 
 describe("palette-patch reducers", () => {
@@ -100,12 +98,6 @@ describe("palette-patch reducers", () => {
     }
   });
 
-  it("resetAll clears everything and isEmptyPalette detects it", () => {
-    expect(isEmptyPalette(resetAll())).toBe(true);
-    expect(isEmptyPalette({ seeds: { accentAqua: "#000000" } })).toBe(false);
-    expect(isEmptyPalette({ seeds: {}, tokens: {}, overrides: [] })).toBe(true);
-    expect(isEmptyPalette({ overrides: [{ selector: ".a", bg: "#000000" }] })).toBe(false);
-  });
 });
 
 describe("rebasePalette (the 409 retry)", () => {
@@ -131,7 +123,8 @@ describe("rebasePalette (the 409 retry)", () => {
 
   it("does NOT resurrect a key this session deleted", () => {
     // The case an additive merge could never express, and the reason replace exists at all: a reset.
-    const ours = resetAll();
+    // `{}` is what a reset IS on the wire — the shell posts applyPalette({}) (editor-shell.tsx).
+    const ours = {};
     const theirs = setSeed(base, "liftDark", "#bbbbbb");
     const out = rebasePalette(ours, base, theirs);
     expect(out.seeds).toEqual({ liftDark: "#bbbbbb" }); // ours cleared what we knew of; theirs is new

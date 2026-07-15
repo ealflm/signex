@@ -31,11 +31,12 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                         className="tone-medium"
                         {...editableAttrs(editable, "hero.titleBottom", {
                           text: { maxLength: 80 },
-                          // No `token`: .tone-medium reads --_🎨-color--tokens---tone--medium, which
-                          // is in neither TOKEN_VARS nor PALETTE_VARS (it derives from base--*-64).
-                          // The old `token: "accentAqua"` was simply false, so it is gone; the
-                          // colour engine will read the winning rule at click time once wired in.
-                          color: { roles: ["text"] },
+                          // The engine resolves NO token for this one, and that is the correct
+                          // answer: .tone-medium reads --_🎨-color--tokens---tone--medium, which is
+                          // in neither TOKEN_VARS nor PALETTE_VARS (it derives from base--*-64). The
+                          // panel offers the per-element override instead. (An earlier hand-declared
+                          // `token: "accentAqua"` here was simply false — see EditableOpts.color.)
+                          color: true,
                         })}
                       >
                         {t.titleBottom}

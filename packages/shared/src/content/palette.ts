@@ -53,16 +53,6 @@ const TokenKeyEnum = z.enum(TOKEN_KEYS as [TokenKey, ...TokenKey[]]);
 
 export const PaletteSeedsSchema = z.record(SeedKeyEnum, Hex);
 export const PaletteTokensSchema = z.record(TokenKeyEnum, Hex);
-export const PaletteOverrideRolesSchema = z
-  .object({ bg: Hex, text: Hex, border: Hex })
-  .partial()
-  .strict();
-/**
- * The anchorId charset = the same "<blockKey>.<path>" string used by data-edit-field, e.g.
- * "nav.cta.color". Still used by the `[data-sx-c="…"]` production inside the selector grammar
- * (see selector.ts), which is where the stored-XSS guard now lives.
- */
-export const PALETTE_ANCHOR_ID_RE = /^[A-Za-z0-9._:-]+$/;
 
 /**
  * One per-element override. `selector` is the full CSS target — a hand-stamped anchor is just the
@@ -93,6 +83,5 @@ export const PaletteSchema = z
 
 export type PaletteSeeds = z.infer<typeof PaletteSeedsSchema>;
 export type PaletteTokens = z.infer<typeof PaletteTokensSchema>;
-export type PaletteOverrideRoles = z.infer<typeof PaletteOverrideRolesSchema>;
 export type PaletteOverrides = z.infer<typeof PaletteOverridesSchema>;
 export type Palette = z.infer<typeof PaletteSchema>;

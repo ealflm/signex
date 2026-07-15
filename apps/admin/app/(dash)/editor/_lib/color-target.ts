@@ -2,7 +2,7 @@
 // The admin's reading of what the preview overlay says a colour-mode click landed on.
 //
 // The overlay (apps/web edit-overlay.tsx) posts, per click:
-//   { source, type:"colorTarget", field, blockKey, label, rect, roles }
+//   { source, type:"colorTarget", blockKey, label, roles }
 // where `roles` is color-engine's `resolveRoles(block)` — one entry per colour ROLE the clicked
 // block actually has, each carrying the rendered hex, the seed/token key driving it, and a
 // per-element selector. Only the preview can answer any of that: it has the DOM and the CSSOM; the
@@ -44,8 +44,6 @@ export interface RoleInfo {
 }
 
 export interface ColorTarget {
-  /** The clicked element's data-edit-field, when it has one ("" otherwise). */
-  field: string;
   /** The enclosing [data-sx-block] key, when there is one ("" otherwise). */
   blockKey: string;
   /** What to call this element in the panel — the overlay sends `field || <tagname>`. */
@@ -91,7 +89,6 @@ export function readColorTarget(data: Record<string, unknown>): ColorTarget | nu
   if (data.type !== "colorTarget") return null;
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   return {
-    field: str(data.field),
     blockKey: str(data.blockKey),
     // An unlabelled target is still a target: an element with no data-edit-field and no tag name to
     // speak of should open the panel, not swallow the click.

@@ -86,10 +86,6 @@ export function clearOverride(p: PalettePatch, selector: string): PalettePatch {
   return { ...p, overrides: (p.overrides ?? []).filter((o) => o.selector !== selector) };
 }
 
-export function resetAll(): PalettePatch {
-  return {};
-}
-
 // ── 409 rebase ────────────────────────────────────────────────────────────────
 
 type Slice = Record<string, string | undefined>;
@@ -167,13 +163,4 @@ export function rebasePalette(
     ) as PalettePatch["tokens"],
     overrides,
   };
-}
-
-export function isEmptyPalette(p: PalettePatch | undefined | null): boolean {
-  if (!p) return true;
-  const n =
-    Object.keys(p.seeds ?? {}).length +
-    Object.keys(p.tokens ?? {}).length +
-    (p.overrides ?? []).length;
-  return n === 0;
 }

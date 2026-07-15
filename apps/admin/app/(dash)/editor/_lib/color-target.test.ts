@@ -2,15 +2,13 @@ import { describe, it, expect } from "vitest";
 import { readColorTarget, tokenLabel, ROLE_LABEL } from "./color-target";
 
 // The wire shape apps/web's edit-overlay.tsx actually posts on a colour-mode click:
-//   { source, type:"colorTarget", field, blockKey, label, rect, roles: resolveRoles(block) }
+//   { source, type:"colorTarget", blockKey, label, roles: resolveRoles(block) }
 // `roles` is color-engine's RoleInfo[] — { role, hex?, tokenKey?, selector? }.
 const msg = (over: Record<string, unknown> = {}) => ({
   source: "signex-editor",
   type: "colorTarget",
-  field: "nav.cta.color",
   blockKey: "nav",
   label: "nav.cta.color",
-  rect: { x: 1, y: 2, width: 3, height: 4 },
   roles: [
     { role: "bg", hex: "#0b1f33", tokenKey: "btnPrimaryBg", selector: '[data-sx-c="nav.cta.color"] .btn-bg' },
   ],
@@ -20,7 +18,6 @@ const msg = (over: Record<string, unknown> = {}) => ({
 describe("readColorTarget", () => {
   it("reads the overlay's colorTarget message", () => {
     expect(readColorTarget(msg())).toEqual({
-      field: "nav.cta.color",
       blockKey: "nav",
       label: "nav.cta.color",
       roles: [
@@ -126,7 +123,7 @@ describe("readColorTarget", () => {
       expect(readColorTarget(msg({ roles }))?.roles).toEqual([]);
     }
     const bare = readColorTarget({ type: "colorTarget" });
-    expect(bare).toEqual({ field: "", blockKey: "", label: "Phần tử", roles: [] });
+    expect(bare).toEqual({ blockKey: "", label: "Phần tử", roles: [] });
   });
 });
 

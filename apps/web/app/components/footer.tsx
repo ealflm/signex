@@ -48,15 +48,14 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
 
   return (
     <section className="footer" data-sx-block="footer">
-      {/* roles is ["bg"] only, and that is correct: .master_footer's glyph bearers re-declare a
-          translucent colour, so a `text` override on this block would not reach them. No `token`:
-          the old `baseDark` was false — .master_footer paints
-          background-color: var(--_🎨-color--base---accent--deep-navy) i.e. the accentDeepNavy
-          SEED. (The base--dark-100 nearby is a re-declaration of the ink--base token for
-          descendants, not this element's own background — likely what the wrong token was read off.)
-          Declaring nothing beats declaring a lie; the colour engine resolves seeds as well as
-          tokens, so it will answer this one once wired in. */}
-      <div className="master_footer" {...editableAttrs(editable, "footer.bar.color", { color: { roles: ["bg"] } })}>
+      {/* What the colour engine resolves here: .master_footer paints
+          background-color: var(--_🎨-color--base---accent--deep-navy) — the accentDeepNavy SEED, not
+          a token (the engine resolves both tiers). Its glyph bearers re-declare a translucent colour
+          of their own, so `bg` is the only role that reaches anything from this element. (The
+          base--dark-100 nearby re-declares the ink--base token for DESCENDANTS; it is not this
+          element's own background — reading it as one is how an earlier hand-declared token got this
+          wrong, which is why nothing is hand-declared any more. See EditableOpts.color.) */}
+      <div className="master_footer" {...editableAttrs(editable, "footer.bar.color", { color: true })}>
         <div className="padding-global">
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="footer_top-tile footer-signex_top">

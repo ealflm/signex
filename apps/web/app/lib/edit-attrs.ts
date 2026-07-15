@@ -52,25 +52,22 @@ export interface EditTextOpts {
   required?: boolean;
 }
 
-export type EditColorRole = "bg" | "text" | "border";
-
-export interface EditColorSpec {
-  /** Palette token key (from @signex/shared TOKEN_VARS/PALETTE_VARS) this element paints from.
-   *  Declare one only when it has been verified against the CSS that actually paints the role — a
-   *  hand-declared token that disagrees with the stylesheet is worse than none, because nothing
-   *  downstream can tell it is lying. Omit rather than guess: colour-engine.ts's detectToken() is
-   *  written to resolve the driving var() from the winning CSS rule at click time, and once the
-   *  colour panel wires it in it will answer for the elements that declare nothing here. */
-  token?: string;
-  /** Which CSS roles on this element are overridable (drives the popover's role chooser). */
-  roles: EditColorRole[];
-}
-
 export interface EditableOpts {
   image?: true;
   video?: true;
   text?: EditTextOpts;
-  color?: EditColorSpec;
+  /**
+   * Declare the element a COLOUR ANCHOR. There is nothing to describe here — no token, no role list
+   * — because nothing hand-declared could be trusted: colour-engine.ts's resolveRoles() reads the
+   * roles the element actually has and detectToken() resolves the driving custom property from the
+   * winning CSS rule, both at click time, from the live CSSOM. A declaration could only agree with
+   * the stylesheet or lie about it, and nothing downstream could tell which.
+   *
+   * What this flag buys is the STABLE ANCHOR: `data-sx-c="<field>"` (emitted on the public render
+   * too), which buildSelector prefers as the per-element override's CSS target because a hand-given
+   * id survives markup edits that a generated structural path does not.
+   */
+  color?: true;
 }
 
 /**
@@ -108,7 +105,5 @@ export function editable(
     ...(opts.text?.maxLength != null && { "data-edit-maxlength": String(opts.text.maxLength) }),
     ...(opts.text?.multiline && { "data-edit-multiline": "true" }),
     ...(opts.text?.required && { "data-edit-required": "true" }),
-    ...(opts.color?.token && { "data-edit-color-token": opts.color.token }),
-    ...(opts.color && { "data-edit-color-roles": opts.color.roles.join(",") }),
   };
 }
