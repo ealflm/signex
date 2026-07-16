@@ -35,9 +35,19 @@ export type RoleInfo = {
  *
  * Exported for color-engine.test.mjs: this and pickSegment are the whole of what buildSelector's
  * block walk does per node, and apps/web has no jsdom to drive buildSelector itself.
+ *
+ * `localName`, NOT `tagName`, now that the tag is EMITTED and not merely grouped by. tagName is the
+ * qualified name — uppercased for HTML elements ("SPAN"), which a type selector does match, since
+ * they are ASCII case-insensitive in an HTML document, but which puts `H2 SPAN:nth-of-type(1)` in
+ * front of the user for no reason. localName gives the canonical lowercase name there and the
+ * AUTHORED case for foreign content ("linearGradient"), where type selectors are case-SENSITIVE and
+ * a lowercased tagName would match nothing. It drops the namespace that CSS's notion of "element
+ * type" also carries, which would matter only for a sibling list mixing an HTML and an SVG element
+ * of the same local name — impossible, since the HTML parser puts every child of one parent in one
+ * namespace.
  */
 export const asSegment = (el: Element): SegmentInput => ({
-  tag: el.tagName,
+  tag: el.localName,
   classes: (el.getAttribute("class") ?? "")
     .split(/\s+/)
     .filter(Boolean)

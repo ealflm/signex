@@ -8,8 +8,13 @@ import { CLASS_COLOR_HOVER, CLASS_FLASH } from "./overlay-classes.ts";
 // A minimal stand-in for the only Element surface asSegment touches. Deliberately not a DOM: the
 // defect under test is that asSegment reads the LIVE class attribute, so what matters is exactly
 // what that attribute says at click time.
+//
+// `localName`, matching asSegment — and the lowercase spelling is the point of the property, not an
+// incidental detail of the stub: the tag is EMITTED into the selector now, so a stub offering
+// `tagName` ("DIV") would let asSegment go on reading a property that no longer exists here and
+// quietly produce `undefined:nth-of-type(1)`.
 const el = (tag, className) => ({
-  tagName: tag,
+  localName: tag,
   getAttribute: (n) => (n === "class" ? className : null),
 });
 
@@ -32,25 +37,34 @@ const FLASH = CLASS_FLASH;
 test("overlay hover class does not displace the real sibling-disambiguating selector", () => {
   const target = el("div", `card ${HOVER}`);
   const siblings = [target, el("div", "card")];
-  assert.equal(segmentFor(target, siblings), ".card:nth-of-type(1)");
+  assert.equal(segmentFor(target, siblings), "div.card:nth-of-type(1)");
 });
 
+// The overlay mark used to be checkable by "does it anchor AT ALL?", because an unclassed element
+// had no selector in the grammar and any non-null answer meant the mark had been used as a class.
+// The type production ends that shortcut: this element now anchors legitimately, so the assertion
+// has to name what it anchors BY — a segment carrying no trace of the mark. Re-asserting null here
+// would only prove the tag fallback had been deleted.
 test("overlay hover class does not manufacture an anchor for an unclassed element", () => {
   const target = el("div", HOVER);
   const siblings = [target, el("div", "")];
-  assert.equal(segmentFor(target, siblings), null);
+  const seg = segmentFor(target, siblings);
+  assert.equal(seg, "div:nth-of-type(1)");
+  assert.ok(!seg.includes(HOVER));
 });
 
 test("overlay flash class does not displace the real sibling-disambiguating selector", () => {
   const target = el("div", `card ${FLASH}`);
   const siblings = [target, el("div", "card")];
-  assert.equal(segmentFor(target, siblings), ".card:nth-of-type(1)");
+  assert.equal(segmentFor(target, siblings), "div.card:nth-of-type(1)");
 });
 
 test("overlay flash class does not manufacture an anchor for an unclassed element", () => {
   const target = el("div", FLASH);
   const siblings = [target, el("div", "")];
-  assert.equal(segmentFor(target, siblings), null);
+  const seg = segmentFor(target, siblings);
+  assert.equal(seg, "div:nth-of-type(1)");
+  assert.ok(!seg.includes(FLASH));
 });
 
 test("both overlay marks at once are dropped, and the real class still anchors", () => {
