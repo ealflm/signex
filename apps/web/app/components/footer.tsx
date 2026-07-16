@@ -16,9 +16,12 @@ import { editable as editableAttrs } from "@/app/lib/edit-attrs";
  * YouTube, Lalamove, Grab, payment networks — brand colours not in Caladan's palette,
  * hard-coded like the contact-section icon chips) are scoped in globals.css.
  *
- * The field labels (Email:/Tel:/Zalo:/Tax:/Office:/Factory:) are identical in both
- * locales' mockups, so they live here, not in the dictionary. The middle payment badge
- * differs by locale (JCB in EN, COD in VI) — that comes from dict.payments verbatim.
+ * The field labels (Email:/Tel:/Zalo:/Tax:/Office:/Factory:) are CONTENT — they come from
+ * businessContact (phones[].label, sites[].label, taxLabel, emailLabel), the same fields the
+ * contactPage card reads, so a label edit moves both. They happen to be identical in both
+ * locales' seed, but they are LocalizedText and nothing here assumes otherwise. Only the ":"
+ * separator is this template's. The middle payment badge differs by locale (JCB in EN, COD in
+ * VI) — that comes from dict.payments verbatim.
  */
 
 // Facebook "f" + YouTube glyphs (white, on the brand-coloured chips). aria-hidden — the
@@ -60,8 +63,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
           <div className="w-layout-blockcontainer container-large w-container">
             <div className="footer_top-tile footer-signex_top">
               {/* Column 1 — brand. Top label "SIGNEX" using the same label-large heading
-                  as the other two columns (brand name is locale-invariant, so it's hard-coded
-                  like the field labels), then brand name, taglines, socials. */}
+                  as the other two columns, then brand name, taglines, socials. */}
               <div className="footer-signex_col">
                 {/* Signex logo (replaces the "SIGNEX" text label). Same user SVG as the
                     navbar, but rendered white (brightness(0) invert(1)) so it reads on the
@@ -99,36 +101,41 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                   <span {...editableAttrs(editable, "footer.contactHeading", { text: { maxLength: 80 } })}>{t.contactHeading}</span>
                 </div>
                 <div className="footer-signex_contact">
-                  {/* Field labels (Email:/Tel:/…) stay literal by design (locale-invariant); only the
-                      VALUES are stamped, so each NAP value is click-to-edit (routes to Business contact).
-                      Labels themselves remain editable in the Business contact panel. */}
+                  {/* Field labels (Email:/Tel:/…) are CONTENT, not literals: businessContact carries
+                      phones[].label, sites[].label, taxLabel (all LocalizedText) and the optional
+                      emailLabel. Both leaves of each row are stamped on the SAME field paths the
+                      contactPage card uses (content.ts builds both from phoneRow/addrRow/taxRow), so
+                      editing a label moves it in BOTH places instead of silently diverging.
+                      The ":" is TEMPLATE, not content — it stays outside the editable span, exactly
+                      as the contactPage card composes it (home/contact.tsx renders label + {": "}).
+                      It stays inside the bold wrapper so the colon keeps rendering bold, as before. */}
                   <div className="text-size-small text_body-bold footer-signex_company">
                     <span {...editableAttrs(editable, t.nap.legalName.field, { text: { maxLength: 120 } })}>{t.nap.legalName.text}</span>
                   </div>
                   <div className="text-size-small">
-                    <span className="text_body-bold">Email:</span>{" "}
-                    <span className="tone-medium" {...editableAttrs(editable, t.nap.email.field, { text: { maxLength: 120 } })}>{t.nap.email.text}</span>
+                    <span className="text_body-bold"><span {...editableAttrs(editable, t.nap.email.label.field, { text: { maxLength: 80 } })}>{t.nap.email.label.text}</span>:</span>{" "}
+                    <span className="tone-medium" {...editableAttrs(editable, t.nap.email.value.field, { text: { maxLength: 120 } })}>{t.nap.email.value.text}</span>
                   </div>
                   {t.nap.tel && (
                     <div className="text-size-small">
-                      <span className="text_body-bold">Tel:</span>{" "}
+                      <span className="text_body-bold"><span {...editableAttrs(editable, t.nap.tel.label.field, { text: { maxLength: 80 } })}>{t.nap.tel.label.text}</span>:</span>{" "}
                       <span className="tone-medium" {...editableAttrs(editable, t.nap.tel.value.field, { text: { maxLength: 80 } })}>{t.nap.tel.value.text}</span>
                     </div>
                   )}
                   {t.nap.zalo && (
                     <div className="text-size-small">
-                      <span className="text_body-bold">Zalo:</span>{" "}
+                      <span className="text_body-bold"><span {...editableAttrs(editable, t.nap.zalo.label.field, { text: { maxLength: 80 } })}>{t.nap.zalo.label.text}</span>:</span>{" "}
                       <span className="tone-medium" {...editableAttrs(editable, t.nap.zalo.value.field, { text: { maxLength: 80 } })}>{t.nap.zalo.value.text}</span>
                     </div>
                   )}
                   <div className="text-size-small">
-                    <span className="text_body-bold">Tax:</span>{" "}
+                    <span className="text_body-bold"><span {...editableAttrs(editable, t.nap.tax.label.field, { text: { maxLength: 80 } })}>{t.nap.tax.label.text}</span>:</span>{" "}
                     <span className="tone-medium" {...editableAttrs(editable, t.nap.tax.value.field, { text: { maxLength: 80 } })}>{t.nap.tax.value.text}</span>
                   </div>
                   {t.nap.office && (
                     <div className="footer-signex_address">
                       <div className="text-size-small text_body-bold">
-                        Office:
+                        <span {...editableAttrs(editable, t.nap.office.label.field, { text: { maxLength: 80 } })}>{t.nap.office.label.text}</span>:
                       </div>
                       <div className="text-size-small tone-medium">
                         <span {...editableAttrs(editable, t.nap.office.value.field, { text: { maxLength: 160 } })}>{t.nap.office.value.text}</span>
@@ -138,7 +145,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                   {t.nap.factory && (
                     <div className="footer-signex_address">
                       <div className="text-size-small text_body-bold">
-                        Factory:
+                        <span {...editableAttrs(editable, t.nap.factory.label.field, { text: { maxLength: 80 } })}>{t.nap.factory.label.text}</span>:
                       </div>
                       <div className="text-size-small tone-medium">
                         <span {...editableAttrs(editable, t.nap.factory.value.field, { text: { maxLength: 160 } })}>{t.nap.factory.value.text}</span>

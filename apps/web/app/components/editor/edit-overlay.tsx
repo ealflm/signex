@@ -785,37 +785,44 @@ export function EditOverlay() {
           webmUrl?: string;
           text?: string;
         }>) {
-          const el = document.querySelector<HTMLElement>(`[data-edit-field="${CSS.escape(ed.field)}"]`);
-          if (!el) continue;
+          // ALL matches, not the first: one content field legitimately renders in several places
+          // (businessContact.* appears in both the footer and the contactPage card on /vi; each
+          // formConfig label appears twice). querySelector re-applied a pending edit to whichever
+          // came first in document order and left the rest showing the saved value — a preview that
+          // disagreed with itself, and with what a save+refresh would render.
+          const els = document.querySelectorAll<HTMLElement>(`[data-edit-field="${CSS.escape(ed.field)}"]`);
+          if (els.length === 0) continue;
 
-          if (ed.kind === "image" && ed.url) {
-            const img =
-              el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector<HTMLImageElement>("img");
-            if (img) {
-              img.removeAttribute("srcset");
-              img.src = ed.url;
-            } else {
-              el.style.backgroundImage = `url("${ed.url}")`;
-            }
-          } else if (ed.kind === "video") {
-            const video = (
-              el.tagName === "VIDEO" ? el : el.querySelector("video")
-            ) as HTMLVideoElement | null;
-            if (video) {
-              if (ed.posterUrl) video.poster = ed.posterUrl;
-              const src = video.querySelector("source");
-              if (src && ed.mp4Url) {
-                src.setAttribute("src", ed.mp4Url);
-                video.load();
+          for (const el of els) {
+            if (ed.kind === "image" && ed.url) {
+              const img =
+                el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector<HTMLImageElement>("img");
+              if (img) {
+                img.removeAttribute("srcset");
+                img.src = ed.url;
+              } else {
+                el.style.backgroundImage = `url("${ed.url}")`;
               }
-            }
-          } else if (ed.kind === "text") {
-            // gate (b): restore an unsaved inline text edit to the canvas after a refresh/locale
-            // remount (the iframe re-renders from the saved draft; pending lives only in the admin).
-            // Mutate ONLY the span's inner text. Don't clobber a leaf currently being edited.
-            if (typeof ed.text === "string" && editing?.el !== el) {
-              el.textContent = ed.text;
-              didText = true;
+            } else if (ed.kind === "video") {
+              const video = (
+                el.tagName === "VIDEO" ? el : el.querySelector("video")
+              ) as HTMLVideoElement | null;
+              if (video) {
+                if (ed.posterUrl) video.poster = ed.posterUrl;
+                const src = video.querySelector("source");
+                if (src && ed.mp4Url) {
+                  src.setAttribute("src", ed.mp4Url);
+                  video.load();
+                }
+              }
+            } else if (ed.kind === "text") {
+              // gate (b): restore an unsaved inline text edit to the canvas after a refresh/locale
+              // remount (the iframe re-renders from the saved draft; pending lives only in the admin).
+              // Mutate ONLY the span's inner text. Don't clobber a leaf currently being edited.
+              if (typeof ed.text === "string" && editing?.el !== el) {
+                el.textContent = ed.text;
+                didText = true;
+              }
             }
           }
         }

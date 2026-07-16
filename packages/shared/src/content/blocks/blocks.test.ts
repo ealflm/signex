@@ -394,6 +394,27 @@ describe("businessContactBlock", () => {
     expect(businessContactBlock.safeParse(d).success).toBe(false);
   });
 
+  // emailLabel is the footer's "Email:" label. It is OPTIONAL so the already-published v1
+  // snapshot (which predates the field) still parses — the web falls back to "Email".
+  it("emailLabel is OPTIONAL: a snapshot without it still parses (published v1 stays valid)", () => {
+    const { emailLabel: _, ...d } = valid as typeof valid & { emailLabel?: unknown };
+    const result = businessContactBlock.safeParse(d);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.emailLabel).toBeUndefined();
+  });
+
+  it("emailLabel round-trips when present", () => {
+    const d = { ...valid, emailLabel: lt("Email", "Thư điện tử") };
+    const result = businessContactBlock.safeParse(d);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.emailLabel).toEqual({ en: "Email", vi: "Thư điện tử" });
+  });
+
+  it("rejects emailLabel as plain string (must be localized, like every other NAP label)", () => {
+    const d = { ...valid, emailLabel: "Email" };
+    expect(businessContactBlock.safeParse(d).success).toBe(false);
+  });
+
   describe("resolveBusinessContact", () => {
     it("returns phoneLines in en", () => {
       const bc = businessContactBlock.parse(valid);
