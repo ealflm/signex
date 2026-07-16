@@ -5,6 +5,7 @@
 // jsdom, so it is verified in the browser (see the plan's Task 12).
 
 import { PALETTE_VARS, ROOT_SELECTOR, TOKEN_VARS, isSafeSelector } from "@signex/shared";
+import { SVG_MARK_SEL, paintFollowsColor, type MarkPaint } from "./ink-paint";
 import { isOverlayClass } from "./overlay-classes";
 import { pickSegment, type SegmentInput } from "./selector-path";
 
@@ -271,6 +272,27 @@ function layoutBox(el: Element): { w: number; h: number } {
  * The element the user means by "this button" — not the topmost node at the click point, which in
  * this template is usually a meaningless fragment (.gsap_split_word inside a split-text heading).
  * Walks up from the top of the paint stack to the first link/button/stamped element/block root.
+ *
+ * AN SVG IS THE ONE EXCEPTION, and it is the reason a user could not recolour the phone badge on the
+ * home page. 31 of the 34 SVG paint attributes in this template are `stroke="currentColor"` /
+ * `fill="currentColor"`, so an icon's colour is its holder's `color` — but a holder like
+ * `.contact_info-icon.is-phone` is a plain classed <div>, carrying nothing in the list above, so the
+ * walk sailed past it to <section data-sx-block>. That section has 45 glyph bearers in 5 colours, so
+ * no single element determines its text colour and painterFor (rightly) refuses the role: the click
+ * resolved to a unit that does not paint the thing the user clicked.
+ *
+ * The mark itself is not a block either — a <path> is as meaningless a fragment as a split-text
+ * letter, and unanchorable for the same reason. The unit is the element that OWNS the <svg>: it is
+ * the nearest thing that carries the `color` painting the mark, and on the phone badge it carries
+ * `background-color: #e7f7ee` too, so the click hands back both roles at once — the badge and its
+ * glyph, which is what was clicked.
+ *
+ * Scoped to clicks that LAND on an SVG, and that scope is the point: `top.closest("svg")` is null
+ * for every other click on the site, so resolution for them is byte-identical to before. Widening
+ * the list above instead (a `:has(> svg)` term, say) would have re-resolved clicks that already work
+ * — the nav CTA, a heading, a card — for a bug none of them have. Where the owner IS an <a> or
+ * <button> (the footer's social links wrap their icon directly), this returns exactly what the walk
+ * already returned; it can only ever stop EARLIER than the old walk, never later.
  */
 export function resolveMeaningfulBlock(x: number, y: number): HTMLElement | null {
   const stack = (document.elementsFromPoint(x, y) as HTMLElement[]).filter(
@@ -278,6 +300,8 @@ export function resolveMeaningfulBlock(x: number, y: number): HTMLElement | null
   );
   const top = stack[0];
   if (!top) return null;
+  const svgOwner = top.closest("svg")?.parentElement;
+  if (svgOwner) return svgOwner;
   return (
     (top.closest("a,button,[data-edit-field],[data-sx-c],[data-sx-block]") as HTMLElement | null) ??
     top
@@ -300,8 +324,60 @@ const ROLE_COMPUTED: Record<ColorRole, "backgroundColor" | "color" | "borderTopC
 };
 /** What `role` is in the DEFAULT state on `el`, for the two callers below. Shorthand for the pair of
  *  lookups every one of them would otherwise repeat. */
-const roleColor = (el: HTMLElement, role: ColorRole): string =>
+const roleColor = (el: Element, role: ColorRole): string =>
   defaultStateColor(el, ROLE_PROP[role], ROLE_COMPUTED[role]);
+
+/**
+ * Every SVG mark under `block` whose paint FOLLOWS `color` — the non-glyph half of "renders ink".
+ *
+ * ASKED, NOT DERIVED, and asked the way the browser would answer it: force `color` to a sentinel
+ * document-wide, read every mark's computed `fill`/`stroke`, then do it again with a second
+ * sentinel. A paint that arrived at both is `currentColor`; a literal, `none`, or a `var()` sat
+ * still. See ink-paint.ts's paintFollowsColor for why the cheaper tests (read the `fill` attribute;
+ * compare computed fill to computed color) are each a lying hex waiting to happen.
+ *
+ * A document-level <style>, like tokenReaches' — NOT an inline style on the marks. That is
+ * overlay-classes.ts's THE RULE: the overlay may stamp an `sx-ov-` class on a page element and must
+ * never otherwise mutate one, and it must never touch their children at all. A throwaway sheet in
+ * <head> mutates nothing on the page and cannot poison a generated selector. `*` is broader than the
+ * block, which costs nothing: the node is appended and removed inside the same task, so no frame
+ * ever renders it and the user sees no flash — the same argument tokenReaches makes.
+ *
+ * Cost is two style inserts + two forced recalcs per CLICK — and only for a block containing marks
+ * at all. Hover does not come here: it calls resolveMeaningfulBlock, never resolveRoles.
+ *
+ * KNOWN LIMIT, unreached today: a mark inside <defs>/<mask>/<clipPath> renders nothing yet would be
+ * counted, and a hidden mark likewise. This template has neither (no component under
+ * app/components/ contains one), and the text-node half has always had the same blind spot. It fails
+ * SAFE in any case — an extra bearer can only make the "all agree" test stricter, which withholds a
+ * role, never fabricates one.
+ */
+const INK_SENTINELS = ["rgb(1, 2, 3)", "rgb(4, 5, 6)"] as const;
+function marksFollowingColor(block: HTMLElement): Element[] {
+  const marks = Array.from(block.querySelectorAll(SVG_MARK_SEL));
+  if (marks.length === 0) return [];
+  const host = document.head ?? document.documentElement;
+  if (!host) return [];
+  const st = document.createElement("style");
+  host.appendChild(st);
+  try {
+    const readings = INK_SENTINELS.map((c) => {
+      st.textContent = `*{color:${c}!important}`;
+      return marks.map((m): MarkPaint => {
+        const cs = getComputedStyle(m);
+        return { fill: cs.fill, stroke: cs.stroke };
+      });
+    });
+    return marks.filter((_, i) =>
+      paintFollowsColor(
+        readings.map((r) => r[i]),
+        INK_SENTINELS,
+      ),
+    );
+  } finally {
+    st.remove();
+  }
+}
 
 /** The element that actually PAINTS `role` for `block`. For `bg`/`border`, colour does NOT
  *  inherit, so the block itself is frequently transparent — the nav CTA is a transparent <a>
@@ -344,23 +420,42 @@ function painterFor(block: HTMLElement, role: ColorRole): HTMLElement | null {
     //       has and promises an override that would change nothing — the "lying hex" rgbToHex
     //       goes out of its way to avoid, laundered through the selector instead.
     //
-    // So: `block` is the painter only when it genuinely DETERMINES its text colour. Gather the
-    // elements that actually render glyphs (own a direct, non-empty text node) and require all of
-    // them to have inherited block's colour unchanged. If any re-declares, no single element
-    // paints this block's text — the role is absent rather than a lie.
-    const glyphBearers = candidates.filter((el) =>
+    // So: `block` is the painter only when it genuinely DETERMINES its colour. Gather the elements
+    // that actually RENDER INK and require all of them to have inherited block's colour unchanged.
+    // If any re-declares, no single element paints this block's ink — the role is absent rather than
+    // a lie. That rule is sound and stays; what was wrong was its notion of ink.
+    //
+    // "RENDERS INK" WAS DEFINED AS "OWNS A TEXT NODE", and that is the bug the user hit. `color`
+    // paints two things, not one: glyphs, and every SVG mark whose fill/stroke is `currentColor` —
+    // which is 31 of the 34 SVG paint attributes in this template. An icon holder like
+    // `.contact_info-icon.is-phone` owns no text node at all, so it had zero bearers and the gate
+    // below refused the role outright — for a `color` that demonstrably paints (force the holder's
+    // `color` to magenta and the <path>'s computed stroke follows it from rgb(47,158,68) to
+    // rgb(255,0,255)). The comment that gate used to carry said an icon-only button's `color` "never
+    // paints a pixel". It paints the icon.
+    //
+    // So the concept is EXTENDED rather than special-cased: a mark that follows `color` is a bearer
+    // exactly as a text node's owner is, and the "all bearers agree" test below reads it unchanged.
+    // The bearer is the MARK, not the holder — `currentColor` on a <path> resolves against the
+    // <path>'s own computed `color`, so the mark is where the question "did block's colour reach
+    // this ink unmodified?" is actually asked. Marks that do NOT follow `color` are not bearers and
+    // never were: the template's `fill="var(--…ink--base)"` and `fill="#ffffff"` marks have no
+    // per-element colour route, and inventing one for them is the lying hex again.
+    const textBearers = candidates.filter((el) =>
       Array.from(el.childNodes).some((n) => n.nodeType === Node.TEXT_NODE && !!n.nodeValue?.trim()),
     );
-    // Subsumes the old no-glyph gate: the navbar shell, a bg-only <a> and an icon-only button all
-    // have a computed `color` that never paints a pixel, so there is no text colour to edit.
-    if (glyphBearers.length === 0) return null;
+    const inkBearers: Element[] = [...textBearers, ...marksFollowingColor(block)];
+    // Still the right gate, now asked of the right set: the navbar shell and a bg-only <a> render no
+    // ink of any kind, so they have no text colour to edit. An icon-only button is no longer one of
+    // them.
+    if (inkBearers.length === 0) return null;
     // Compare BROWSER-SERIALISED colour strings — NOT hex. Hex would drop every non-opaque colour
     // to undefined and make unequal colours compare equal. And compare the DEFAULT state on both
     // sides: `.hero-quote_upload:hover { color: #ffffff }` recolours a block whose children
     // re-declare their own colour, so a live comparison would find them equal only while the pointer
     // is on it — handing back `block`, and with it a hex no glyph under the pointer has.
     const blockColor = roleColor(block, "text");
-    return glyphBearers.every((el) => roleColor(el, "text") === blockColor) ? block : null;
+    return inkBearers.every((el) => roleColor(el, "text") === blockColor) ? block : null;
   }
   return (
     candidates.find(
@@ -472,14 +567,14 @@ const declaresProp = (style: CSSStyleDeclaration, prop: RoleProp): boolean => {
  * lands, this walks past it and reads the live value, which is where we started. A selector this
  * browser cannot parse loses only the fast path.
  */
-function inTransientChain(el: HTMLElement): boolean {
+function inTransientChain(el: Element): boolean {
   try {
     return !!el.closest(TRANSIENT_SEL);
   } catch {
     return true;
   }
 }
-function transientlyMoves(el: HTMLElement, prop: RoleProp, inherited: boolean): boolean {
+function transientlyMoves(el: Element, prop: RoleProp, inherited: boolean): boolean {
   if (!inTransientChain(el)) return false;
   for (const sheet of Array.from(document.styleSheets)) {
     for (const rule of styleRules(sheet)) {
@@ -546,7 +641,7 @@ function* styleRules(node: CSSStyleSheet | CSSGroupingRule): Generator<CSSStyleR
  * earlier rule that the real cascade overrode. Callers must treat what this returns as the best
  * reading of the default state available, not as fact.
  */
-function winningDecl(el: HTMLElement, prop: string): string | undefined {
+function winningDecl(el: Element, prop: string): string | undefined {
   let decl: string | undefined;
   for (const sheet of Array.from(document.styleSheets)) {
     for (const rule of styleRules(sheet)) {
@@ -576,7 +671,7 @@ const varNameOf = (decl: string | undefined): string | undefined =>
 /** The custom property the winning DEFAULT-state rule reads for `prop`, mapped back to a seed/token
  *  key. Undefined when that rule reads no var (a literal colour) or names a var in neither registry
  *  — both NORMAL, and the panel says so rather than treating either as an error. */
-function detectToken(el: HTMLElement, prop: string): string | undefined {
+function detectToken(el: Element, prop: string): string | undefined {
   const varName = varNameOf(winningDecl(el, prop));
   if (!varName) return undefined;
   for (const [k, m] of Object.entries(PALETTE_VARS)) if (m.cssVar === varName) return k;
@@ -621,7 +716,7 @@ const cssVarOf = (key: string): string | undefined =>
  * `.tone-medium`, false for the one inside `.content_hero-home-c`.
  */
 const REACH_SENTINEL = "#010203";
-function tokenReaches(el: HTMLElement, tokenKey: string): boolean {
+function tokenReaches(el: Element, tokenKey: string): boolean {
   const cssVar = cssVarOf(tokenKey);
   if (!cssVar) return false;
   const host = document.head ?? document.documentElement;
@@ -703,7 +798,7 @@ function tokenReaches(el: HTMLElement, tokenKey: string): boolean {
  * longer reaches it. Both remaining errors are real; this buys the rarer one.
  */
 function defaultStateColor(
-  el: HTMLElement,
+  el: Element,
   prop: RoleProp,
   computedKey: "backgroundColor" | "color" | "borderTopColor",
 ): string {
