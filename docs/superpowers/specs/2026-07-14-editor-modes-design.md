@@ -211,13 +211,43 @@ Whitelisted grammar, expressed as a single anchored regex plus a length cap:
 |---|---|
 | `[data-sx-block="<key>"]` | key ∈ `BLOCK_KEYS` |
 | `[data-sx-c="<id>"]` | id matches `PALETTE_ANCHOR_ID_RE` |
+| `<tag>` | **type selector**, `[A-Za-z][A-Za-z0-9]*` — added in `27bcb03`, see below |
 | `.<class>` | `[A-Za-z0-9_-]+` — verified sufficient for every class in the template |
-| `:nth-of-type(<n>)` | `n` ∈ 1–99 |
-| ` ` (descendant), ` > ` (child) | single spaces only |
+| `:nth-of-type(<n>)` | `n` ∈ 1–99. The **name** is pinned: `:nth-child` counts all siblings rather than per-tag and is a different selector |
+| ` ` (descendant), ` > ` (child) | single spaces only. Both are **accepted**; the generator emits only ` ` today |
 | max length | 300 chars |
 
 Everything else is rejected. Lookups into any selector→config map use `Object.hasOwn` (the charset
 permits `__proto__`/`constructor`).
+
+**The type selector (`27bcb03`).** The table above originally had no type production, which made an
+element carrying neither a class nor a `data-sx-c` **inexpressible** — the generator returned null
+and the panel said "không xác định được vị trí riêng của phần tử". That contradicted §3's first
+decision ("mọi element × mọi thuộc tính"): measured on the live home page, **147 visible, painting
+elements** — nav links, several headings, the form labels — could not be anchored at all. It also
+made `:nth-of-type` mean the wrong thing: CSS counts nth-of-type **per element type**, so a tagless
+`.card:nth-of-type(1)` matches every element that is both first-of-its-own-tag and carries `.card`
+(the `2878c40` bug, which could only defend by refusing to anchor). Qualified by its tag,
+`div.card:nth-of-type(2)` names one element **by construction**, and the collision check `2878c40`
+added was deleted rather than kept in parallel.
+
+Two constraints on the production, both load-bearing:
+
+- **A bare tag is not a segment.** A type selector must be qualified by a class or an index, because
+  that is all the generator emits. So no stored selector is `body`, `html` or `div` alone. This
+  *bounds* the blast radius rather than closing it — `body:nth-of-type(1)` is expressible and would
+  repaint the page — which is accepted: writing a palette is an authenticated admin action, and an
+  admin can already repaint every page by moving a seed. The property that matters is that nothing
+  in the alphabet can escape the `<style>` or reach a script.
+- **The charset excludes `-`**, so custom elements (`<my-widget>`) are refused rather than emitted.
+  The template is Webflow output and has none; this is a guard, not a code path.
+
+**Known limits — expressible ≠ anchorable.** Every visible painting element is now *expressible*
+(`grammarFailures: 0`), but 34 of 250 still do not anchor, at two pre-existing limits this grammar
+does not touch: **26** exceed the 300-char cap (deep `gsap_split_letter` divs) and **8** fail
+document-wide uniqueness because `buildSelector` joins segments with a descendant combinator and
+never emits ` > ` (the "Tên" form label is one of these). Both are deliberate follow-ups, documented
+at their cause in `selector.ts` and `color-engine.ts` respectively.
 
 ---
 

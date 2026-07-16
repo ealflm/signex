@@ -70,8 +70,11 @@ export function pickSegment(target: SegmentInput, siblings: SegmentInput[]): str
   const idx = sameTag.indexOf(target) + 1;
   if (idx < 1 || idx > 99) return null; // grammar caps n at 99
   // Rung 3 / rung 4. The class is kept when there is one: it is not needed for uniqueness (tag +
-  // per-tag index already names one element) but it survives a re-order that the index does not,
-  // and it says what the element is.
+  // per-tag index already names one element), and it buys no durability either — the segment is a
+  // CONJUNCTION, so it still requires the index, and a re-order breaks it whether the class is
+  // there or not. Keeping the class only NARROWS: it says what the element is, and if the DOM
+  // changes under a stored selector it fails closed (matches nothing, override is a no-op) rather
+  // than silently repainting whatever slid into that index.
   return usable.length
     ? `${target.tag}.${usable[0]}:nth-of-type(${idx})`
     : `${target.tag}:nth-of-type(${idx})`;

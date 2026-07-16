@@ -42,6 +42,16 @@ describe("selector grammar", () => {
     "span[onload=x]", // an attribute selector is not a tag
     "span:hover", // only :nth-of-type may follow a tag
     "span::before",
+    // The pseudo-class NAME is pinned, not just its shape. Mutating the grammar's `:nth-of-type`
+    // to `:[a-z-]+` left every other test green — the alphabet bounds it (`[a-z-]` can no more
+    // escape a <style> than `nth-of-type` can), so this is not an injection hole. It is a
+    // CORRECTNESS one, and `:nth-child` is why: it counts ALL siblings, not per-TAG, so
+    // `div.card:nth-child(2)` means something different from what every rung of pickSegment and
+    // every line of selector-path.test.mjs reasons about. That per-tag semantics IS the 2878c40
+    // bug and the whole argument for the type production. The name is load-bearing; pin it.
+    "span:nth-child(1)",
+    "div.card:nth-child(2)",
+    "span:first-of-type(1)",
     "span span", // a bare tag is not a segment, in any position…
     "span", // …including alone
     '[data-sx-block="features"] h2 span:nth-of-type(1)', // …including the hand-written proof

@@ -16,8 +16,17 @@ import { z } from "zod";
  *   [data-sx-c="<anchorId>"]       stable hand-stamped anchor
  *   <tag>                          type selector — see below
  *   .<class>                       Webflow classes; [A-Za-z0-9_-] covers every class in the template
- *   :nth-of-type(<1-99>)           tie-break among SAME-TAG siblings
- *   " " / " > "                    descendant / child, single spaces only
+ *   :nth-of-type(<1-99>)           tie-break among SAME-TAG siblings — the NAME is part of the
+ *                                  grammar, not decoration: :nth-child counts all siblings rather
+ *                                  than per-tag, which is a different selector entirely
+ *   " " / " > "                    descendant / child, single spaces only. NOTE the generator emits
+ *                                  ONLY " " today — color-engine.ts's buildSelector joins with
+ *                                  `.join(" ")` and never produces " > ". The child combinator is
+ *                                  accepted because hand-stamped and previously-stored selectors use
+ *                                  it, and because the cost of admitting it is one space and one `>`
+ *                                  in the alphabet. Read this list as what is ACCEPTED; the emitted
+ *                                  subset is narrower, and buildSelector's own comment measures what
+ *                                  that costs.
  *
  * THE TYPE SELECTOR, and why it is worth widening an injection surface for. Without it a segment
  * could only be `.class`, so an element carrying no class and no `data-sx-c` was not expressible AT
@@ -66,7 +75,22 @@ const SEG = [
 
 export const SELECTOR_RE = new RegExp(`^(?:${SEG})(?:(?: > | )(?:${SEG}))*$`);
 
-/** Bounds the `<style>` a hostile/looping client can produce. */
+/**
+ * Bounds the `<style>` a hostile/looping client can produce.
+ *
+ * IT BITES REAL CONTENT, and that is a deliberate trade rather than a theoretical cap. Measured on
+ * the live home page (27bcb03's sweep): of 250 visible, painting elements, **26 generate a selector
+ * of 306–354 chars and are therefore unanchorable** — every one of them a `gsap_split_letter` div,
+ * an individual letter of a split heading nested ~18 levels deep. They are *expressible* (the
+ * grammar accepts their shape); they are just too long to store. Before the type production they
+ * failed earlier, at pickSegment, so this cap is where they surface now — the count moved between
+ * causes, it did not appear.
+ *
+ * Raising it is not free: this number is the bound on how much CSS one authenticated admin action
+ * can push into every visitor's page, so it is a security parameter first and an ergonomics one
+ * second. Shortening the PATH (a child-combinator join, an anchor stamped nearer the letters) is the
+ * cheaper fix and does not touch this bound. Left at 300 on purpose.
+ */
 export const SELECTOR_MAX_LEN = 300;
 
 export function isSafeSelector(v: unknown): v is string {

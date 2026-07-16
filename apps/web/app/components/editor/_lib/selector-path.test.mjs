@@ -159,7 +159,16 @@ test("an unclassed element with no same-tag sibling still anchors", () => {
 test("returns null when the tag is outside the grammar charset and no class survives", () => {
   // A custom element has a hyphen, which the type charset excludes on purpose. The template has
   // none; this is the guard, and it must refuse rather than emit `my-widget:nth-of-type(1)`.
-  assert.equal(pickSegment(el("my-widget"), [el("my-widget")]), null);
+  //
+  // THE TARGET MUST BE ONE OF THE SIBLINGS, not an equal-looking copy — pickSegment compares by
+  // IDENTITY, and `el()` mints a new object per call. This is the same trap color-engine.test.mjs
+  // warns about and the sweep probe fell into (`newCodeLoaded: false`), and here it silently
+  // gutted the test: with a copy, `sameTag.indexOf(target)` is -1 → idx 0 → the null came from the
+  // INDEX CAP at the bottom of pickSegment, never from the TAG_RE guard this test is named after.
+  // Deleting the guard outright left the suite green. Present by identity, the index is a legal 1,
+  // so null can only come from the guard: delete it and this line gets `my-widget:nth-of-type(1)`.
+  const lone = el("my-widget");
+  assert.equal(pickSegment(lone, [lone]), null);
   // …but a unique class does not need the tag, so it still anchors.
   const target = el("my-widget", "hero");
   assert.equal(pickSegment(target, [el("my-widget"), target]), ".hero");
