@@ -182,7 +182,7 @@ function buildProductsHeader(E: any, V: any) {
 }
 
 function buildFooter(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
-  // footerBlock: { logo?: AssetRef, watermark?: AssetRef, tagline, contactHeading, quickHeading, links, shipLabel, payLabel, payments }
+  // footerBlock: { logo?: AssetRef, watermark?: AssetRef, brandSuffix?, tagline, contactHeading, quickHeading, links, shipLabel, shipping?, payLabel, payments }
   // The footer brand logo is a configurable AssetRef (logoFooter == the same signex-logo.svg as nav,
   // deduped to one Asset row). The decorative lotus watermark is now configurable too (footer.watermark
   // → the 'lotus' manifest asset), editable via the visual editor; the web falls back to lotus.svg.
@@ -202,6 +202,13 @@ function buildFooter(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
       href: l.href as string,
     })),
     shipLabel: lt(f.shipLabel, vf.shipLabel),
+    // Courier badges. OPTIONAL in the schema (old snapshots predate it) and the web falls back to
+    // these same two literals — but a fresh seed must still EMIT them, exactly like brandSuffix
+    // above. Until now nothing did, so `shipping` existed only as a web-side fallback: the badges
+    // rendered, yet the field was absent from every snapshot, which left the admin's string-list
+    // editor showing zero items and made per-item inline editing (footer.shipping.<i>) impossible
+    // to resolve. Locale-invariant brand names, so no lt() — same shape as payments below.
+    shipping: ['Lalamove', 'Grab'],
     payLabel: lt(f.payLabel, vf.payLabel),
     payments: f.payments as string[],
   };

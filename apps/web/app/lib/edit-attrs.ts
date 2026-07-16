@@ -28,12 +28,24 @@
 //   aboutPage.hero.*, aboutPage.testimonial (eyebrow/title trio), aboutPage.intro/capability/process/timeline (per-section eyebrow+title trio+body)
 //   nav.links.<i>.label, nav.cta.label
 //   footer.contactHeading, footer.quickHeading, footer.links.<i>.label, footer.brandSuffix (brand-line tail only)
+//   footer.shipping.<i>, footer.payments.<i> (the courier + payment badges — locale-invariant
+//     brand names; the badge's own text also drives its colour class, see footer.tsx)
 //   notFound.title.lead, notFound.title.accent, notFound.body, notFound.cta.label
 //
 // EXCLUDE (panel-only — do NOT stamp):
-//   Array-item/tile text (features.featured.*, features.cards[].*, productsHeader card tiles,
-//   about.mission/vision/values.*, aboutPage.testimonial.body[], aboutPage.intro arrays,
-//   capability.groups[], closing[], process.steps[], timeline.milestones[]).
+//   "Array-item/tile text is panel-only" WAS the first entry here. It is deleted rather than
+//   amended: it had become false in every particular. It named features.featured.*,
+//   features.cards[].*, productsHeader tiles, about.mission/vision/values.*,
+//   aboutPage.testimonial.body[], capability.groups[], process.steps[] and timeline.milestones[] —
+//   and ALL of them are stamped today (2ac9fe5 stamped the list text once the inline engine could
+//   resolve non-scalar leaf shapes; nobody updated this comment). A rule whose every example
+//   contradicts it does not narrow anyone's behaviour, it just misleads the next reader into
+//   thinking a real policy is being enforced.
+//   The rule that DOES hold for an <i> path: the array must exist in the draft snapshot. An inline
+//   edit is resolved against the value already at the path, so an OPTIONAL array that is absent
+//   from the draft cannot take a per-item edit — it would be mis-resolved and poison the draft.
+//   That is why footer.shipping is seeded by the importer and backfilled by migration rather than
+//   left to the web's render-time fallback.
 //   Inside parallax/sliders (product-category cards, testimonial slider body, image_cover zones).
 //   Derived/template-string leaves (footer.brand PREFIX + the whole template, footer contact tuples,
 //     contact-card lines — only the editable footer.brandSuffix tail is stamped, not the prefix).

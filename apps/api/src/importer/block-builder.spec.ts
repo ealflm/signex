@@ -96,6 +96,23 @@ describe('buildBlocks', () => {
     expect(contactPage.hero.image.assetId).toBe(FAKE_CUID);
   });
 
+  // A fresh seed must EMIT footer.shipping, not leave it to the web's render-time fallback.
+  // Before this, buildFooter omitted it: the badges rendered (content.ts substitutes the same two
+  // literals when the key is absent) but no snapshot in any database carried the field, so the
+  // admin's string-list editor showed "shipping (0 items)" over a page displaying two badges, and
+  // the canvas could not resolve a per-item inline edit (footer.shipping.<i>) against a value that
+  // was not there. The badges being VISIBLE is what made the absence so quiet — hence this asserts
+  // the emitted DATA, not the rendered output.
+  it('seeds footer.shipping (courier badges) rather than relying on the web fallback', () => {
+    const footer: any = blocks.find((b) => b.key === 'footer')!.data;
+    expect(footer.shipping).toEqual(['Lalamove', 'Grab']);
+    // Locale-invariant brand names: a bare string array, NOT LocalizedText — the same shape as
+    // payments. A {en,vi} here would fail parseBlock above, but assert the shape explicitly so the
+    // reason is visible rather than inferred from a schema throw.
+    expect(footer.shipping.every((s: any) => typeof s === 'string')).toBe(true);
+    expect(footer.payments.every((s: any) => typeof s === 'string')).toBe(true);
+  });
+
   it('hero has titleTop and titleBottom as separate localized texts', () => {
     const h: any = blocks.find((b) => b.key === 'hero')!.data;
     expect(h.titleTop.en).toBe('Manufacturing');

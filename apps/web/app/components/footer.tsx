@@ -20,8 +20,16 @@ import { editable as editableAttrs } from "@/app/lib/edit-attrs";
  * businessContact (phones[].label, sites[].label, taxLabel, emailLabel), the same fields the
  * contactPage card reads, so a label edit moves both. They happen to be identical in both
  * locales' seed, but they are LocalizedText and nothing here assumes otherwise. Only the ":"
- * separator is this template's. The middle payment badge differs by locale (JCB in EN, COD in
- * VI) — that comes from dict.payments verbatim.
+ * separator is this template's.
+ *
+ * The badge lists (shipping/payments) are LOCALE-INVARIANT brand names: ONE array in the snapshot,
+ * rendered verbatim in both locales. An earlier version of this comment claimed "the middle payment
+ * badge differs by locale (JCB in EN, COD in VI)" — that has not been true since the site began
+ * reading the CMS snapshot instead of the en/vi dictionaries. `payments` is a single
+ * z.array(z.string()), so /vi renders JCB exactly like /en does (measured: no COD element exists on
+ * /vi). The vestigial "COD" in dictionaries/vi.json is not a render source. Restoring a per-locale
+ * payment list would be a CONTENT decision (and a schema change); this note only stops the comment
+ * from describing a behaviour the code does not have.
  */
 
 // Facebook "f" + YouTube glyphs (white, on the brand-coloured chips). aria-hidden — the
@@ -37,12 +45,34 @@ const YOUTUBE_ICON = (
   </svg>
 );
 
-// Payment-badge text tone (white badge, coloured label): VISA/Napas blue, JCB/COD red.
+// ─── The badge text DRIVES the badge colour (both lists) ──────────────────────
+// Both badge lists are click-to-edit (footer.shipping.<i> / footer.payments.<i>), so a user CAN
+// rename one, and the rename decides the colour. The two lists degrade DIFFERENTLY, and the
+// difference is measured, not assumed:
+//
+//   payments — PAY_TONE[p] ?? "is-blue". A miss still lands on a COMPLETE badge style:
+//     .footer-signex_pay paints the white surface + border and .is-blue the ink
+//     (measured: bg rgb(255,255,255), color rgb(26,31,113)). Renaming VISA → Amex yields a
+//     proper blue payment chip. The fallback is genuinely sane; this coupling is left alone.
+//
+//   shipping — is-${badgeSlug(name)}. A miss lands on NOTHING: .footer-signex_badge declares only
+//     box/typography, no background and no colour of its own, so an unknown slug renders as
+//     bare white bold text with NO chip (measured: .is-ahamove → background rgba(0,0,0,0), no
+//     border). Renaming Lalamove → Ahamove does not "fall back to the default badge surface" —
+//     an earlier version of this comment said it did, and no such surface exists in globals.css.
+//     Accepted as-is: renaming a courier means changing partner (rare), the text stays legible,
+//     and inventing a neutral-chip style is a design decision nobody asked for. If that is ever
+//     unwanted, the fix is ONE rule — a background on .footer-signex_badge — which provably
+//     cannot disturb today's render, since .footer-signex_badge.is-lalamove/.is-grab both set
+//     background-color and outrank it on specificity.
+//
+// Either way the colour only re-resolves on SAVE + re-render: the inline overlay mutates
+// textContent, not className, so a rename keeps the old colour until the draft round-trips.
 const PAY_TONE: Record<string, string> = { JCB: "is-red", COD: "is-red" };
 
 // Courier-badge modifier from the brand name: "Lalamove" → "is-lalamove", "Grab" → "is-grab"
-// (so the scoped brand-colour rules in globals.css still apply). A renamed/new courier just
-// gets a slug with no special colour — it falls back to the default badge surface.
+// (so the scoped brand-colour rules in globals.css still apply). See the note above for what a
+// slug with no matching rule actually renders as.
 const badgeSlug = (name: string): string =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
@@ -179,8 +209,17 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                 <span className="text-size-small tone-medium">
                   <span {...editableAttrs(editable, "footer.shipLabel", { text: { maxLength: 80 } })}>{t.shipLabel}</span>
                 </span>
+                {/* Courier badges are content (footer.shipping), one field path per item — the
+                    `footer.links.${i}.label` / `about.mission.items.${i}` convention. The stamp goes
+                    on the badge span itself: its text IS its only child, so unlike the NAP labels
+                    (which need a nested span to keep the ":" out of the field) nothing here has to
+                    be excluded from the editable range. */}
                 {t.shipping.map((name, i) => (
-                  <span className={`footer-signex_badge is-${badgeSlug(name)}`} key={i}>
+                  <span
+                    className={`footer-signex_badge is-${badgeSlug(name)}`}
+                    key={i}
+                    {...editableAttrs(editable, `footer.shipping.${i}`, { text: { maxLength: 40 } })}
+                  >
                     {name}
                   </span>
                 ))}
@@ -189,8 +228,15 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
                 <span className="text-size-small tone-medium">
                   <span {...editableAttrs(editable, "footer.payLabel", { text: { maxLength: 80 } })}>{t.payLabel}</span>
                 </span>
+                {/* Payment badges — same convention. Locale-invariant, so editing one on the /vi
+                    canvas changes /en too; that is what a single z.array(z.string()) MEANS here,
+                    not an oversight. */}
                 {t.payments.map((p, i) => (
-                  <span className={`footer-signex_badge footer-signex_pay ${PAY_TONE[p] ?? "is-blue"}`} key={i}>
+                  <span
+                    className={`footer-signex_badge footer-signex_pay ${PAY_TONE[p] ?? "is-blue"}`}
+                    key={i}
+                    {...editableAttrs(editable, `footer.payments.${i}`, { text: { maxLength: 40 } })}
+                  >
                     {p}
                   </span>
                 ))}
