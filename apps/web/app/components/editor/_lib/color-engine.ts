@@ -5,7 +5,7 @@
 // jsdom, so it is verified in the browser (see the plan's Task 12).
 
 import { PALETTE_VARS, ROOT_SELECTOR, TOKEN_VARS, isSafeSelector } from "@signex/shared";
-import { SVG_MARK_SEL, paintFollowsColor, type MarkPaint } from "./ink-paint";
+import { INK_SENTINELS, SVG_MARK_SEL, paintFollowsColor, type MarkPaint } from "./ink-paint";
 import { isOverlayClass } from "./overlay-classes";
 import { pickSegment, type SegmentInput } from "./selector-path";
 
@@ -287,25 +287,58 @@ function layoutBox(el: Element): { w: number; h: number } {
  * `background-color: #e7f7ee` too, so the click hands back both roles at once — the badge and its
  * glyph, which is what was clicked.
  *
+ * BUT ONLY WHERE THE WALK HAS NOTHING BETTER, and that condition is the whole of the rule. The walk
+ * looks for two different things in one list: real UNITS (a link, a control, an element an author
+ * deliberately stamped) and, failing those, the block ROOT — which is not a unit at all but the
+ * walk's terminator, the answer it gives when it found nothing. The phone badge's bug was the second
+ * kind: the walk fell through `.contact_info-icon` to <section data-sx-block>, whose 45 bearers in 5
+ * colours mean no element paints its ink, so the role was refused and the icon had NO route. Where
+ * the walk stops at a real unit the icon never lacked a route: the unit is an ancestor, `color`
+ * inherits, so the unit's text role recolours the icon anyway — and the unit carries its own bg and
+ * border besides. Returning the holder there would TAKE those two away and add nothing. Measured, on
+ * `<a class="content_image-features">` (a link with two text tiles and an arrow icon, live on /vi):
+ * the holder offers `text` alone where the <a> offers bg + text + border, and the <a>'s text role
+ * already moves the arrow. That link is why this is a condition and not an unconditional return.
+ *
+ * So: the SVG branch fires exactly where Cause B bit, and nowhere else. Across /vi, /vi/about and
+ * /vi/contact, 27 of 38 currentColor icon holders have no route but this one; the other 11 all sit
+ * under a unit that offers `text` — none of them lost anything, because none of them was broken.
+ *
  * Scoped to clicks that LAND on an SVG, and that scope is the point: `top.closest("svg")` is null
  * for every other click on the site, so resolution for them is byte-identical to before. Widening
- * the list above instead (a `:has(> svg)` term, say) would have re-resolved clicks that already work
- * — the nav CTA, a heading, a card — for a bug none of them have. Where the owner IS an <a> or
- * <button> (the footer's social links wrap their icon directly), this returns exactly what the walk
- * already returned; it can only ever stop EARLIER than the old walk, never later.
+ * the list below instead (a `:has(> svg)` term, say) would have re-resolved clicks that already work
+ * — the nav CTA, a heading, a card — for a bug none of them have. And where the walk DOES find a
+ * unit, this now returns exactly what the walk returned, for every element on the site rather than
+ * for most of them: the footer's social links (which wrap their icon directly, so the owner IS the
+ * <a>) got that for free, but the features link and the play/pause button did not.
+ *
+ * KNOWN LIMIT, unreached today and deliberately not guarded: a unit whose OWN glyphs disagree with
+ * its icon (white label, red icon) offers no text role, and the icon under it would keep none —
+ * where the unconditional return would have given it one on the holder. No such markup exists on the
+ * three pages (measured: 11/11 units offer `text`; the check was positive-controlled by forcing a
+ * text tile inside that <a> to red, which made it appear). Fixing it needs painterFor's answer, and
+ * this function CANNOT afford one: edit-overlay.tsx:570 calls it once per animation frame while the
+ * pointer moves, and painterFor's text branch runs marksFollowingColor — two <style> writes and two
+ * forced recalcs. The cheap structural question is the one that fits the hover budget, and it
+ * answers every case this site actually has.
  */
+/** A real unit: a link, a control, or an element an author deliberately stamped. NOT
+ *  `[data-sx-block]` — see resolveMeaningfulBlock: the root is the walk's terminator, and telling
+ *  the two apart is what keeps the SVG branch confined to the bug it was written for. */
+const UNIT_SEL = "a,button,[data-edit-field],[data-sx-c]";
+const WALK_SEL = `${UNIT_SEL},[data-sx-block]`;
 export function resolveMeaningfulBlock(x: number, y: number): HTMLElement | null {
   const stack = (document.elementsFromPoint(x, y) as HTMLElement[]).filter(
     (n) => !n.closest(".sx-edit-layer"),
   );
   const top = stack[0];
   if (!top) return null;
-  const svgOwner = top.closest("svg")?.parentElement;
-  if (svgOwner) return svgOwner;
-  return (
-    (top.closest("a,button,[data-edit-field],[data-sx-c],[data-sx-block]") as HTMLElement | null) ??
-    top
-  );
+  const walked = top.closest(WALK_SEL) as HTMLElement | null;
+  if (!walked?.matches(UNIT_SEL)) {
+    const svgOwner = top.closest("svg")?.parentElement;
+    if (svgOwner) return svgOwner;
+  }
+  return walked ?? top;
 }
 
 const ROLE_PROP = {
@@ -352,7 +385,6 @@ const roleColor = (el: Element, role: ColorRole): string =>
  * SAFE in any case — an extra bearer can only make the "all agree" test stricter, which withholds a
  * role, never fabricates one.
  */
-const INK_SENTINELS = ["rgb(1, 2, 3)", "rgb(4, 5, 6)"] as const;
 function marksFollowingColor(block: HTMLElement): Element[] {
   const marks = Array.from(block.querySelectorAll(SVG_MARK_SEL));
   if (marks.length === 0) return [];
@@ -363,17 +395,17 @@ function marksFollowingColor(block: HTMLElement): Element[] {
   try {
     const readings = INK_SENTINELS.map((c) => {
       st.textContent = `*{color:${c}!important}`;
+      // `color` comes back with fill/stroke, out of the same getComputedStyle, because that is what
+      // paintFollowsColor compares against — never the `c` above. A sentinel is CSS we author; what
+      // the browser serialises back is its own business (`rgb(1,2,3)` reads back `rgb(1, 2, 3)`),
+      // and the only reading that can answer "is this currentColor?" honestly is one where both
+      // sides went through the same serialiser.
       return marks.map((m): MarkPaint => {
         const cs = getComputedStyle(m);
-        return { fill: cs.fill, stroke: cs.stroke };
+        return { fill: cs.fill, stroke: cs.stroke, color: cs.color };
       });
     });
-    return marks.filter((_, i) =>
-      paintFollowsColor(
-        readings.map((r) => r[i]),
-        INK_SENTINELS,
-      ),
-    );
+    return marks.filter((_, i) => paintFollowsColor(readings.map((r) => r[i])));
   } finally {
     st.remove();
   }
