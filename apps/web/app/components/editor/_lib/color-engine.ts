@@ -5,7 +5,13 @@
 // jsdom, so it is verified in the browser (see the plan's Task 12).
 
 import { PALETTE_VARS, ROOT_SELECTOR, TOKEN_VARS, isSafeSelector } from "@signex/shared";
-import { INK_SENTINELS, SVG_MARK_SEL, paintFollowsColor, type MarkPaint } from "./ink-paint";
+import {
+  INK_SENTINELS,
+  SVG_MARK_SEL,
+  paintFollowsColor,
+  someGlyphDisagrees,
+  type MarkPaint,
+} from "./ink-paint";
 import { isOverlayClass } from "./overlay-classes";
 import { pickSegment, type SegmentInput } from "./selector-path";
 
@@ -269,6 +275,35 @@ function layoutBox(el: Element): { w: number; h: number } {
 }
 
 /**
+ * Does `el` render glyphs of its OWN — a non-empty DIRECT text node?
+ *
+ * The glyph half of "renders ink", asked of one element. DIRECT is the whole of it: `textContent`
+ * would say yes to every ancestor of every word on the page, which is the opposite of the question.
+ * painterFor gathers its text bearers with this, and resolveMeaningfulBlock asks it of the clicked
+ * element — one definition, so the branch that hands a click to `top` and the test that decides
+ * whether `top` paints anything cannot drift apart.
+ */
+const ownsGlyphs = (el: Element): boolean =>
+  Array.from(el.childNodes).some((n) => n.nodeType === Node.TEXT_NODE && !!n.nodeValue?.trim());
+
+/**
+ * Does `unit` contain glyphs it provably does not paint — i.e. does painterFor(unit, "text") refuse?
+ *
+ * The DOM half of someGlyphDisagrees (see there for the asymmetry: true is a fact, false is only the
+ * absence of a proof). Everything decidable is in that function so a test can drive it; what is here
+ * is the two CSSOM reads it needs and the subtree to ask them of — `roleColor` for `settled`, which
+ * is painterFor's own reader, because a predicate meant to prove what painterFor will do has to ask
+ * the question painterFor asks.
+ */
+function swallowsGlyphs(unit: HTMLElement): boolean {
+  return someGlyphDisagrees(unit, [unit, ...Array.from(unit.querySelectorAll<HTMLElement>("*"))], {
+    ownsGlyphs,
+    live: (el) => getComputedStyle(el).color,
+    settled: (el) => roleColor(el, "text"),
+  });
+}
+
+/**
  * The element the user means by "this button" — not the topmost node at the click point, which in
  * this template is usually a meaningless fragment (.gsap_split_word inside a split-text heading).
  * Walks up from the top of the paint stack to the first link/button/stamped element/block root.
@@ -312,15 +347,44 @@ function layoutBox(el: Element): { w: number; h: number } {
  * for most of them: the footer's social links (which wrap their icon directly, so the owner IS the
  * <a>) got that for free, but the features link and the play/pause button did not.
  *
- * KNOWN LIMIT, unreached today and deliberately not guarded: a unit whose OWN glyphs disagree with
- * its icon (white label, red icon) offers no text role, and the icon under it would keep none —
- * where the unconditional return would have given it one on the holder. No such markup exists on the
- * three pages (measured: 11/11 units offer `text`; the check was positive-controlled by forcing a
- * text tile inside that <a> to red, which made it appear). Fixing it needs painterFor's answer, and
- * this function CANNOT afford one: edit-overlay.tsx:570 calls it once per animation frame while the
- * pointer moves, and painterFor's text branch runs marksFollowingColor — two <style> writes and two
- * forced recalcs. The cheap structural question is the one that fits the hover budget, and it
- * answers every case this site actually has.
+ * THE OTHER HALF: A UNIT CAN SWALLOW A CLICK IT CANNOT ANSWER, and the user found it. The comment
+ * that stood here called that a KNOWN LIMIT, said no such markup existed, and declined to guard it —
+ * on a measurement (11/11 units offer `text`) that only ever looked at units containing ICONS. The
+ * limit is reached through TEXT, on the loudest line in the footer: `div.master_footer` carries
+ * `data-sx-c="footer.bar.color"`, so it is a unit and the walk stops there for every click inside its
+ * 1233x838 — and it contains 36 glyph bearers in 4 colours, so painterFor rightly refuses it a text
+ * role. The brand line `SIGNEX – Manufacturing Brand Identity` sits inside it, in a class-bearing div
+ * that owns its glyphs and could answer perfectly, and no click could reach it.
+ *
+ * So: A UNIT THAT PROVABLY CANNOT PAINT THE INK YOU CLICKED IS NOT THE UNIT YOU MEANT. The walk falls
+ * through to the element that owns that ink — the exact shape the SVG branch above already takes for
+ * a mark (there the holder is `svg.parentElement`; for a glyph the holder is the element owning the
+ * text node, which is `top` itself).
+ *
+ * "PROVABLY" IS THE WORD THAT DOES THE WORK, and it is why this asks someGlyphDisagrees rather than a
+ * likeness. That predicate is painterFor's own test over a SUBSET of painterFor's own bearers, so
+ * `true` from it MEANS painterFor refuses — this branch can only ever take away a text role the unit
+ * never had. What it costs the click is the unit's `bg`/`border`, which is the trade the SVG branch
+ * already makes and which review already ruled on: precision at the click point is spec decision #1,
+ * and the unit's own background stays one click away on any part of it that isn't ink. For the footer
+ * bar that is most of 1233x838.
+ *
+ * AND IT HAD TO BE AFFORDABLE, which is what killed the obvious version. edit-overlay.tsx calls this
+ * once per animation frame while the pointer moves, on a page already running GSAP + Lenis. Measured
+ * on /vi, per call: this function 0.041ms; painterFor(footer, "text") 10.1ms — 6.5ms of which is
+ * marksFollowingColor forcing two document-wide recalcs, and ~1.5-3ms the settled-colour reads. So
+ * "just ask painterFor" is a 250x regression on the hover path and the old comment was right to
+ * refuse it. someGlyphDisagrees pays neither: no mark probe (the glyph subset is enough to prove
+ * refusal), and a cheap live-colour filter in front of the expensive settled read. Measured after:
+ * 0.087ms — one twentieth of one frame at 60Hz, and the expensive read runs twice on the whole site.
+ *
+ * KNOWN LIMIT, NARROWED AND STILL OPEN: the MARK half of the same swallow — a unit whose glyphs all
+ * agree with it but whose icon does not — still keeps no role, because someGlyphDisagrees cannot see
+ * marks and the thing that can (marksFollowingColor) is the 6.5ms this budget has no room for. Unlike
+ * its predecessor this limit is stated by construction rather than by a survey: it is exactly the
+ * bearers the glyph subset omits. No such markup exists on the three pages, and the measurement that
+ * says so is the same 11/11 as before — which is evidence about icons, and this time that is the
+ * claim being made.
  */
 /** A real unit: a link, a control, or an element an author deliberately stamped. NOT
  *  `[data-sx-block]` — see resolveMeaningfulBlock: the root is the walk's terminator, and telling
@@ -337,6 +401,8 @@ export function resolveMeaningfulBlock(x: number, y: number): HTMLElement | null
   if (!walked?.matches(UNIT_SEL)) {
     const svgOwner = top.closest("svg")?.parentElement;
     if (svgOwner) return svgOwner;
+  } else if (top !== walked && ownsGlyphs(top) && swallowsGlyphs(walked)) {
+    return top;
   }
   return walked ?? top;
 }
@@ -473,9 +539,7 @@ function painterFor(block: HTMLElement, role: ColorRole): HTMLElement | null {
     // this ink unmodified?" is actually asked. Marks that do NOT follow `color` are not bearers and
     // never were: the template's `fill="var(--…ink--base)"` and `fill="#ffffff"` marks have no
     // per-element colour route, and inventing one for them is the lying hex again.
-    const textBearers = candidates.filter((el) =>
-      Array.from(el.childNodes).some((n) => n.nodeType === Node.TEXT_NODE && !!n.nodeValue?.trim()),
-    );
+    const textBearers = candidates.filter(ownsGlyphs);
     const inkBearers: Element[] = [...textBearers, ...marksFollowingColor(block)];
     // Still the right gate, now asked of the right set: the navbar shell and a bg-only <a> render no
     // ink of any kind, so they have no text colour to edit. An icon-only button is no longer one of

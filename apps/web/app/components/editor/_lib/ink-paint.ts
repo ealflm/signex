@@ -1,4 +1,5 @@
-// What "renders ink" means for an SVG mark — the pure half of color-engine's ink-bearer test.
+// What "renders ink" means — the pure half of color-engine's ink-bearer test. Marks (an SVG's
+// fill/stroke) at the top of the file, glyphs (a text node) at the bottom.
 //
 // Same reason as selector-path.ts and edit-caps.ts: apps/web has no jsdom, so color-engine.ts keeps
 // the decidable logic here, where node --test can drive it, and keeps only the live CSSOM reads
@@ -74,3 +75,69 @@ export const paintFollowsColor = (readings: readonly MarkPaint[]): boolean => {
   if (new Set(readings.map((r) => r.color)).size !== readings.length) return false;
   return (["fill", "stroke"] as const).some((p) => readings.every((r) => r[p] === r.color));
 };
+
+/**
+ * How to read one candidate. Accessors rather than values, and that is the whole design: `settled` is
+ * ~40x the cost of `live` (measured: 0.17ms vs 0.004ms per element, because it walks a 1300-rule
+ * sheet), so someGlyphDisagrees below must be free to never call it. Handing it precomputed readings
+ * would force every one of them eagerly and turn a 0.05ms question into a 3ms one — which is the
+ * difference between fitting the hover path's per-frame budget and not.
+ *
+ * `live` is the element's colour AS IT LOOKS RIGHT NOW; `settled` is its colour in the DEFAULT state
+ * (color-engine's defaultStateColor), which is the only state colour mode edits. They differ exactly
+ * when a transient rule (`:hover`, `:focus`, …) is moving `color` on the element — and the pointer is
+ * always parked on whatever the user is about to click, so the difference is not hypothetical.
+ */
+export type GlyphProbe<T> = {
+  /** Does `el` render glyphs of its OWN — a non-empty direct text node? */
+  ownsGlyphs: (el: T) => boolean;
+  /** `el`'s colour as currently rendered. Cheap. */
+  live: (el: T) => string;
+  /** `el`'s colour in the default state. Expensive — see above. */
+  settled: (el: T) => string;
+};
+
+/**
+ * Does some glyph bearer under `unit` PROVABLY disagree with `unit`'s own colour — i.e. would
+ * painterFor(unit, "text") refuse the role?
+ *
+ * This is painterFor's own test, asked of a SUBSET of its bearers (the glyph half; it also counts
+ * SVG marks that follow `color`). That subsetting is what makes the answer usable rather than merely
+ * suggestive, and the direction is the load-bearing part:
+ *
+ *   • TRUE here ⟹ painterFor refuses, always. Its rule is that EVERY ink bearer must have inherited
+ *     the unit's colour unchanged; one disagreeing bearer sinks it, and a glyph bearer IS an ink
+ *     bearer. So a caller may act on `true` as a fact about painterFor, not as a guess about it.
+ *   • FALSE means "no proof found", NOT "painterFor accepts" — a disagreeing SVG mark is invisible
+ *     here, and so is the case in the note below. A caller must treat false as "carry on as before".
+ *
+ * Whoever changes this must keep that asymmetry: it is what lets resolveMeaningfulBlock take a role
+ * away from a unit only when the unit provably had none to give.
+ *
+ * THE `live` PRE-FILTER IS A FILTER, NOT THE ANSWER — the same shape, and for the same reason, as
+ * color-engine's inTransientChain. `settled` is the honest read and the expensive one; `live` is
+ * neither. So `live` runs first and cheaply excludes the overwhelming majority (every bearer that
+ * looks the same as its unit right now), and only a candidate that survives it costs a `settled`
+ * pair. The unit's own `settled` is memoised because it is asked once per surviving candidate and
+ * cannot change between them.
+ *
+ * The filter is deliberately allowed to MISS: a bearer whose live colour matches the unit's while its
+ * settled colour does not (a `:hover` rule painting both the same right now) never reaches the
+ * confirmation, and this returns false. That is the safe direction — false means the caller keeps
+ * today's behaviour — and it is the direction the cheap read can be wrong in without ever costing a
+ * role, because `settled` still has the last word on everything the filter lets through.
+ */
+export function someGlyphDisagrees<T>(
+  unit: T,
+  candidates: readonly T[],
+  probe: GlyphProbe<T>,
+): boolean {
+  const unitLive = probe.live(unit);
+  let unitSettled: string | undefined;
+  return candidates.some(
+    (el) =>
+      probe.ownsGlyphs(el) &&
+      probe.live(el) !== unitLive &&
+      probe.settled(el) !== (unitSettled ??= probe.settled(unit)),
+  );
+}
