@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pickSegment } from "./selector-path.ts";
+import { composeSelector, pickSegment } from "./selector-path.ts";
 import { isSafeSelector } from "@signex/shared";
 
 const el = (tag, ...classes) => ({ tag, classes });
@@ -212,4 +212,71 @@ test("every segment it emits selects exactly the target, over an exhaustive sibl
   // Guard the guard: a walk that silently enumerated nothing would pass every assertion above.
   // 12 + 12²·2 + 12³·3 = 12 + 288 + 5184 = 5484.
   assert.equal(emitted, 5484);
+});
+
+// ── composeSelector: it emits whichever combinator it is handed, and both survive the grammar ────
+//
+// buildSelector emits one segment per real parent→child edge, so the chain works with either the
+// descendant combinator (" ", short, but a SHAPE a repeated structure matches many times over) or
+// the child combinator (" > ", a ROUTE that disambiguates but costs +2 chars/hop). buildSelector
+// tries " " first and falls back to " > "; composeSelector just has to spell each faithfully. This
+// is decidable without a DOM, so it is held here. The `isSafeSelector` half matters because the
+// emitter re-checks the grammar on render and never trusts the stored snapshot: a selector this
+// generator emits but the emitter rejects is a silent no-op on the public site.
+
+test("composeSelector spells each combinator it is handed, and the two differ", () => {
+  const segs = [".footer-signex_company", "span:nth-of-type(1)"];
+  const child = composeSelector("footer", segs, " > ");
+  const desc = composeSelector("footer", segs, " ");
+  assert.equal(child, '[data-sx-block="footer"] > .footer-signex_company > span:nth-of-type(1)');
+  assert.equal(desc, '[data-sx-block="footer"] .footer-signex_company span:nth-of-type(1)');
+  // The mutation this pins: swapping which combinator a call passes (or collapsing " > " to " ")
+  // changes the string, so a regression fails here statically, before any browser sweep.
+  assert.ok(child.includes(" > ") && !desc.includes(" > "));
+});
+
+// The segments below are only the four shapes pickSegment ever emits (`.class`, `tag.class`,
+// `tag.class:nth`, `tag:nth`) — a BARE tag is deliberately NOT one of them (the grammar rejects it,
+// and rung 4 always carries an index), so composing a bare `a` here would be testing an input the
+// generator cannot produce. Deriving the segments from pickSegment keeps the test honest about that.
+test("composeSelector output passes the real grammar (isSafeSelector), for the shapes it emits", () => {
+  // pickSegment compares siblings by IDENTITY, so `target` must be an element OF `sibs`.
+  const seg = (target, sibs) => {
+    assert.ok(sibs.includes(target), "fixture error: target must be in its own sibling list");
+    const s = pickSegment(target, sibs);
+    assert.ok(s, "the fixture must be anchorable, or the grammar assertion below is vacuous");
+    return s;
+  };
+  const bareSpan = el("span");
+  const uniqueCol = el("div", "footer-signex_col");
+  const leafSpan = el("span");
+  const wrap = el("div", "input_wrap");
+  const link = el("a");
+  const partsList = [
+    [seg(bareSpan, [bareSpan, el("div")])], // span:nth-of-type(1)
+    [
+      seg(uniqueCol, [uniqueCol, el("div", "other")]), // .footer-signex_col
+      seg(leafSpan, [leafSpan]), // span:nth-of-type(1)
+    ],
+    [
+      seg(wrap, [el("div", "input_wrap"), wrap]), // div.input_wrap:nth-of-type(2)
+      seg(link, [link, el("a")]), // a:nth-of-type(1) — a tag with an index, never bare
+    ],
+  ];
+  // Both combinators the generator can emit must pass the grammar — the emitter re-checks either.
+  for (const parts of partsList) {
+    for (const comb of [" ", " > "]) {
+      const sel = composeSelector("contactPage", parts, comb);
+      assert.ok(isSafeSelector(sel), `emitted selector rejected by the grammar: ${sel}`);
+    }
+  }
+});
+
+test("a single-segment path is a legal chain off the block root, both combinators", () => {
+  const child = composeSelector("footer", ["span:nth-of-type(1)"], " > ");
+  const desc = composeSelector("footer", ["span:nth-of-type(1)"], " ");
+  assert.equal(child, '[data-sx-block="footer"] > span:nth-of-type(1)');
+  assert.equal(desc, '[data-sx-block="footer"] span:nth-of-type(1)');
+  assert.ok(isSafeSelector(child));
+  assert.ok(isSafeSelector(desc));
 });

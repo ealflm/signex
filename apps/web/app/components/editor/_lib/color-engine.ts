@@ -13,7 +13,7 @@ import {
   type MarkPaint,
 } from "./ink-paint";
 import { isOverlayClass } from "./overlay-classes";
-import { pickSegment, type SegmentInput } from "./selector-path";
+import { composeSelector, pickSegment, type SegmentInput } from "./selector-path";
 
 export type ColorRole = "bg" | "text" | "border";
 
@@ -959,28 +959,32 @@ export function buildSelector(el: HTMLElement): string | null {
   // roots, two sharing the class .section_home-about — so this prefix can match several subtrees.
   // verify() is what catches a path that is ambiguous across them.
   //
-  // ⚠️ THE DESCENDANT JOIN IS THIS FUNCTION'S REMAINING LIMIT, and it is measured, not theoretical.
-  // `.join(" ")` emits ONLY the descendant combinator. The grammar accepts " > " (selector.ts) and
-  // pickSegment's segments are each sibling-unique, but a chain of descendant hops does not compose
-  // into a document-unique path: every hop re-opens the match to any depth, so the path describes a
-  // SHAPE rather than a route, and a repeated shape matches repeatedly.
+  // DESCENDANT FIRST, CHILD AS FALLBACK — the ordering is the whole design, so read why.
   //
-  // Measured on the live home page (27bcb03's sweep): of 250 visible, painting elements, **8 are
-  // fully expressible yet still unanchorable** — verify() sees the selector match 2, 6 or 7 elements
-  // and refuses. All 8 are form-row internals, e.g.
-  //   .profile-form_inner div.input_wrap:nth-of-type(1) .text_input-label span:nth-of-type(1)
-  // which matches the same shape in every form row. THE "Tên" FIELD IS ONE OF THESE — the element
-  // the task named is not blocked by the grammar (it is now expressible; that was 27bcb03's job) but
-  // by this join.
+  // The walk above visits EVERY level from `el` up to `root` (`node.parentElement` each step), so
+  // `parts` carries one segment per real parent→child edge and supports either combinator:
+  //   • " "  (descendant) — what this function emitted before the child combinator existed. Short,
+  //     but a SHAPE: every hop re-opens to any depth, so a repeated structure (form rows, the
+  //     footer columns) matches it repeatedly and verify() then refuses.
+  //   • " > " (child) — pins each hop to its actual parent, so the path is a ROUTE. For one fixed
+  //     segment chain a " > " path matches a SUBSET of what the " " path matches, and the target is
+  //     in both (every edge is real): child can only ever REMOVE a spurious co-match, never lose the
+  //     target. Its one cost is length — " > " is +2 chars/hop against SELECTOR_MAX_LEN=300.
   //
-  // Switching to " > " would pin each hop to a real parent and is the natural fix — it needs no
-  // grammar change and would also shorten paths, which is the other limit (SELECTOR_MAX_LEN bites 26
-  // deep gsap_split_letter divs). It is deliberately NOT done here: it changes every generated
-  // selector on the site, so it is its own change with its own before/after sweep, not a rider on a
-  // grammar commit. Until then verify() refuses these 8 — the safe outcome, and a visible one: the
-  // panel tells the user it cannot anchor rather than repainting seven other rows.
-  const sel = [`[data-sx-block="${root.getAttribute("data-sx-block")}"]`, ...parts].join(" ");
-  return verify(sel, el);
+  // So try the descendant form first and keep it when it already resolves to exactly the target:
+  // that is byte-identical to every selector this function emitted before, so no working anchor
+  // changes, and — the reason the ordering is not merely cosmetic — a deep element whose CHILD path
+  // would exceed 300 keeps its shorter descendant path instead of being lost to the length cap
+  // (measured: contactPage's upload-help text is 277 as a descendant, 305 as a child; descendant
+  // first is what keeps it anchorable). Fall back to the child form only where descendant is
+  // ambiguous — a repeated shape only a route disambiguates, e.g. the footer company name
+  // (`businessContact.legalName`, a class-less <span>) and the contact form-row internals ("Tên").
+  // verify() guards BOTH attempts, so an over-length child or an ambiguous block-key prefix fails
+  // closed (no override), exactly as before.
+  const key = root.getAttribute("data-sx-block") ?? "";
+  const asDescendant = verify(composeSelector(key, parts, " "), el);
+  if (asDescendant) return asDescendant;
+  return verify(composeSelector(key, parts, " > "), el);
 }
 
 function verify(sel: string, el: HTMLElement): string | null {

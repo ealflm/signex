@@ -46,6 +46,21 @@ const TAG_RE = /^[A-Za-z][A-Za-z0-9]*$/;
  * Returns null when no rung applies: no usable class AND no usable tag, or a same-tag index outside
  * the grammar's 1..99. The caller then refuses to anchor rather than emit an ambiguous selector.
  */
+/**
+ * Compose a full override selector from the block-root key and the per-level segments the block
+ * walk produced (outermost first, `el` last), joined by `combinator`.
+ *
+ * buildSelector emits one segment per real parent→child edge from `el` up to the block root, so the
+ * segment list supports BOTH combinators: " " (descendant) matches the same shape at any depth,
+ * while " > " (child) pins each hop to its actual parent and so is a route, not a shape. Neither is
+ * unconditionally right, which is why the combinator is a parameter and buildSelector tries the
+ * descendant form first (see there). Extracted here so a static test can hold the string shape:
+ * apps/web has no jsdom to drive buildSelector, but this string is decidable.
+ */
+export function composeSelector(blockKey: string, segments: string[], combinator: " " | " > "): string {
+  return [`[data-sx-block="${blockKey}"]`, ...segments].join(combinator);
+}
+
 export function pickSegment(target: SegmentInput, siblings: SegmentInput[]): string | null {
   const usable = target.classes.filter((c) => CLASS_RE.test(c));
 
