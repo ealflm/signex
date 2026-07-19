@@ -24,7 +24,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { paletteStyle, type BlockKey, type ReleaseSnapshot } from "@signex/shared";
+import {
+  paletteStyle,
+  isVideoRef,
+  type BlockKey,
+  type MediaRef as SharedMediaRef,
+  type ReleaseSnapshot,
+} from "@signex/shared";
 
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -76,6 +82,7 @@ import {
   type EditTarget,
   type MediaRef,
 } from "@/app/(dash)/visual/media-picker-dialog";
+import { pickerDefaultKind } from "@/app/(dash)/visual/picker-default-kind";
 import { adminApi, stripBasePath } from "@/app/lib/base-path";
 import { rebasePalette, type PaletteWorkingSet } from "./_lib/palette-working-set";
 import { createPaletteAuditor } from "./_lib/palette-audit";
@@ -428,6 +435,18 @@ export function EditorShell(props: EditorShellProps) {
     },
     [loadAssets],
   );
+
+  // The open target field's CURRENT kind, read straight from the working block data — not from
+  // mediaTarget.mediaKind, which the overlay hard-codes to "image" for every flexible slot (its
+  // hasCap check tries "image" first) and so cannot tell an empty/new slot from one already holding
+  // a video. null only for a slot with no value yet, in which case the picker's toggle (Task 9)
+  // falls back to the posted mediaKind via pickerDefaultKind.
+  const storedMediaKind = useMemo<"image" | "video" | null>(() => {
+    if (!mediaTarget) return null;
+    const [blockKey, ...rest] = mediaTarget.field.split(".") as [BlockKey, ...string[]];
+    const value = getPath(workingBlockData(blockKey), rest.join("."));
+    return value == null ? null : isVideoRef(value as SharedMediaRef) ? "video" : "image";
+  }, [mediaTarget, workingBlockData]);
 
   const applyMediaRef = useCallback(
     async (ref: MediaRef) => {
@@ -1146,6 +1165,8 @@ export function EditorShell(props: EditorShellProps) {
         assets={pickerAssets}
         assetsLoading={pickerLoading}
         saving={false}
+        flexible={mediaTarget?.flexible ?? false}
+        defaultKind={pickerDefaultKind(storedMediaKind, mediaTarget?.mediaKind ?? "image")}
         onAssetsRefresh={() => void loadAssets()}
         onApply={applyMediaRef}
         onOpenChange={(o) => {

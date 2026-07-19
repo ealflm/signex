@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/admin/field";
+import { cn } from "@/lib/utils";
 import { uploadAsset, type UploadPhase } from "@/app/lib/upload-asset";
 import { AssetGrid } from "./asset-grid";
 import { fieldLabel } from "./aspect-presets";
@@ -66,6 +67,13 @@ interface Props {
   onAssetsRefresh: () => void;
   onApply: (ref: MediaRef) => void;
   onOpenChange: (open: boolean) => void;
+  /** True when the target slot accepts EITHER kind (Task 7's overlay flag, threaded through
+   *  editor-shell) — renders the Ảnh/Video toggle above the body. Undefined/false renders exactly
+   *  today's single-kind body for `target.mediaKind`, unchanged. */
+  flexible?: boolean;
+  /** Which side the toggle opens on when `flexible`: the field's CURRENT stored kind, else the
+   *  posted mediaKind (the caller computes this with pickerDefaultKind). Ignored otherwise. */
+  defaultKind?: "image" | "video";
 }
 
 const IMAGE_KINDS = ["IMAGE", "SVG"];
@@ -435,16 +443,114 @@ function VideoBody({
 }
 
 // ---------------------------------------------------------------------------
+// Flexible body — an Ảnh/Video segmented toggle above the image or video body, for the four slots
+// that accept either kind (hero.image, features.featured.image, features.video.media,
+// aboutPage.hero.video). The toggle reuses the toolbar's locale-switcher recipe (rounded-md border
+// + bg-primary on the active side) — the project's existing 2-option segmented control, not a new
+// pattern. `key={target.field}` on the caller resets `kind` to `defaultKind` whenever a DIFFERENT
+// field opens; toggling within one open session is local state only — it never touches what's
+// saved until Apply, and onApply/buildMediaValue (media-apply.ts) still decide the actual write.
+// ---------------------------------------------------------------------------
+function FlexibleBody({
+  target,
+  defaultKind,
+  assets,
+  assetsLoading,
+  saving,
+  onAssetsRefresh,
+  onApply,
+  onCancel,
+}: {
+  target: EditTarget;
+  defaultKind: "image" | "video";
+  assets: AssetRow[];
+  assetsLoading: boolean;
+  saving: boolean;
+  onAssetsRefresh: () => void;
+  onApply: (ref: MediaRef) => void;
+  onCancel: () => void;
+}) {
+  const [kind, setKind] = useState<"image" | "video">(defaultKind);
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-0">
+      <div className="px-6 pb-3">
+        <div
+          role="group"
+          aria-label="Loại nội dung"
+          className="inline-flex items-center rounded-md border border-input bg-background p-0.5"
+        >
+          <button
+            type="button"
+            aria-pressed={kind === "image"}
+            onClick={() => setKind("image")}
+            className={cn(
+              "rounded px-3 py-1 text-xs font-medium transition-colors",
+              kind === "image"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Ảnh
+          </button>
+          <button
+            type="button"
+            aria-pressed={kind === "video"}
+            onClick={() => setKind("video")}
+            className={cn(
+              "rounded px-3 py-1 text-xs font-medium transition-colors",
+              kind === "video"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Video
+          </button>
+        </div>
+      </div>
+      {kind === "video" ? (
+        <VideoBody assets={assets} saving={saving} onAssetsRefresh={onAssetsRefresh} onApply={onApply} onCancel={onCancel} />
+      ) : (
+        <ImageBody
+          target={target}
+          assets={assets}
+          assetsLoading={assetsLoading}
+          saving={saving}
+          onAssetsRefresh={onAssetsRefresh}
+          onApply={onApply}
+          onCancel={onCancel}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Dialog shell
 // ---------------------------------------------------------------------------
-export function MediaPickerDialog({ open, target, assets, assetsLoading, saving, onAssetsRefresh, onApply, onOpenChange }: Props) {
+export function MediaPickerDialog({
+  open,
+  target,
+  assets,
+  assetsLoading,
+  saving,
+  onAssetsRefresh,
+  onApply,
+  onOpenChange,
+  flexible = false,
+  defaultKind,
+}: Props) {
   const isVideo = target?.mediaKind === "video";
   const friendly = target ? fieldLabel(target.field) : null;
+  // `target.mediaKind` is hard-coded "image" for every flexible slot (the overlay's hasCap check
+  // tries "image" first), so it says nothing about which kind is actually stored — the title reads
+  // `defaultKind` (the caller's pickerDefaultKind, which DOES know the stored/posted kind) instead,
+  // whenever the target is flexible.
+  const titleIsVideo = flexible ? (defaultKind ?? target?.mediaKind) === "video" : isVideo;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] w-[min(64rem,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="px-6 pb-3 pt-6">
-          <DialogTitle>{isVideo ? "Replace video" : "Replace image"}</DialogTitle>
+          <DialogTitle>{titleIsVideo ? "Replace video" : "Replace image"}</DialogTitle>
           <DialogDescription>
             {!target ? (
               "Pick an existing asset or upload a new one."
@@ -460,7 +566,19 @@ export function MediaPickerDialog({ open, target, assets, assetsLoading, saving,
         </DialogHeader>
 
         {target ? (
-          isVideo ? (
+          flexible ? (
+            <FlexibleBody
+              key={target.field}
+              target={target}
+              defaultKind={defaultKind ?? (isVideo ? "video" : "image")}
+              assets={assets}
+              assetsLoading={assetsLoading}
+              saving={saving}
+              onAssetsRefresh={onAssetsRefresh}
+              onApply={onApply}
+              onCancel={() => onOpenChange(false)}
+            />
+          ) : isVideo ? (
             <VideoBody
               key={target.field}
               assets={assets}
