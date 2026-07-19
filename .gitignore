@@ -39,3 +39,6 @@ npm-debug.log*
 .agents/
 .claude/
 skills-lock.json
+
+# SDD scratch reports/ledger (subagent-driven development working files)
+.superpowers/
