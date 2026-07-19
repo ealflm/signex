@@ -79,6 +79,7 @@ import {
 import { adminApi, stripBasePath } from "@/app/lib/base-path";
 import { rebasePalette, type PaletteWorkingSet } from "./_lib/palette-working-set";
 import { createPaletteAuditor } from "./_lib/palette-audit";
+import { buildMediaValue } from "./media-apply";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -449,15 +450,14 @@ export function EditorShell(props: EditorShellProps) {
         );
       const existing = (getPath(base, path) as Record<string, unknown> | undefined) ?? {};
 
-      let nextValue: Record<string, unknown>;
+      // Clean-replace, never merge: buildMediaValue returns EXACTLY the target-kind shape, so an
+      // image↔video switch can never leave a hybrid (stray assetId on a video, stray poster/mp4 on
+      // an image) for MediaRef to silently misread on the next load (see media-apply.ts).
+      const nextValue = buildMediaValue(ref, existing);
       let preview: Omit<MediaPreview, "field">;
       if (ref.type === "image") {
-        nextValue = { ...existing, assetId: ref.assetId };
         preview = { kind: "image", url: find(ref.assetId) };
       } else {
-        nextValue = { ...existing, posterAssetId: ref.posterAssetId, mp4AssetId: ref.mp4AssetId };
-        if (ref.webmAssetId) nextValue.webmAssetId = ref.webmAssetId;
-        else delete nextValue.webmAssetId;
         preview = {
           kind: "video",
           posterUrl: find(ref.posterAssetId),
