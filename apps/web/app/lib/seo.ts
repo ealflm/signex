@@ -6,21 +6,13 @@
 import type { Metadata } from "next";
 import { DEFAULT_LOCALE, type Locale } from "@/app/lib/i18n-config";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
+import { iconsFrom } from "@/app/lib/seo-icons";
 
 export const SITE_URL = "https://signex.vn";
 export const THEME_COLOR = "#071522"; // brand deep-navy (browser theme-color + PWA manifest)
 // Fallback OG image path (used when no snapshot-resolved URL is available — INITIAL_SNAPSHOT path).
 // When the snapshot is published, meta.ogImageUrl carries the CDN URL (Task 61b).
 const OG_IMAGE_FALLBACK = "/assets/images/signex-og.png";
-// Favicons (favicon.io set: SIGNEX lotus mark). The .ico is auto-served from app/favicon.ico;
-// these PNGs add the type/size hints modern browsers + Apple devices prefer.
-const ICONS = {
-  icon: [
-    { url: "/assets/images/favicon-32x32.png", type: "image/png", sizes: "32x32" },
-    { url: "/assets/images/favicon-16x16.png", type: "image/png", sizes: "16x16" },
-  ],
-  apple: "/assets/images/apple-touch-icon.png",
-};
 
 export function buildMetadata({
   locale,
@@ -68,6 +60,6 @@ export function buildMetadata({
       description,
       images: [ogImage],
     },
-    icons: ICONS,
+    icons: iconsFrom(meta.favicons),
   };
 }

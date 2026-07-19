@@ -454,6 +454,12 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       ogImageAlt: t(b.meta.ogImage.alt, lang),
       // meta.ogImage is AssetRef — resolve URL so seo.ts can serve the CDN path in og:image
       ogImageUrl: assetUrl(b.meta.ogImage.assetId),
+      // meta.favicons — the configurable favicon set (schema existed, importer-seeded, but the web
+      // never read it: seo.ts served a static ICONS list, which is why editing it in the admin's
+      // SEO panel changed nothing). Resolved to CDN URLs here; empty entries dropped.
+      favicons: b.meta.favicons
+        .map((f) => ({ rel: f.rel, url: assetUrl(f.asset.assetId) }))
+        .filter((f) => f.url !== ""),
       // NOTE: analytics no longer comes from the snapshot. Marketing/analytics tags are managed
       // in GTM (container GTM_CONTAINER_ID in app/[lang]/layout.tsx); GA4 + the Google Ads
       // conversion are configured inside the GTM UI, independent of the published theme.
