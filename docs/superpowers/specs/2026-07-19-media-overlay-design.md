@@ -53,7 +53,7 @@ export type Overlay = z.infer<typeof Overlay>;
 
 ## Web resolution + rendering
 
-**Pure resolver** — `apps/web/app/lib/overlay-css.ts` (new, DOM-free, unit-tested):
+**Pure resolver** — `packages/shared/src/content/overlay-style.ts` (new, DOM-free, unit-tested; web + admin import it):
 ```ts
 import type { Overlay } from "@signex/shared";
 export type OverlayStyle = { backgroundColor?: string; backgroundImage?: string };
