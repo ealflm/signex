@@ -1557,3 +1557,35 @@ body .w-webflow-badge {
   height: auto;
   aspect-ratio: 16 / 9;
 }
+
+/* Homepage USP bar: 4 coloured items (icon-left + uppercase coloured title-right), no box, no desc.
+   Per-item colour comes from the item's inline `color` (icon stroke = currentColor, title inherits). */
+.sx-usp-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: center;
+}
+.sx-usp-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.sx-usp-icon {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sx-usp-icon svg { width: 2.25rem; height: 2.25rem; }
+.sx-usp-title {
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  font-size: var(--_🔠-typography---size--b3, 0.95rem);
+}
+@media (max-width: 991px) { .sx-usp-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 479px) { .sx-usp-bar { grid-template-columns: 1fr; } }
