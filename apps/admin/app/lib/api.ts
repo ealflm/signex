@@ -47,10 +47,20 @@ export async function apiServer<T = unknown>(path: string, opts: ApiOpts = {}): 
   }
 
   if (!res.ok) {
-    const error =
-      (parsed && typeof parsed === "object" && "message" in parsed
-        ? String((parsed as { message: unknown }).message)
-        : undefined) ?? text ?? `HTTP ${res.status}`;
+    const obj = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : undefined;
+    const base =
+      (obj && "message" in obj ? String(obj.message) : undefined) ?? text ?? `HTTP ${res.status}`;
+    // The api's ZodValidationPipe answers { message: "Validation failed", errors: [{path, message}] }.
+    // Keeping only `message` drops the one thing that makes a 422 actionable — WHICH field and WHICH
+    // limit failed. Fold the issue messages in so the specific cause survives this boundary (and the
+    // admin-api proxy that forwards `error` downstream) instead of reaching the browser as a bare,
+    // undiagnosable "Validation failed".
+    const details = Array.isArray(obj?.errors)
+      ? (obj.errors as Array<{ message?: unknown }>)
+          .map((e) => (e && typeof e.message === "string" ? e.message : ""))
+          .filter(Boolean)
+      : [];
+    const error = details.length ? `${base}: ${details.join("; ")}` : base;
     return { ok: false, status: res.status, error };
   }
   return { ok: true, status: res.status, data: parsed as T };

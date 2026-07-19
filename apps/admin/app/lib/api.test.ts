@@ -65,6 +65,62 @@ describe("apiServer", () => {
     expect(res).toEqual({ ok: false, status: 409, error: "STALE_DRAFT" });
   });
 
+  it("folds the zod-pipe validation detail into the error, so a 422 is not an undiagnosable 'Validation failed'", async () => {
+    // The api's ZodValidationPipe answers { message: "Validation failed", errors: [{path, message}] }.
+    // Keeping only `message` (as this boundary used to) is exactly why a customer's failed video
+    // upload surfaced as a bare "Validation failed" with no field, no limit, nothing to act on.
+    cookieStore.get.mockReturnValue({ value: "t" });
+    const body = {
+      message: "Validation failed",
+      errors: [{ path: "bytes", message: "file size 262144000 exceeds size cap 209715200 for video/mp4" }],
+    };
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify(body), { status: 422, headers: { "content-type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { apiServer } = await import("./api");
+    const res = await apiServer("/api/assets/presign", { method: "POST", body: {} });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.status).toBe(422);
+    // The specific cause must survive the boundary.
+    expect(res.error).toContain("exceeds size cap");
+    expect(res.error).toContain("Validation failed");
+  });
+
+  it("joins multiple zod issues so no field's reason is dropped", async () => {
+    cookieStore.get.mockReturnValue({ value: "t" });
+    const body = {
+      message: "Validation failed",
+      errors: [
+        { path: "mime", message: "mime not in allowlist" },
+        { path: "bytes", message: "file size … exceeds size cap …" },
+      ],
+    };
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify(body), { status: 422, headers: { "content-type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { apiServer } = await import("./api");
+    const res = await apiServer("/api/assets/presign", { method: "POST", body: {} });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toContain("mime not in allowlist");
+    expect(res.error).toContain("exceeds size cap");
+  });
+
+  it("leaves a message-only error untouched (no trailing colon when there are no issues)", async () => {
+    // Regression guard for the STALE_DRAFT shape above: folding must be a no-op when `errors` is absent.
+    cookieStore.get.mockReturnValue({ value: "t" });
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ message: "STALE_DRAFT" }), { status: 409, headers: { "content-type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { apiServer } = await import("./api");
+    const res = await apiServer("/api/x", { method: "PUT", body: {} });
+    expect(res).toEqual({ ok: false, status: 409, error: "STALE_DRAFT" });
+  });
+
   it("JSON-encodes the body and sets content-type for writes", async () => {
     cookieStore.get.mockReturnValue({ value: "t" });
     const fetchMock = vi.fn(async () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } }));

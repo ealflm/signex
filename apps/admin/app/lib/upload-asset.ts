@@ -5,6 +5,7 @@
 // uploaded file can be wired straight into a content block's AssetRef/VideoRef.
 
 import { adminApi } from "@/app/lib/base-path";
+import { presignErrorMessage } from "@/app/lib/upload-error";
 
 export interface UploadedAsset {
   id: string;
@@ -94,7 +95,9 @@ export async function uploadAsset(
     }),
   });
   if (!presignRes.ok) {
-    throw new Error(`Presign failed (${presignRes.status}): ${await presignRes.text().catch(() => "")}`);
+    throw new Error(
+      presignErrorMessage(presignRes.status, await presignRes.text().catch(() => ""), file),
+    );
   }
   const presign = (await presignRes.json()) as PresignResult;
 
