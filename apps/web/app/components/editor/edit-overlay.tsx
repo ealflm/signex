@@ -569,6 +569,28 @@ export function EditOverlay() {
     ro.observe(document.body);
     for (const entry of entries) ro.observe(entry.el);
 
+    // When applyEdits swaps a flexible slot's ELEMENT (image↔video), the hotspot + observers were
+    // bound to the element that just got replaced — the new element has no hotspot, so the slot
+    // becomes unclickable. Re-point the existing entry (and its observers) at the replacement so the
+    // hotspot repositions over it and its click keeps posting the same `field`. The hotspot's click
+    // closure carries a now-stale `mediaKind`, but that is harmless: the admin defaults the picker's
+    // Ảnh/Video toggle from the slot's STORED kind (pickerDefaultKind), not this hint. Only the badge
+    // label needs correcting.
+    const rebindHotspot = (oldEl: HTMLElement, newEl: HTMLElement, kind: "image" | "video") => {
+      const entry = byEl.get(oldEl);
+      if (!entry) return;
+      entry.el = newEl;
+      byEl.delete(oldEl);
+      byEl.set(newEl, entry);
+      io.unobserve(oldEl);
+      io.observe(newEl);
+      ro.unobserve(oldEl);
+      ro.observe(newEl);
+      const badge = entry.hot.querySelector(".sx-edit-badge");
+      if (badge) badge.textContent = `Edit ${kind} · ${newEl.getAttribute("data-edit-field") ?? ""}`;
+      scheduleSync();
+    };
+
     // Native scroll input. Lenis smooth-scroll moves content by TRANSFORM and emits its own "scroll"
     // event each frame (no native scroll) — so subscribe to Lenis when present; the native
     // scroll/wheel/touch listeners are the fallback when Lenis is absent or not yet booted.
@@ -864,9 +886,11 @@ export function EditOverlay() {
               } else if (isFlexibleMedia(el)) {
                 // A flexible slot (data-edit-caps="image,video") currently rendering a <video>: a
                 // swap TO an image cannot be done by tweaking attributes — the element is the wrong
-                // tag. Replace it. See buildFlexibleMediaEl for why this is safe re: overlay-classes'
-                // child-mutation rule.
-                el.replaceWith(buildFlexibleMediaEl("image", ed, el));
+                // tag. Replace it, then move the hotspot onto the replacement so the slot stays
+                // clickable. See buildFlexibleMediaEl for why this is safe re: overlay-classes' rule.
+                const swapped = buildFlexibleMediaEl("image", ed, el);
+                el.replaceWith(swapped);
+                rebindHotspot(el, swapped, "image");
               } else {
                 el.style.backgroundImage = `url("${ed.url}")`;
               }
@@ -883,8 +907,10 @@ export function EditOverlay() {
                 }
               } else if (isFlexibleMedia(el)) {
                 // A flexible slot currently rendering an <img>: swapping TO a video needs the element
-                // replaced (an <img> can't gain <source> children and play).
-                el.replaceWith(buildFlexibleMediaEl("video", ed, el));
+                // replaced (an <img> can't gain <source> children and play), then the hotspot moved.
+                const swapped = buildFlexibleMediaEl("video", ed, el);
+                el.replaceWith(swapped);
+                rebindHotspot(el, swapped, "video");
               }
             } else if (ed.kind === "text") {
               // gate (b): restore an unsaved inline text edit to the canvas after a refresh/locale
