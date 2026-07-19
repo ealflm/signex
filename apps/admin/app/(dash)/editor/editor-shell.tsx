@@ -82,7 +82,7 @@ import {
   MediaPickerDialog,
   type AssetRow,
   type EditTarget,
-  type MediaRef,
+  type MediaApplyPayload,
 } from "@/app/(dash)/visual/media-picker-dialog";
 import { pickerDefaultKind } from "@/app/(dash)/visual/picker-default-kind";
 import { adminApi, stripBasePath } from "@/app/lib/base-path";
@@ -476,7 +476,7 @@ export function EditorShell(props: EditorShellProps) {
   }, [mediaTarget, workingBlockData]);
 
   const applyMediaRef = useCallback(
-    async ({ media, overlay }: { media?: MediaRef; overlay?: Overlay }) => {
+    async ({ media, overlay }: MediaApplyPayload) => {
       if (!mediaTarget) return;
       const [blockKey, ...rest] = mediaTarget.field.split(".") as [BlockKey, ...string[]];
       const path = rest.join(".");

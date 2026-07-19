@@ -4,11 +4,10 @@ import { useCallback, useState } from "react";
 import { ImageOff, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { Overlay } from "@signex/shared";
 import {
   MediaPickerDialog,
   type AssetRow,
-  type MediaRef,
+  type MediaApplyPayload,
 } from "@/app/(dash)/visual/media-picker-dialog";
 import { adminApi } from "@/app/lib/base-path";
 
@@ -76,7 +75,7 @@ export function CatalogImagePicker({
     // carries a `media`; the parameter only ALLOWS it to be absent because MediaPickerDialog's
     // onApply contract is shared with the flexible, overlay-aware editor slots (see
     // media-picker-dialog.tsx). `overlay` is likewise always undefined for this non-flexible target.
-    async ({ media }: { media?: MediaRef; overlay?: Overlay }) => {
+    async ({ media }: MediaApplyPayload) => {
       if (!media || media.type !== "image") return;
       setSelectedId(media.assetId);
       setOpen(false);

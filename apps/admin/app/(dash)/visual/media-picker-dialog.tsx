@@ -13,7 +13,9 @@
 // means "keep the current media, only the overlay changed", which is what makes an overlay-only
 // edit possible: Apply no longer requires a freshly picked image/video. Every overlay control ALSO
 // calls the optional `onOverlayPreview` prop with that same next value, so the actual preview page
-// updates live as the user drags; Cancel calls it once more with `initialOverlay` to revert.
+// updates live as the user drags; closing the dialog — Cancel, Escape, a backdrop click, or the
+// header's X, all routed through the dialog root's closeDialog — calls it once more with
+// `initialOverlay` to revert.
 // ImageBody/VideoBody carry the working `overlay` and a `flexible` flag only to shape their Apply
 // button/payload — the non-flexible standalone renders never receive either, so their onApply
 // payload always carries `overlay: undefined`, same net effect as before this payload existed.
@@ -65,6 +67,15 @@ export type MediaRef =
   | { type: "image"; assetId: string }
   | { type: "video"; posterAssetId: string; mp4AssetId: string; webmAssetId?: string };
 
+/** onApply/applyMediaRef's payload shape — shared by every caller (this dialog's own bodies,
+ *  editor-shell's applyMediaRef, catalog-image-picker's onApply) so the shape can't drift between
+ *  them. `media` present → change the media; absent → keep the current media unchanged. `overlay`
+ *  is only ever non-undefined when the target is flexible (see the OVERLAY note above). */
+export interface MediaApplyPayload {
+  media?: MediaRef;
+  overlay?: Overlay;
+}
+
 export interface EditTarget {
   field: string; // "<blockKey>.<path>", e.g. "hero.image" / "features.video.media"
   mediaKind: "image" | "video";
@@ -84,7 +95,7 @@ interface Props {
    *  overlay-only Apply). `overlay` is only ever non-undefined when `flexible` — FlexibleBody is
    *  the sole caller that populates it; the non-flexible ImageBody/VideoBody paths always send
    *  `overlay: undefined`. */
-  onApply: (payload: { media?: MediaRef; overlay?: Overlay }) => void;
+  onApply: (payload: MediaApplyPayload) => void;
   onOpenChange: (open: boolean) => void;
   /** True when the target slot accepts EITHER kind (Task 7's overlay flag, threaded through
    *  editor-shell) — renders the Ảnh/Video toggle above the body. Undefined/false renders exactly
@@ -99,8 +110,11 @@ interface Props {
   initialOverlay?: Overlay;
   /** Live-preview sink for the "Lớp phủ" section, when `flexible` — called with the working
    *  overlay on every control change (drag included) so the ACTUAL preview page updates as-you-go,
-   *  and once more with `initialOverlay` on Cancel to put it back. Threaded straight to
-   *  FlexibleBody; irrelevant (never invoked) when `flexible` is false. */
+   *  and once more with `initialOverlay` whenever the dialog closes (Cancel, Escape, backdrop, or
+   *  the header's X — see closeDialog below) to put it back. The live-drag calls are threaded
+   *  straight to FlexibleBody, so only flexible sessions make those; the close-time call fires
+   *  regardless of `flexible` (the shell's previewOverlay guards on `mediaTarget?.flexible` itself,
+   *  so it's a harmless no-op then). */
   onOverlayPreview?: (overlay: Overlay | undefined) => void;
 }
 
@@ -153,7 +167,7 @@ function ImageBody({
   assetsLoading: boolean;
   saving: boolean;
   onAssetsRefresh: () => void;
-  onApply: (payload: { media?: MediaRef; overlay?: Overlay }) => void;
+  onApply: (payload: MediaApplyPayload) => void;
   onCancel: () => void;
   /** The FlexibleBody-owned working "Lớp phủ" value, along for the ride on every Apply. Undefined
    *  outside a flexible body (the non-flexible standalone render never passes it), so Apply then
@@ -263,7 +277,7 @@ function ImageBody({
           }
         >
           <Button type="button" variant="ghost" onClick={onCancel} disabled={locked}>
-            Cancel
+            Huỷ
           </Button>
           <Button
             type="button"
@@ -362,7 +376,7 @@ function ImageBody({
             </div>
             <PickerFooter>
               <Button type="button" variant="ghost" onClick={onCancel} disabled={locked}>
-                Cancel
+                Huỷ
               </Button>
             </PickerFooter>
           </>
@@ -470,7 +484,7 @@ function VideoBody({
   assets: AssetRow[];
   saving: boolean;
   onAssetsRefresh: () => void;
-  onApply: (payload: { media?: MediaRef; overlay?: Overlay }) => void;
+  onApply: (payload: MediaApplyPayload) => void;
   onCancel: () => void;
   /** See ImageBody's identical prop — the same working "Lớp phủ" value, along for the ride. */
   overlay?: Overlay;
@@ -499,7 +513,7 @@ function VideoBody({
       </div>
       <PickerFooter>
         <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>
-          Cancel
+          Huỷ
         </Button>
         <Button
           type="button"
@@ -560,8 +574,9 @@ function OverlayPreview({ overlay }: { overlay: Overlay | undefined }) {
 // `overlay` rides along on Apply inside onApply's payload (`{ media?, overlay }`, passed straight
 // through to ImageBody/VideoBody's own `overlay` prop) — it is never WRITTEN (saved) anywhere until
 // then, same as `kind`. It IS, however, live-PREVIEWED before that: every control below also calls
-// `onOverlayPreview` with the same next value, and Cancel calls it once more with `initialOverlay`
-// to put the actual preview page back the way it found it.
+// `onOverlayPreview` with the same next value; closing the dialog (Cancel, Escape, backdrop, or the
+// header's X — MediaPickerDialog's closeDialog wraps every one of them) calls it once more with
+// `initialOverlay` to put the actual preview page back the way it found it.
 // ---------------------------------------------------------------------------
 function FlexibleBody({
   target,
@@ -581,21 +596,13 @@ function FlexibleBody({
   assetsLoading: boolean;
   saving: boolean;
   onAssetsRefresh: () => void;
-  onApply: (payload: { media?: MediaRef; overlay?: Overlay }) => void;
+  onApply: (payload: MediaApplyPayload) => void;
   onCancel: () => void;
   initialOverlay?: Overlay;
   onOverlayPreview?: (overlay: Overlay | undefined) => void;
 }) {
   const [kind, setKind] = useState<"image" | "video">(defaultKind);
   const [overlay, setOverlay] = useState<Overlay | undefined>(initialOverlay);
-  // Cancel must undo the live preview too, not only close the dialog — otherwise a user who dragged
-  // the overlay around and then backed out would leave the ACTUAL preview page showing their
-  // never-applied experiment. Reverting to `initialOverlay` (the field's last applied value, i.e.
-  // what the canvas showed before this session touched onOverlayPreview) puts it back as found.
-  const cancelRevert = () => {
-    onOverlayPreview?.(initialOverlay);
-    onCancel();
-  };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-0">
       <div className="px-6 pb-3">
@@ -881,7 +888,7 @@ function FlexibleBody({
           saving={saving}
           onAssetsRefresh={onAssetsRefresh}
           onApply={onApply}
-          onCancel={cancelRevert}
+          onCancel={onCancel}
           overlay={overlay}
           flexible
         />
@@ -893,7 +900,7 @@ function FlexibleBody({
           saving={saving}
           onAssetsRefresh={onAssetsRefresh}
           onApply={onApply}
-          onCancel={cancelRevert}
+          onCancel={onCancel}
           overlay={overlay}
           flexible
         />
@@ -926,8 +933,17 @@ export function MediaPickerDialog({
   // `defaultKind` (the caller's pickerDefaultKind, which DOES know the stored/posted kind) instead,
   // whenever the target is flexible.
   const titleIsVideo = flexible ? (defaultKind ?? target?.mediaKind) === "video" : isVideo;
+  // Every close path — Escape, a backdrop click, the header's X, and the footer Cancel button — must
+  // revert the live "Lớp phủ" preview the same way, or the iframe is left showing an uncommitted
+  // drag. Routing ALL of them through this one function (rather than only Cancel, as before) is what
+  // makes that true. onOverlayPreview is a no-op for a non-flexible target (previewOverlay in the
+  // shell guards on mediaTarget?.flexible), so no extra guard is needed here.
+  const closeDialog = (nextOpen: boolean) => {
+    if (!nextOpen) onOverlayPreview?.(initialOverlay);
+    onOpenChange(nextOpen);
+  };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={closeDialog}>
       <DialogContent className="flex max-h-[85vh] w-[min(64rem,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="px-6 pb-3 pt-6">
           <DialogTitle>{titleIsVideo ? "Replace video" : "Replace image"}</DialogTitle>
@@ -956,7 +972,7 @@ export function MediaPickerDialog({
               saving={saving}
               onAssetsRefresh={onAssetsRefresh}
               onApply={onApply}
-              onCancel={() => onOpenChange(false)}
+              onCancel={() => closeDialog(false)}
               initialOverlay={initialOverlay}
               onOverlayPreview={onOverlayPreview}
             />
@@ -967,7 +983,7 @@ export function MediaPickerDialog({
               saving={saving}
               onAssetsRefresh={onAssetsRefresh}
               onApply={onApply}
-              onCancel={() => onOpenChange(false)}
+              onCancel={() => closeDialog(false)}
             />
           ) : (
             <ImageBody
@@ -978,7 +994,7 @@ export function MediaPickerDialog({
               saving={saving}
               onAssetsRefresh={onAssetsRefresh}
               onApply={onApply}
-              onCancel={() => onOpenChange(false)}
+              onCancel={() => closeDialog(false)}
             />
           )
         ) : null}
