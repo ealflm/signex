@@ -123,6 +123,8 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       // hero.image is MediaRef (AssetRef | VideoRef) — resolve to a discriminated view-model so
       // the component can render either an <img> or a <video> for this slot.
       media: resolveMedia(b.hero.image, lang, assetUrl, (l) => t(l, lang)),
+      // hero.overlay is Overlay? — raw passthrough; the component resolves it via overlayCss.
+      overlay: b.hero.overlay,
     },
     form: {
       name: t(fFields.name.label, lang),
@@ -167,12 +169,16 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       videoTitle: t(b.features.video.title, lang),
       videoText: t(b.features.video.text, lang),
       videoMedia: resolveMedia(b.features.video.media, lang, assetUrl, (l) => t(l, lang)),
+      // video.overlay is Overlay? — raw passthrough; the component resolves it via overlayCss.
+      videoOverlay: b.features.video.overlay,
       featured: {
         title: t(b.features.featured.title, lang),
         desc: t(b.features.featured.desc, lang),
         // featured.image is MediaRef? (image OR video) — resolve to a discriminated view-model;
         // null when absent so the component falls back to the literal still (published v1 stays valid).
         media: resolveMedia(b.features.featured.image, lang, assetUrl, (l) => t(l, lang)),
+        // featured.overlay is Overlay? — raw passthrough; the component resolves it via overlayCss.
+        overlay: b.features.featured.overlay,
       },
       cards: b.features.cards.map((card) => ({
         title: t(card.title, lang),
@@ -344,6 +350,8 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
         // discriminated view-model; null when absent so the component falls back to the literal
         // 8440992-uhd poster+mp4+webm.
         videoMedia: resolveMedia(b.aboutPage.hero.video, lang, assetUrl, (l) => t(l, lang)),
+        // hero.overlay is Overlay? — raw passthrough; the component resolves it via overlayCss.
+        overlay: b.aboutPage.hero.overlay,
       },
       testimonial: {
         eyebrow: t(b.aboutPage.testimonial.eyebrow, lang),
