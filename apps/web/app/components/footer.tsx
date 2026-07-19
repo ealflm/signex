@@ -95,10 +95,11 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
               {/* Column 1 — brand. Top label "SIGNEX" using the same label-large heading
                   as the other two columns, then brand name, taglines, socials. */}
               <div className="footer-signex_col">
-                {/* Signex logo (replaces the "SIGNEX" text label). Same user SVG as the
-                    navbar, but rendered white (brightness(0) invert(1)) so it reads on the
-                    dark footer like the wordmark/lotus do. */}
-                <img alt="Signex" className="footer-signex_logo" loading="lazy" src={t.logoUrl || "/assets/images/signex-logo.svg"} {...editableAttrs(editable, "footer.logo", { image: true })} />
+                {/* Signex logo (replaces the "SIGNEX" text label). Default bundled SVG is
+                    rendered white (brightness(0) invert(1)) so it reads on the dark footer like
+                    the wordmark/lotus do; a custom uploaded logo shows its own true colours
+                    instead (see .footer-signex_logo.is-custom). */}
+                <img alt="Signex" className={`footer-signex_logo${t.logoUrl ? " is-custom" : ""}`} loading="lazy" src={t.logoUrl || "/assets/images/signex-logo.svg"} {...editableAttrs(editable, "footer.logo", { image: true })} />
                 <div className="footer-signex_brand">
                   <div className="text-size-regular text_body-bold">
                     {/* Brand line "<brand> – <suffix>": only the suffix is editable, rendered as its

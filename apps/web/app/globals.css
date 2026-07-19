@@ -304,6 +304,13 @@
   -webkit-mask: url("/assets/images/signex-logo.svg") center / contain no-repeat;
   mask: url("/assets/images/signex-logo.svg") center / contain no-repeat;
 }
+/* Custom uploaded nav logo — true-colour <img> variant of .signex-logo-nav (same box, no mask). */
+.signex-logo-nav-img {
+  height: 1.85rem;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
 
 /* Resorts collection section on the HOME page.
    Caladan's shared rule gives .section_hero-resorts a LARGE top padding because there
@@ -721,6 +728,11 @@
   width: auto;
   display: block;
   filter: brightness(0) invert(1);
+}
+/* Custom uploaded footer logo: show its true colours — the brightness(0) invert(1) recolour is
+   for the default monochrome SVG only. */
+.footer-signex_logo.is-custom {
+  filter: none;
 }
 .footer-signex_brand {
   display: flex;

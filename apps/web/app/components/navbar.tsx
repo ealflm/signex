@@ -86,22 +86,27 @@ export function Navbar({ dict, editable = false }: { dict: Dictionary["nav"]; ed
             </div>
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- faithful port of Webflow markup; navigation is driven by the Webflow runtime, not next/link */}
             <a className="brand_navbar w-nav-brand" href="/">
-              {/* Signex logo rendered as a CSS mask filled with the nav links' ink token
-                  (tone--strong) so it matches "Trang chủ / Về chúng tôi / Liên hệ" exactly and
-                  tracks them in every navbar state. Sized by height (aspect ratio ≈2.4:1).
-                  When logoUrl is available from the snapshot, override the CSS mask-image inline
-                  so the live CDN URL is used instead of the bundled /assets path (Task 61b). */}
-              <span
-                className="signex-logo-nav"
-                role="img"
-                aria-label="Signex"
-                style={
-                  dict.logoUrl
-                    ? { WebkitMaskImage: `url("${dict.logoUrl}")`, maskImage: `url("${dict.logoUrl}")` }
-                    : undefined
-                }
-                {...editableAttrs(editable, "nav.logo", { image: true })}
-              />
+              {dict.logoUrl ? (
+                /* Custom uploaded logo: render as a true-colour image — no mask, no recolour.
+                   (The mask flattened any uploaded art to the nav ink; a colour logo must show
+                   its own colours. Trade-off accepted: a custom logo no longer auto-tracks the
+                   nav ink token.) */
+                <img
+                  alt="Signex"
+                  className="signex-logo-nav-img"
+                  src={dict.logoUrl}
+                  {...editableAttrs(editable, "nav.logo", { image: true })}
+                />
+              ) : (
+                /* Default bundled SVG keeps the CSS-mask treatment so it tracks the nav links'
+                   ink token exactly (see .signex-logo-nav). */
+                <span
+                  className="signex-logo-nav"
+                  role="img"
+                  aria-label="Signex"
+                  {...editableAttrs(editable, "nav.logo", { image: true })}
+                />
+              )}
             </a>
             <div className="nav_corners-wrap">
               <div className="nav_side w-embed">
