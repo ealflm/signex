@@ -1545,3 +1545,15 @@ body .w-webflow-badge {
 @media (max-width: 479px) {
   .sx-features-criteria { grid-template-columns: 1fr; }
 }
+
+/* About page featured workshop video — the old grid cell rendered standalone: give it a
+   determinate box (the vendor video_cover fills absolutely) and centre it above the grid. */
+.sx-features-featured {
+  max-width: 68rem;
+  margin: 0 auto 1.5rem;
+}
+.sx-features-featured .image-inner_features {
+  position: relative;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}

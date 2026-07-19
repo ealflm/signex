@@ -7,6 +7,7 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 import { overlayCss } from "@signex/shared";
+import { FeaturesFull } from "@/app/components/home/features-full";
 
 // lucide line icons for the manufacturing-approach cards (index-aligned with aboutPage.approach),
 // chosen per card content: factory (direct/in-house), badge-check (brand standards), lock
@@ -218,6 +219,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           </div>
         </div>
       </section>
+      <FeaturesFull dict={dict.features} editable={editable} />
       {/* "About SIGNEX" intro + the 3 manufacturing-approach cards as ONE grouped block (intro on top,
           cards in a row below). Inlined into a single section so the only gap is the headline's
           margin-bottom. The intro headline reveals via the home-c a-124 id 6a32e52a (registered under
