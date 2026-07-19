@@ -47,7 +47,6 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
   // All-or-nothing fallback: a configured VideoRef requires poster+mp4 (webm optional), so when an
   // mp4 is attached use ONLY the configured sources (emit webm just if the editor provided one).
   // The stock webm belongs solely to the full literal fallback — never splice it next to a custom mp4.
-  const hasCustomVideo = !!heroVideo;
   const heroPoster = heroVideo?.posterUrl || "/assets/images/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_poster.0000000.jpg";
   const heroMp4 = heroVideo?.mp4Url || "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_mp4.mp4";
   const heroWebm = heroVideo ? heroVideo.webmUrl : "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_webm.webm";

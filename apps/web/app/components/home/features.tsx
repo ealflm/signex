@@ -23,7 +23,6 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
   // fallback — when a custom mp4 is attached, emit webm only if the editor provided one; the stock
   // webm belongs solely to the full literal fallback (never spliced next to a custom mp4).
   const featVideo = t.videoMedia?.kind === "video" ? t.videoMedia : null;
-  const hasFeatureVideo = !!featVideo;
   const featPoster =
     featVideo?.posterUrl ||
     "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg";
