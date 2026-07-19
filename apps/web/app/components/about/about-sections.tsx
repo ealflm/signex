@@ -39,20 +39,56 @@ const APPROACH_ICONS = [
 ];
 
 export function AboutSections({ dict, editable = false }: { dict: Dictionary; editable?: boolean }) {
-  // about hero video is now a configurable VideoRef (aboutPage.hero.videoMedia); fall back to the
-  // original literal poster+mp4+webm when no asset is attached (published v1 snapshot stays valid).
-  const heroVideo = dict.aboutPage.hero.videoMedia;
+  // about hero media is now a configurable MediaRef (aboutPage.hero.videoMedia) — image OR video;
+  // fall back to the original literal poster+mp4+webm when no asset is attached (published v1
+  // snapshot stays valid).
+  const heroMedia = dict.aboutPage.hero.videoMedia;
+  const heroVideo = heroMedia?.kind === "video" ? heroMedia : null;
   // All-or-nothing fallback: a configured VideoRef requires poster+mp4 (webm optional), so when an
   // mp4 is attached use ONLY the configured sources (emit webm just if the editor provided one).
   // The stock webm belongs solely to the full literal fallback — never splice it next to a custom mp4.
-  const hasCustomVideo = !!heroVideo.mp4Url;
-  const heroPoster = heroVideo.posterUrl || "/assets/images/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_poster.0000000.jpg";
-  const heroMp4 = heroVideo.mp4Url || "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_mp4.mp4";
-  const heroWebm = hasCustomVideo ? heroVideo.webmUrl : "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_webm.webm";
+  const hasCustomVideo = !!heroVideo;
+  const heroPoster = heroVideo?.posterUrl || "/assets/images/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_poster.0000000.jpg";
+  const heroMp4 = heroVideo?.mp4Url || "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_mp4.mp4";
+  const heroWebm = heroVideo ? heroVideo.webmUrl : "/assets/videos/69b06b4bfbdb2da284a4ec5e_8440992-uhd_2732_1440_25fps_webm.webm";
+  // Shared between both branches below (identical regardless of which media kind renders).
+  const heroHeadline = (
+    <div className="content_hero-home-c">
+      <div className="headline_home-c" data-w-id="532ef140-c6a2-edd2-7d75-66929c4acf3b" style={{ opacity: 0, filter: 'blur(5px)' }}>
+        <div className="heading_hero-home-c">
+          <div className="title_home-c">
+            <h1 className="heading-style-h0">
+              <span {...editableAttrs(editable, "aboutPage.hero.title.lead", { text: { maxLength: 80 } })}>{dict.aboutPage.hero.title}</span>
+              <span className="tone-medium" {...editableAttrs(editable, "aboutPage.hero.title.accent", { text: { maxLength: 80 } })}>
+                {dict.aboutPage.hero.titleAccent}
+              </span>
+            </h1>
+          </div>
+          <div className="p_hero-home-c">
+            <p className="margin-0">
+              <span {...editableAttrs(editable, "aboutPage.hero.subtitle", { text: { maxLength: 200 } })}>{dict.aboutPage.hero.subtitle}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
   return (
     <>
       <section className="section_hero-home-c" data-sx-block="aboutPage">
-        {/* about hero video: configurable VideoRef (aboutPage.hero.video); literal fallback below */}
+        {/* about hero: configurable MediaRef (aboutPage.hero.video) — image OR video; the elaborate
+            Webflow background-video markup below is the VIDEO branch, kept verbatim (falls back to
+            the stock clip when unset). */}
+        {heroMedia?.kind === "image" ? (
+          <div
+            className="master_hero-home-c"
+            {...editableAttrs(editable, "aboutPage.hero.video", { image: true, video: true })}
+          >
+            <img alt={heroMedia.alt} className="image_cover" src={heroMedia.url} />
+            {heroHeadline}
+            <div className="overlay_hero-home-b"></div>
+          </div>
+        ) : (
         <div
           className="master_hero-home-c w-background-video w-background-video-atom"
           data-autoplay="true"
@@ -60,7 +96,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           data-poster-url={heroPoster}
           data-video-urls={[heroMp4, heroWebm].filter(Boolean).join(",")}
           data-wf-ignore="true"
-          {...editableAttrs(editable, "aboutPage.hero.video", { video: true })}
+          {...editableAttrs(editable, "aboutPage.hero.video", { image: true, video: true })}
         >
           <video
             autoPlay
@@ -75,25 +111,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             <source data-wf-ignore="true" src={heroMp4} />
             {heroWebm && <source data-wf-ignore="true" src={heroWebm} />}
           </video>
-          <div className="content_hero-home-c">
-            <div className="headline_home-c" data-w-id="532ef140-c6a2-edd2-7d75-66929c4acf3b" style={{ opacity: 0, filter: 'blur(5px)' }}>
-              <div className="heading_hero-home-c">
-                <div className="title_home-c">
-                  <h1 className="heading-style-h0">
-                    <span {...editableAttrs(editable, "aboutPage.hero.title.lead", { text: { maxLength: 80 } })}>{dict.aboutPage.hero.title}</span>
-                    <span className="tone-medium" {...editableAttrs(editable, "aboutPage.hero.title.accent", { text: { maxLength: 80 } })}>
-                      {dict.aboutPage.hero.titleAccent}
-                    </span>
-                  </h1>
-                </div>
-                <div className="p_hero-home-c">
-                  <p className="margin-0">
-                    <span {...editableAttrs(editable, "aboutPage.hero.subtitle", { text: { maxLength: 200 } })}>{dict.aboutPage.hero.subtitle}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          {heroHeadline}
           <div className="overlay_hero-home-b"></div>
           <noscript dangerouslySetInnerHTML={{ __html: `<style>
               [data-wf-bgvideo-fallback-img] {
@@ -135,6 +153,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             </button>
           </div>
         </div>
+        )}
       </section>
       <section data-sx-block="aboutPage">
         <div className="padding-global">
