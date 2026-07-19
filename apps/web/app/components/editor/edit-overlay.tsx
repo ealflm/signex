@@ -88,6 +88,64 @@ function closestCap(start: Element | null | undefined, cap: EditCap): HTMLElemen
   return null;
 }
 
+/** A slot that can hold EITHER an image or a video (both caps) — the only place applyEdits may need
+ *  to REPLACE the media element (an image↔video swap), not just tweak its src. */
+function isFlexibleMedia(el: HTMLElement): boolean {
+  return hasCap(el, "image") && hasCap(el, "video");
+}
+
+/**
+ * Build the replacement media element for a flexible slot whose kind just changed (image↔video),
+ * carrying the old element's class + data-edit-* so it stays positioned and editable.
+ *
+ * Why replacing a PAGE element here does NOT break overlay-classes' child-mutation rule (which
+ * exists to keep generated colour selectors honest): a flexible media slot is a LEAF media element
+ * (an <img>, or a <video>/its Webflow wrapper) — never an ancestor of a colour-anchored element — so
+ * swapping its tag cannot change any colour selector's path. It is also transient: a save + preview
+ * refresh re-renders the exact server markup (content.ts + the component), the real source of truth.
+ */
+function buildFlexibleMediaEl(
+  kind: "image" | "video",
+  ed: { url?: string; posterUrl?: string; mp4Url?: string; webmUrl?: string },
+  from: HTMLElement,
+): HTMLElement {
+  const field = from.getAttribute("data-edit-field") ?? "";
+  const caps = from.getAttribute("data-edit-caps") ?? "";
+  const stamp = (node: HTMLElement) => {
+    node.className = from.className;
+    node.setAttribute("data-edit-field", field);
+    node.setAttribute("data-edit-caps", caps);
+  };
+  if (kind === "image") {
+    const img = document.createElement("img");
+    stamp(img);
+    img.loading = "lazy";
+    img.src = ed.url ?? "";
+    return img;
+  }
+  const video = document.createElement("video");
+  stamp(video);
+  video.autoplay = true;
+  video.muted = true; // property AND attribute — some engines require the attribute for autoplay
+  video.setAttribute("muted", "");
+  video.loop = true;
+  video.playsInline = true;
+  if (ed.posterUrl) video.poster = ed.posterUrl;
+  if (ed.mp4Url) {
+    const s = document.createElement("source");
+    s.src = ed.mp4Url;
+    s.type = "video/mp4";
+    video.appendChild(s);
+  }
+  if (ed.webmUrl) {
+    const s = document.createElement("source");
+    s.src = ed.webmUrl;
+    s.type = "video/webm";
+    video.appendChild(s);
+  }
+  return video;
+}
+
 type EditState = {
   el: HTMLElement;
   field: string;
@@ -803,6 +861,12 @@ export function EditOverlay() {
               if (img) {
                 img.removeAttribute("srcset");
                 img.src = ed.url;
+              } else if (isFlexibleMedia(el)) {
+                // A flexible slot (data-edit-caps="image,video") currently rendering a <video>: a
+                // swap TO an image cannot be done by tweaking attributes — the element is the wrong
+                // tag. Replace it. See buildFlexibleMediaEl for why this is safe re: overlay-classes'
+                // child-mutation rule.
+                el.replaceWith(buildFlexibleMediaEl("image", ed, el));
               } else {
                 el.style.backgroundImage = `url("${ed.url}")`;
               }
@@ -817,6 +881,10 @@ export function EditOverlay() {
                   src.setAttribute("src", ed.mp4Url);
                   video.load();
                 }
+              } else if (isFlexibleMedia(el)) {
+                // A flexible slot currently rendering an <img>: swapping TO a video needs the element
+                // replaced (an <img> can't gain <source> children and play).
+                el.replaceWith(buildFlexibleMediaEl("video", ed, el));
               }
             } else if (ed.kind === "text") {
               // gate (b): restore an unsaved inline text edit to the canvas after a refresh/locale
