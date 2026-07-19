@@ -1,6 +1,7 @@
 import { HeroQuoteForm } from "@/app/components/home/hero-quote-form";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
+import { overlayCss } from "@signex/shared";
 
 // Server-rendered per locale, so this never re-renders client-side — a plain object is
 // fine (no IX2-reveal clobbering concern; language changes are a full navigation now).
@@ -79,8 +80,7 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                     {...editableAttrs(editable, "hero.image", { image: true, video: true })}
                   />
                 )}
-                <div className="overlay_home-b-hero">
-                </div>
+                <div className="overlay_media-config" style={overlayCss(t.overlay)} {...(editable ? { "data-sx-overlay": "hero.overlay" } : {})} />
               </div>
             </div>
           </div>

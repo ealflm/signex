@@ -1437,3 +1437,15 @@ body .w-webflow-badge {
   .sx-notice--success .sx-notice__mark path { animation: none; stroke-dashoffset: 0; }
 }
 @keyframes sx-notice-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Configurable media overlay — replaces the four template scrims (overlay_home-b-hero,
+   overlay_dark-16 ×2, overlay_hero-home-b). Positioning only; the background comes from the
+   inline style={overlayCss(...)} and is ABSENT (transparent) by default. z-index:1 sits above
+   the media (image_cover) and below the headline (content_hero-home-c z-index:5), preserving the
+   original stacking; pointer-events:none keeps the media hotspot beneath clickable in the editor. */
+.overlay_media-config {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}

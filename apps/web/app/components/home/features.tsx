@@ -1,5 +1,6 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
+import { overlayCss } from "@signex/shared";
 
 /**
  * Features — the section directly below the hero, adapted to signex's manufacturing
@@ -93,8 +94,7 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                       {...editableAttrs(editable, "features.featured.image", { image: true, video: true })}
                     />
                   )}
-                  <div className="overlay_dark-16">
-                  </div>
+                  <div className="overlay_media-config" style={overlayCss(t.featured.overlay)} {...(editable ? { "data-sx-overlay": "features.featured.overlay" } : {})} />
                 </div>
                 <a className="content_image-features is-horizontal w-inline-block" href="#quote-form">
                   <div className="features_text-tile">
@@ -253,8 +253,7 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                     </div>
                   </div>
                   )}
-                  <div className="overlay_dark-16">
-                  </div>
+                  <div className="overlay_media-config" style={overlayCss(t.videoOverlay)} {...(editable ? { "data-sx-overlay": "features.video.overlay" } : {})} />
                 </div>
                 <div className="content_image-features">
                   <div className="text_body-bold">

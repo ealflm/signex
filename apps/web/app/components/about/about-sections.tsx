@@ -6,6 +6,7 @@
 // via editable() — a no-op on public renders (editable=false), so the static HTML is unchanged.
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
+import { overlayCss } from "@signex/shared";
 
 // lucide line icons for the manufacturing-approach cards (index-aligned with aboutPage.approach),
 // chosen per card content: factory (direct/in-house), badge-check (brand standards), lock
@@ -85,7 +86,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
           >
             <img alt={heroMedia.alt} className="image_cover" src={heroMedia.url} />
             {heroHeadline}
-            <div className="overlay_hero-home-b"></div>
+            <div className="overlay_media-config" style={overlayCss(dict.aboutPage.hero.overlay)} {...(editable ? { "data-sx-overlay": "aboutPage.hero.overlay" } : {})} />
           </div>
         ) : (
         <div
@@ -111,7 +112,7 @@ export function AboutSections({ dict, editable = false }: { dict: Dictionary; ed
             {heroWebm && <source data-wf-ignore="true" src={heroWebm} />}
           </video>
           {heroHeadline}
-          <div className="overlay_hero-home-b"></div>
+          <div className="overlay_media-config" style={overlayCss(dict.aboutPage.hero.overlay)} {...(editable ? { "data-sx-overlay": "aboutPage.hero.overlay" } : {})} />
           <noscript dangerouslySetInnerHTML={{ __html: `<style>
               [data-wf-bgvideo-fallback-img] {
                 display: none;
