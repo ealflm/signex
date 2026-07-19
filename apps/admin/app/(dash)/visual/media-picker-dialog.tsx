@@ -52,6 +52,9 @@ export type MediaRef =
 export interface EditTarget {
   field: string; // "<blockKey>.<path>", e.g. "hero.image" / "features.video.media"
   mediaKind: "image" | "video";
+  /** True when the clicked slot carries both the image AND video caps (Task 7) — the picker offers
+   *  the Ảnh/Video toggle only then (Task 9). Undefined/false for a single-kind slot (e.g. a logo). */
+  flexible?: boolean;
 }
 
 interface Props {

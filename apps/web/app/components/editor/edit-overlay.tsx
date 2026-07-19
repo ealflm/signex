@@ -31,7 +31,7 @@
 //      each element's viewport rect — so the rendered page stays byte-identical to the public site.
 //
 // postMessage protocol (both directions use { source: "signex-editor", ... }):
-//   preview → admin:  { source, type: "edit", field, mediaKind: "image"|"video" }      // open media drawer
+//   preview → admin:  { source, type: "edit", field, mediaKind: "image"|"video", flexible: boolean } // open media drawer; flexible = slot carries both caps
 //                     { source, type: "textEdit", field, value }                       // committed inline text edit
 //                     { source, type: "colorTarget", field, blockKey, label, rect, roles } // colour click → fill the colour panel
 //                     { source, type: "selectorAudit", broken }                        // reply to auditSelectors — stored selectors that no longer match
@@ -423,6 +423,9 @@ export function EditOverlay() {
     for (const el of fields) {
       const field = el.getAttribute("data-edit-field") ?? "";
       const mediaKind: "image" | "video" = hasCap(el, "image") ? "image" : "video";
+      // A slot stamped with BOTH caps (Tasks 4–6's four flexible slots) can hold either kind — the
+      // admin picker offers the Ảnh/Video toggle only when this is true (Task 9).
+      const flexible = hasCap(el, "image") && hasCap(el, "video");
 
       const hot = document.createElement("div");
       hot.className = "sx-edit-hotspot";
@@ -471,7 +474,7 @@ export function EditOverlay() {
         // 2) Otherwise: edit the media.
         e.preventDefault();
         e.stopPropagation();
-        window.parent.postMessage({ source: SOURCE, type: "edit", field, mediaKind }, "*");
+        window.parent.postMessage({ source: SOURCE, type: "edit", field, mediaKind, flexible }, "*");
       };
       hot.addEventListener("click", onClick);
       layer.appendChild(hot);

@@ -421,8 +421,8 @@ export function EditorShell(props: EditorShellProps) {
 
   // ── Media picker open / apply ─────────────────────────────────────────────────
   const openMediaPicker = useCallback(
-    (field: string, kind: "image" | "video") => {
-      setMediaTarget({ field, mediaKind: kind });
+    (field: string, kind: "image" | "video", flexible?: boolean) => {
+      setMediaTarget({ field, mediaKind: kind, flexible });
       setPickerOpen(true);
       void loadAssets();
     },
@@ -778,6 +778,9 @@ export function EditorShell(props: EditorShellProps) {
       const target = parseCanvasField(data.field);
       if (!target) return; // unknown block — nothing downstream has a schema for it
       const kind = data.mediaKind === "video" ? "video" : "image";
+      // Both caps on the clicked element (Tasks 4–6's four flexible slots) → the picker offers the
+      // Ảnh/Video toggle (Task 9); a single-kind slot (e.g. a logo) never sets this.
+      const flexible = data.flexible === true;
       // Selection follows the click: `field` is "<blockKey>.<path>", so the media hotspot names its
       // own block. Do this BEFORE opening the picker, so closing it leaves the Media form showing
       // the section you clicked rather than whatever was selected beforehand.
@@ -793,7 +796,7 @@ export function EditorShell(props: EditorShellProps) {
       // behind a modal, but the row is scrolled into view and is still there when the picker closes.
       flashNonce.current += 1;
       setFlashField({ name: target.path.join("."), nonce: flashNonce.current });
-      openMediaPicker(data.field, kind);
+      openMediaPicker(data.field, kind, flexible);
     } else if (data.type === "colorTarget") {
       // A colour-mode click. The preview has already done the only part that needs a DOM: it
       // resolved which element PAINTS each colour role, what that role renders as, which seed/token
