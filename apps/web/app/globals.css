@@ -1518,45 +1518,37 @@ body .w-webflow-badge {
   .sx-float-btn:hover { transform: none; }
 }
 
-/* "Vì Sao Các Thương Hiệu Chọn Chúng Tôi" — compact criteria rendering (home + About).
-   Centred head, 4-up icon grid (2-up tablet, 1-up phone), size-capped and centred per the
-   client's "thu nhỏ, căn giữa, làm gọn" ask. Cards reuse the Caladan card_service-v2 atom. */
-.sx-features-head {
+/* About page: full-width 5-cell row (video + 4 boxless criteria). Breaks out of container-large to
+   the viewport edges (the header above stays centred in the container); inner gutter keeps the cells
+   off the screen edge. Criteria are boxless — icon + title + desc, neutral ink. */
+.sx-features-row5 {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  padding: 0 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+.sx-features-cell {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 1rem;
-  margin-bottom: 2.5rem;
+  gap: 0.5rem;
 }
-.sx-features-criteria {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-  max-width: 68rem;
-  margin: 0 auto;
+.sx-features-cell .icon_service-card {
+  width: 2.5rem;
+  height: 2.5rem;
 }
-.sx-features-criteria .card_service-v2 {
-  height: 100%;
-}
-@media (max-width: 991px) {
-  .sx-features-criteria { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 479px) {
-  .sx-features-criteria { grid-template-columns: 1fr; }
-}
-
-/* About page featured workshop video — the old grid cell rendered standalone: give it a
-   determinate box (the vendor video_cover fills absolutely) and centre it above the grid. */
-.sx-features-featured {
-  max-width: 68rem;
-  margin: 0 auto 1.5rem;
-}
-.sx-features-featured .image-inner_features {
+/* the video tile needs a determinate box at 1/5 width (video_cover fills absolutely) */
+.sx-features-cell--video .image-inner_features {
   position: relative;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--_🔘-radius---general--large, 0.75rem);
 }
+@media (max-width: 991px) { .sx-features-row5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 479px) { .sx-features-row5 { grid-template-columns: 1fr; } }
 
 /* Homepage USP bar: 4 coloured items (icon-left + uppercase coloured title-right), no box, no desc.
    Per-item colour comes from the item's inline `color` (icon stroke = currentColor, title inherits). */

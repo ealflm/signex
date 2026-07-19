@@ -1,13 +1,12 @@
 // app/components/home/features-full.tsx
-// The FULL "Vì Sao Các Thương Hiệu Chọn Chúng Tôi" block — rendered on the ABOUT page: header
-// (with the quote CTA), the workshop video promoted to the featured position (the client ask:
-// "mục video Bên trong xưởng sản xuất đẩy lên đầu làm featured"), then the shared 4-criteria
-// grid. Same features block data as the homepage compact block. NO data-w-id reveals here —
-// those ids are registered under the HOME data-wf-page and would leave this invisible on /about.
+// The ABOUT-page "Vì Sao Các Thương Hiệu Chọn Chúng Tôi" block — header (eyebrow + title + CTA) in the
+// container, then ONE full-width row of 5 equal cells: the workshop video (1/5) + the 4 criteria
+// (boxless, icon + title + desc). Same features data as the homepage USP bar (shared buildCriteria).
+// NO data-w-id reveals here — those ids are home-registered and would leave this invisible on /about.
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 import { overlayCss } from "@signex/shared";
-import { FeaturesCriteria } from "@/app/components/home/features-criteria";
+import { buildCriteria } from "@/app/components/home/features-criteria-data";
 
 export function FeaturesFull({
   dict,
@@ -30,6 +29,7 @@ export function FeaturesFull({
   const featWebm = featVideo
     ? featVideo.webmUrl
     : "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm";
+  const criteria = buildCriteria(dict);
   return (
     <section className="section_features" data-sx-block="features">
       <div className="padding-global">
@@ -60,7 +60,10 @@ export function FeaturesFull({
               </a>
             </div>
           </div>
-          <div className="sx-features-featured">
+        </div>
+        {/* Full-width 5-cell row (breaks out of container-large; header above stays centred). */}
+        <div className="sx-features-row5">
+          <div className="sx-features-cell sx-features-cell--video">
             <div className="image-inner_features">
               {/* workshop tile: configurable MediaRef (features.video.media) — image OR video;
                   the elaborate Webflow background-video markup below is the VIDEO branch, kept
@@ -137,7 +140,17 @@ export function FeaturesFull({
               </p>
             </div>
           </div>
-          <FeaturesCriteria dict={dict} editable={editable} />
+          {criteria.map((c, i) => (
+            <div className="sx-features-cell" key={i}>
+              <div className="icon_service-card w-embed">{c.icon}</div>
+              <div className="text-size-large text_body-bold">
+                <span {...editableAttrs(editable, c.titleField, { text: { maxLength: 80 } })}>{c.title}</span>
+              </div>
+              <p className="tone-medium margin-0">
+                <span {...editableAttrs(editable, c.descField, { text: { maxLength: 200 } })}>{c.desc}</span>
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
