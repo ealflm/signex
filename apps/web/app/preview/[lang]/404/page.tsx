@@ -14,6 +14,7 @@ import { Footer } from "@/app/components/footer";
 import { NotFoundPreview } from "@/app/components/not-found-preview";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
+import { FloatingContact } from "@/app/components/floating-contact";
 
 async function Preview404({
   params,
@@ -36,6 +37,7 @@ async function Preview404({
       <main id="main" className="main-wrapper">
         <NotFoundPreview dict={dict} locale={locale} editable />
         <Footer dict={dict.footer} editable />
+        <FloatingContact dict={dict} />
       </main>
       <EditOverlay />
       {/* Webflow boot in this dynamic subtree (not the layout) — see preview-runtime.tsx (#418 fix). */}

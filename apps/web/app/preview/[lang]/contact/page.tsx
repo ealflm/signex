@@ -17,6 +17,7 @@ import { ContactHeroMedia } from "@/app/components/contact-hero-media";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
+import { FloatingContact } from "@/app/components/floating-contact";
 
 // Contact info-card icons (lucide), index-aligned with contactPage.cards: mail / phone / map-pin —
 // kept identical to the public page (icons aren't translated / editable).
@@ -169,6 +170,7 @@ async function PreviewContact({
           </div>
         </section>
         <Footer dict={dict.footer} editable />
+        <FloatingContact dict={dict} />
       </main>
       <EditOverlay />
       {/* Webflow boot in this dynamic subtree (not the layout) — see preview-runtime.tsx (#418 fix). */}

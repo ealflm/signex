@@ -1477,3 +1477,43 @@ body .w-webflow-badge {
 .image_contact-c {
   position: relative;
 }
+
+/* Floating quick-contact stack (call + Zalo), bottom-right on every page. z-index 900: above
+   page content, below the editor hotspot layer. Call button follows the primary-button palette
+   token (themes with the site); Zalo keeps its brand blue (hardcoded, same convention as the
+   Facebook/YouTube chips). */
+.sx-float-contact {
+  position: fixed;
+  right: 1.25rem;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.sx-float-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28);
+  transition: transform 0.15s ease;
+}
+.sx-float-btn:hover { transform: scale(1.05); }
+.sx-float-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.sx-float-btn.is-call {
+  background-color: var(--_🎨-color--tokens---button--primary--default--background, #0b1f33);
+}
+.sx-float-btn.is-zalo {
+  background-color: #0068ff;
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-float-btn { transition: none; }
+  .sx-float-btn:hover { transform: none; }
+}

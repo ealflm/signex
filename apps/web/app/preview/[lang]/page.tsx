@@ -26,6 +26,7 @@ import { Contact } from "@/app/components/home/contact";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
 import { PaletteStyle } from "@/app/components/editor/palette-style";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
+import { FloatingContact } from "@/app/components/floating-contact";
 
 async function PreviewHome({
   params,
@@ -55,6 +56,7 @@ async function PreviewHome({
           <Contact dict={dict} editable />
         </div>
         <Footer dict={dict.footer} editable />
+        <FloatingContact dict={dict} />
       </main>
       <EditOverlay />
       {/* Webflow boot lives in this dynamic subtree (not the layout) so it runs after the navbar

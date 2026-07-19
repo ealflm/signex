@@ -14,6 +14,7 @@ import { Footer } from "@/app/components/footer";
 import { AboutSections } from "@/app/components/about/about-sections";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
+import { FloatingContact } from "@/app/components/floating-contact";
 
 async function PreviewAbout({
   params,
@@ -36,6 +37,7 @@ async function PreviewAbout({
       <main id="main" className="main-wrapper">
         <AboutSections dict={dict} editable />
         <Footer dict={dict.footer} editable />
+        <FloatingContact dict={dict} />
       </main>
       <EditOverlay />
       {/* Webflow boot in this dynamic subtree (not the layout) — see preview-runtime.tsx (#418 fix). */}

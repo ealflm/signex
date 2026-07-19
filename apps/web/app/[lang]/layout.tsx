@@ -13,6 +13,7 @@ import { siteAttrs } from "@/app/lib/webflow-bundles";
 import { OrgJsonLd } from "@/app/components/org-json-ld";
 import { GoogleTagManager } from "@next/third-parties/google";
 import { Analytics } from "@/app/components/analytics";
+import { FloatingContact } from "@/app/components/floating-contact";
 
 // Verbatim from legacy/caladan/index.html <head>: the FOUC guard hides animated
 // elements until the IX2 runtime adds w-mod-ix3; the shim sets w-mod-js/w-mod-touch early.
@@ -99,6 +100,7 @@ export default async function RootLayout({
           <main id="main" className="main-wrapper">
             {children}
             <Footer dict={dict.footer} />
+            <FloatingContact dict={dict} />
           </main>
         </div>
         <OrgJsonLd dict={dict} />
