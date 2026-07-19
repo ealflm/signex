@@ -252,7 +252,7 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
           </div>
         </div>
         <div className="progressive_blur">
-          <div className="progressive-blur" style={{ ['--blur']: '3rem', ['--ratio']: '1.9' }}>
+          <div className="progressive-blur" style={{ ['--blur']: '2rem', ['--ratio']: '1.9' }}>
             <div className="progressive-blur-panel is-1" style={{ ['--i']: '6' }}>
             </div>
             <div className="progressive-blur-panel is-2" style={{ ['--i']: '5' }}>

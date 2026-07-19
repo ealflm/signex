@@ -799,6 +799,14 @@
   padding-top: 0;
   padding-bottom: var(--spacing--space-micro);
 }
+
+/* Progressive blur at the footer's bottom edge. Caladan's 8rem band reached up over the
+   shipping/payment badges once the footer tightened (wordmark removed + margins pulled in),
+   frosting the icons. Shrink it so the fade sits BELOW the badges (they're ~4rem off the
+   bottom) and keep it a subtle bottom edge, not a haze over content. */
+.master_footer .progressive_blur {
+  max-height: 3rem;
+}
 /* Lotus footer watermark: the source SVG is black; flatten + invert it to a white
    silhouette so .palm-footer's 0.12 opacity renders it as a faint light watermark on
    the deep-navy footer (the Caladan palm was cream #FFFBE9). */
