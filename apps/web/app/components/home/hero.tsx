@@ -57,7 +57,28 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                 />
               </div>
               <div className="image_hero-home-a" data-w-id="e727a2b9-869a-7dcf-ee76-b8e98292f051">
-                <img alt={t.imageAlt} className="image_cover is-parallax" loading="lazy" src={t.imageUrl || "/assets/images/69b04fc10fe79a2becaf38a8_Contemporary_Cliffside_House_at_Twilight.avif"} {...editableAttrs(editable, "hero.image", { image: true })} />
+                {t.media?.kind === "video" ? (
+                  <video
+                    autoPlay
+                    className="image_cover is-parallax"
+                    loop
+                    muted
+                    playsInline
+                    poster={t.media.posterUrl}
+                    {...editableAttrs(editable, "hero.image", { image: true, video: true })}
+                  >
+                    <source src={t.media.mp4Url} type="video/mp4" />
+                    {t.media.webmUrl && <source src={t.media.webmUrl} type="video/webm" />}
+                  </video>
+                ) : (
+                  <img
+                    alt={t.media?.kind === "image" ? t.media.alt : ""}
+                    className="image_cover is-parallax"
+                    loading="lazy"
+                    src={(t.media?.kind === "image" && t.media.url) || "/assets/images/69b04fc10fe79a2becaf38a8_Contemporary_Cliffside_House_at_Twilight.avif"}
+                    {...editableAttrs(editable, "hero.image", { image: true, video: true })}
+                  />
+                )}
                 <div className="overlay_home-b-hero">
                 </div>
               </div>
