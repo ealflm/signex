@@ -476,7 +476,7 @@ export function EditorShell(props: EditorShellProps) {
   }, [mediaTarget, workingBlockData]);
 
   const applyMediaRef = useCallback(
-    async (ref: MediaRef, overlay?: Overlay) => {
+    async ({ media, overlay }: { media?: MediaRef; overlay?: Overlay }) => {
       if (!mediaTarget) return;
       const [blockKey, ...rest] = mediaTarget.field.split(".") as [BlockKey, ...string[]];
       const path = rest.join(".");
@@ -485,67 +485,111 @@ export function EditorShell(props: EditorShellProps) {
       const overlayPath = [...rest.slice(0, -1), "overlay"].join(".");
       const overlayField = [blockKey, ...rest.slice(0, -1), "overlay"].join(".");
 
-      // Ensure a just-uploaded asset is resolvable to a URL for the live swap.
-      let list = pickerAssets;
-      const need = ref.type === "image" ? ref.assetId : ref.posterAssetId;
-      if (!list.find((a) => a.id === need)) list = await loadAssets();
-      const find = (id: string | undefined) =>
-        id ? list.find((a) => a.id === id)?.url : undefined;
-
       const base =
         pending.get(blockKey) ??
         structuredClone(
           (baseRef.current.blocks as unknown as Record<string, Record<string, unknown>>)[blockKey] ??
             {},
         );
-      const existing = (getPath(base, path) as Record<string, unknown> | undefined) ?? {};
 
-      // Clean-replace, never merge: buildMediaValue returns EXACTLY the target-kind shape, so an
-      // image↔video switch can never leave a hybrid (stray assetId on a video, stray poster/mp4 on
-      // an image) for MediaRef to silently misread on the next load (see media-apply.ts).
-      const nextValue = buildMediaValue(ref, existing);
-      let preview: Omit<MediaPreview, "field">;
-      if (ref.type === "image") {
-        preview = { kind: "image", url: find(ref.assetId) };
-      } else {
-        preview = {
-          kind: "video",
-          posterUrl: find(ref.posterAssetId),
-          mp4Url: find(ref.mp4AssetId),
-          webmUrl: find(ref.webmAssetId),
-        };
+      // `media` absent → keep the current media, this whole branch is skipped, and `mediaEntry`
+      // stays null so neither `mediaPreview` nor the live edits below mention a media change.
+      let next = base;
+      let mediaEntry: MediaPreview | null = null;
+      if (media) {
+        // Ensure a just-uploaded asset is resolvable to a URL for the live swap.
+        let list = pickerAssets;
+        const need = media.type === "image" ? media.assetId : media.posterAssetId;
+        if (!list.find((a) => a.id === need)) list = await loadAssets();
+        const find = (id: string | undefined) =>
+          id ? list.find((a) => a.id === id)?.url : undefined;
+
+        const existing = (getPath(base, path) as Record<string, unknown> | undefined) ?? {};
+
+        // Clean-replace, never merge: buildMediaValue returns EXACTLY the target-kind shape, so an
+        // image↔video switch can never leave a hybrid (stray assetId on a video, stray poster/mp4 on
+        // an image) for MediaRef to silently misread on the next load (see media-apply.ts).
+        const nextValue = buildMediaValue(media, existing);
+        let preview: Omit<MediaPreview, "field">;
+        if (media.type === "image") {
+          preview = { kind: "image", url: find(media.assetId) };
+        } else {
+          preview = {
+            kind: "video",
+            posterUrl: find(media.posterAssetId),
+            mp4Url: find(media.mp4AssetId),
+            webmUrl: find(media.webmAssetId),
+          };
+        }
+        next = setPath(next, path, nextValue);
+        mediaEntry = { field: mediaTarget.field, ...preview };
+      }
+      // Flexible slots also own an overlay: write it when present, DELETE the key when cleared —
+      // "absent = transparent" stays single-valued (never a stored `overlay: undefined`). This runs
+      // whenever the slot IS flexible regardless of `media` — an overlay-only Apply is exactly
+      // `media` absent with this branch still firing.
+      if (mediaTarget.flexible) {
+        next = overlay ? setPath(next, overlayPath, overlay) : deletePath(next, overlayPath);
+      }
+
+      if (!mediaEntry && !mediaTarget.flexible) {
+        // Neither a media change nor a (flexible) overlay write — nothing to commit. The dialog's
+        // Apply button shouldn't allow this, but bail rather than touch `pending` or post an empty
+        // edits array.
+        setPickerOpen(false);
+        setMediaTarget(null);
+        return;
       }
 
       setPending((prev) => {
         const n = new Map(prev);
-        let next = setPath(base, path, nextValue);
-        // Flexible slots also own an overlay: write it when present, DELETE the key when cleared —
-        // "absent = transparent" stays single-valued (never a stored `overlay: undefined`).
-        if (mediaTarget.flexible) {
-          next = overlay ? setPath(next, overlayPath, overlay) : deletePath(next, overlayPath);
-        }
         n.set(blockKey, next);
         return n;
       });
-      const entry: MediaPreview = { field: mediaTarget.field, ...preview };
-      setMediaPreview((prev) => {
-        const n = new Map(prev);
-        n.set(mediaTarget.field, entry);
-        return n;
-      });
-      // Second live edit for flexible slots: re-paint the canvas's [data-sx-overlay] background
-      // straight away, same as the media swap above — Save/publish persist it, this makes it visible
-      // NOW. overlayCss(undefined) resolves to {} (no backgroundColor/backgroundImage), which the
-      // overlay's applyEdits handler (apps/web edit-overlay.tsx) reads as "clear the inline style".
-      const edits: ApplyEdit[] = [entry];
+      if (mediaEntry) {
+        const entry = mediaEntry;
+        setMediaPreview((prev) => {
+          const n = new Map(prev);
+          n.set(mediaTarget.field, entry);
+          return n;
+        });
+      }
+      // Live edits for whatever actually changed: the media swap (if any) + the overlay repaint (if
+      // the slot is flexible) — Save/publish persist it, this makes it visible NOW. overlayCss
+      // (undefined) resolves to {} (no backgroundColor/backgroundImage), which the overlay's
+      // applyEdits handler (apps/web edit-overlay.tsx) reads as "clear the inline style".
+      const edits: ApplyEdit[] = [];
+      if (mediaEntry) edits.push(mediaEntry);
       if (mediaTarget.flexible) {
         edits.push({ field: overlayField, kind: "overlay", css: overlayCss(overlay) });
       }
-      bridge.postApplyEdits(edits);
+      if (edits.length > 0) bridge.postApplyEdits(edits);
       setPickerOpen(false);
       setMediaTarget(null);
     },
     [mediaTarget, pickerAssets, pending, loadAssets, bridge],
+  );
+
+  // Rate-limits the "Lớp phủ" section's live-drag preview to one postMessage per animation frame:
+  // a colour/opacity/angle <input type="range"> fires onChange many times per drag, and posting
+  // every one of them would flood the bridge with edits the browser hasn't even painted between.
+  // Coalescing to the LATEST value per frame (cancel the pending frame, schedule a fresh one) keeps
+  // the canvas visually in sync with the drag without saturating postMessage.
+  const overlayRafRef = useRef<number | null>(null);
+  const previewOverlay = useCallback(
+    (overlay: Overlay | undefined) => {
+      // Only a flexible target has a live overlay field to repaint — mirrors the `if
+      // (mediaTarget.flexible)` guard in applyMediaRef, and guards the split below against a target
+      // that closed mid-drag (mediaTarget null) same as every other mediaTarget-reading callback.
+      if (!mediaTarget?.flexible) return;
+      const [blockKey, ...rest] = mediaTarget.field.split(".") as [BlockKey, ...string[]];
+      const overlayField = [blockKey, ...rest.slice(0, -1), "overlay"].join(".");
+      if (overlayRafRef.current != null) cancelAnimationFrame(overlayRafRef.current);
+      overlayRafRef.current = requestAnimationFrame(() => {
+        bridge.postApplyEdits([{ field: overlayField, kind: "overlay", css: overlayCss(overlay) }]);
+      });
+    },
+    [mediaTarget, bridge],
   );
 
   // ── Step 3: selection → panel + (page-backed) iframe navigation ──────────────
@@ -1213,6 +1257,7 @@ export function EditorShell(props: EditorShellProps) {
         flexible={mediaTarget?.flexible ?? false}
         defaultKind={pickerDefaultKind(storedMediaKind, mediaTarget?.mediaKind ?? "image")}
         initialOverlay={initialOverlay}
+        onOverlayPreview={previewOverlay}
         onAssetsRefresh={() => void loadAssets()}
         onApply={applyMediaRef}
         onOpenChange={(o) => {

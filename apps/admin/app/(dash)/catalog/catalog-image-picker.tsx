@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { ImageOff, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import type { Overlay } from "@signex/shared";
 import {
   MediaPickerDialog,
   type AssetRow,
@@ -71,19 +72,23 @@ export function CatalogImagePicker({
   }
 
   const onApply = useCallback(
-    async (ref: MediaRef) => {
-      if (ref.type !== "image") return;
-      setSelectedId(ref.assetId);
+    // This picker never renders `flexible` (see `dialog` below), so every real Apply click here
+    // carries a `media`; the parameter only ALLOWS it to be absent because MediaPickerDialog's
+    // onApply contract is shared with the flexible, overlay-aware editor slots (see
+    // media-picker-dialog.tsx). `overlay` is likewise always undefined for this non-flexible target.
+    async ({ media }: { media?: MediaRef; overlay?: Overlay }) => {
+      if (!media || media.type !== "image") return;
+      setSelectedId(media.assetId);
       setOpen(false);
       // Resolve the preview URL. A freshly UPLOADED asset isn't in the current
       // list yet, so refetch (awaited) to pick up its URL.
-      const known = assets.find((a) => a.id === ref.assetId);
+      const known = assets.find((a) => a.id === media.assetId);
       if (known) {
         setSelectedUrl(known.url);
         return;
       }
       const fresh = await loadAssets();
-      setSelectedUrl(fresh.find((a) => a.id === ref.assetId)?.url ?? null);
+      setSelectedUrl(fresh.find((a) => a.id === media.assetId)?.url ?? null);
     },
     [assets, loadAssets],
   );

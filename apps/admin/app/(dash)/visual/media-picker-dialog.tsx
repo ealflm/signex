@@ -9,9 +9,14 @@
 //
 // OVERLAY. The four flexible slots also carry an optional colour/gradient wash (@signex/shared's
 // Overlay). FlexibleBody owns that as local state (a "Lớp phủ" section below its Ảnh/Video toggle)
-// and passes it as onApply's SECOND, optional argument — never a payload object, so a caller typed
-// `(ref: MediaRef) => void` (any non-flexible picker) stays source-compatible with no changes.
-// ImageBody/VideoBody know nothing about it; they only ever call `onApply(ref)`.
+// and threads it into onApply's payload — `{ media?: MediaRef; overlay?: Overlay }`. `media` absent
+// means "keep the current media, only the overlay changed", which is what makes an overlay-only
+// edit possible: Apply no longer requires a freshly picked image/video. Every overlay control ALSO
+// calls the optional `onOverlayPreview` prop with that same next value, so the actual preview page
+// updates live as the user drags; Cancel calls it once more with `initialOverlay` to revert.
+// ImageBody/VideoBody carry the working `overlay` and a `flexible` flag only to shape their Apply
+// button/payload — the non-flexible standalone renders never receive either, so their onApply
+// payload always carries `overlay: undefined`, same net effect as before this payload existed.
 //
 // Uploads (Upload tab + the video sub-pickers) reuse uploadAsset() (presign → PUT → confirm,
 // content-addressed dedup). "Use full image" and SVGs upload the original bytes so they dedup
@@ -75,11 +80,11 @@ interface Props {
   assetsLoading: boolean;
   saving: boolean; // the controller's applyRef PUT is in flight
   onAssetsRefresh: () => void;
-  /** `overlay` is the working value from the "Lớp phủ" section (undefined = none picked). Only
-   *  ever populated when `flexible` — FlexibleBody is the sole caller that passes a second
-   *  argument; the non-flexible ImageBody/VideoBody paths call `onApply(ref)` with none, which
-   *  this signature accepts unchanged (the parameter is optional). */
-  onApply: (ref: MediaRef, overlay?: Overlay) => void;
+  /** `media` present → change the media; absent → keep the current media unchanged (an
+   *  overlay-only Apply). `overlay` is only ever non-undefined when `flexible` — FlexibleBody is
+   *  the sole caller that populates it; the non-flexible ImageBody/VideoBody paths always send
+   *  `overlay: undefined`. */
+  onApply: (payload: { media?: MediaRef; overlay?: Overlay }) => void;
   onOpenChange: (open: boolean) => void;
   /** True when the target slot accepts EITHER kind (Task 7's overlay flag, threaded through
    *  editor-shell) — renders the Ảnh/Video toggle above the body. Undefined/false renders exactly
@@ -92,6 +97,11 @@ interface Props {
    *  for the "Lớp phủ" section. Undefined defaults the section to "Không" (no overlay). Ignored
    *  when `flexible` is false (the section never renders then). */
   initialOverlay?: Overlay;
+  /** Live-preview sink for the "Lớp phủ" section, when `flexible` — called with the working
+   *  overlay on every control change (drag included) so the ACTUAL preview page updates as-you-go,
+   *  and once more with `initialOverlay` on Cancel to put it back. Threaded straight to
+   *  FlexibleBody; irrelevant (never invoked) when `flexible` is false. */
+  onOverlayPreview?: (overlay: Overlay | undefined) => void;
 }
 
 const IMAGE_KINDS = ["IMAGE", "SVG"];
@@ -135,14 +145,25 @@ function ImageBody({
   onAssetsRefresh,
   onApply,
   onCancel,
+  overlay,
+  flexible,
 }: {
   target: EditTarget;
   assets: AssetRow[];
   assetsLoading: boolean;
   saving: boolean;
   onAssetsRefresh: () => void;
-  onApply: (ref: MediaRef) => void;
+  onApply: (payload: { media?: MediaRef; overlay?: Overlay }) => void;
   onCancel: () => void;
+  /** The FlexibleBody-owned working "Lớp phủ" value, along for the ride on every Apply. Undefined
+   *  outside a flexible body (the non-flexible standalone render never passes it), so Apply then
+   *  always sends `overlay: undefined` — the exact pre-existing payload, just reshaped. */
+  overlay?: Overlay;
+  /** True when rendered inside FlexibleBody. A Library click SELECTS instead of immediately
+   *  applying (Apply is what commits, so the user can still touch the overlay first), and Apply is
+   *  enabled with nothing selected (an overlay-only commit). Undefined/false reproduces the exact
+   *  pre-existing behavior. */
+  flexible?: boolean;
 }) {
   const [tab, setTab] = useState("library");
   const [selected, setSelected] = useState<AssetRow | null>(null);
@@ -170,7 +191,7 @@ function ImageBody({
     try {
       const asset = await uploadAsset(toUpload, setPhase);
       onAssetsRefresh();
-      onApply({ type: "image", assetId: asset.id }); // controller saves + closes on success
+      onApply({ media: { type: "image", assetId: asset.id }, overlay }); // controller saves + closes on success
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
@@ -212,7 +233,14 @@ function ImageBody({
             loading={assetsLoading}
             selectedId={selected?.id ?? ""}
             onSelect={setSelected}
-            onActivate={(a) => !locked && onApply({ type: "image", assetId: a.id })}
+            onActivate={(a) => {
+              if (locked) return;
+              // Flexible: a click SELECTS only — Apply is what commits, so a still-unsaved overlay
+              // tweak isn't discarded by a double-click's immediate-apply shortcut. Non-flexible
+              // keeps that shortcut, unchanged.
+              if (flexible) setSelected(a);
+              else onApply({ media: { type: "image", assetId: a.id }, overlay });
+            }}
             emptySlot={
               <button
                 type="button"
@@ -225,12 +253,29 @@ function ImageBody({
             }
           />
         </div>
-        <PickerFooter helper={selected ? selected.originalName : "Pick an image, or switch to Upload."}>
+        <PickerFooter
+          helper={
+            selected
+              ? selected.originalName
+              : flexible
+                ? "Chọn ảnh, hoặc chỉ chỉnh lớp phủ rồi Áp dụng."
+                : "Pick an image, or switch to Upload."
+          }
+        >
           <Button type="button" variant="ghost" onClick={onCancel} disabled={locked}>
             Cancel
           </Button>
-          <Button type="button" disabled={!selected || locked} onClick={() => selected && onApply({ type: "image", assetId: selected.id })}>
-            {saving ? "Saving…" : "Use image"}
+          <Button
+            type="button"
+            disabled={flexible ? locked : !selected || locked}
+            onClick={() =>
+              onApply({
+                media: selected ? { type: "image", assetId: selected.id } : undefined,
+                overlay,
+              })
+            }
+          >
+            {saving ? "Saving…" : "Áp dụng"}
           </Button>
         </PickerFooter>
       </TabsContent>
@@ -419,12 +464,20 @@ function VideoBody({
   onAssetsRefresh,
   onApply,
   onCancel,
+  overlay,
+  flexible,
 }: {
   assets: AssetRow[];
   saving: boolean;
   onAssetsRefresh: () => void;
-  onApply: (ref: MediaRef) => void;
+  onApply: (payload: { media?: MediaRef; overlay?: Overlay }) => void;
   onCancel: () => void;
+  /** See ImageBody's identical prop — the same working "Lớp phủ" value, along for the ride. */
+  overlay?: Overlay;
+  /** See ImageBody's identical prop. Video has no "select then Apply" step to gate — poster/mp4/
+   *  webm are already picked via the sub-pickers below — so this only relaxes the Apply button's
+   *  disabled rule, allowing an overlay-only commit before a complete video is chosen. */
+  flexible?: boolean;
 }) {
   const [posterId, setPosterId] = useState("");
   const [mp4Id, setMp4Id] = useState("");
@@ -450,10 +503,22 @@ function VideoBody({
         </Button>
         <Button
           type="button"
-          disabled={!canApply || saving}
-          onClick={() => onApply({ type: "video", posterAssetId: posterId, mp4AssetId: mp4Id, ...(webmId ? { webmAssetId: webmId } : {}) })}
+          disabled={flexible ? saving : !canApply || saving}
+          onClick={() =>
+            onApply({
+              media: canApply
+                ? {
+                    type: "video",
+                    posterAssetId: posterId,
+                    mp4AssetId: mp4Id,
+                    ...(webmId ? { webmAssetId: webmId } : {}),
+                  }
+                : undefined,
+              overlay,
+            })
+          }
         >
-          {saving ? "Saving…" : "Use video"}
+          {saving ? "Saving…" : "Áp dụng"}
         </Button>
       </PickerFooter>
     </div>
@@ -492,8 +557,11 @@ function OverlayPreview({ overlay }: { overlay: Overlay | undefined }) {
 // Same key also owns the "Lớp phủ" overlay section's `overlay` state — the same field-change reset
 // applies (a fresh field starts from ITS OWN `initialOverlay`, never the previous field's edits),
 // with no effect needed since the reset is really the whole component remounting under a new key.
-// `overlay` rides along on Apply as onApply's second argument (see applyWithOverlay below); it is
-// never written anywhere until then, same as `kind`.
+// `overlay` rides along on Apply inside onApply's payload (`{ media?, overlay }`, passed straight
+// through to ImageBody/VideoBody's own `overlay` prop) — it is never WRITTEN (saved) anywhere until
+// then, same as `kind`. It IS, however, live-PREVIEWED before that: every control below also calls
+// `onOverlayPreview` with the same next value, and Cancel calls it once more with `initialOverlay`
+// to put the actual preview page back the way it found it.
 // ---------------------------------------------------------------------------
 function FlexibleBody({
   target,
@@ -505,6 +573,7 @@ function FlexibleBody({
   onApply,
   onCancel,
   initialOverlay,
+  onOverlayPreview,
 }: {
   target: EditTarget;
   defaultKind: "image" | "video";
@@ -512,15 +581,21 @@ function FlexibleBody({
   assetsLoading: boolean;
   saving: boolean;
   onAssetsRefresh: () => void;
-  onApply: (ref: MediaRef, overlay?: Overlay) => void;
+  onApply: (payload: { media?: MediaRef; overlay?: Overlay }) => void;
   onCancel: () => void;
   initialOverlay?: Overlay;
+  onOverlayPreview?: (overlay: Overlay | undefined) => void;
 }) {
   const [kind, setKind] = useState<"image" | "video">(defaultKind);
   const [overlay, setOverlay] = useState<Overlay | undefined>(initialOverlay);
-  // Injects the CURRENT overlay into every onApply call this body's children make, without either
-  // of them knowing overlay exists — ImageBody/VideoBody keep calling `onApply(ref)` unchanged.
-  const applyWithOverlay = (ref: MediaRef) => onApply(ref, overlay);
+  // Cancel must undo the live preview too, not only close the dialog — otherwise a user who dragged
+  // the overlay around and then backed out would leave the ACTUAL preview page showing their
+  // never-applied experiment. Reverting to `initialOverlay` (the field's last applied value, i.e.
+  // what the canvas showed before this session touched onOverlayPreview) puts it back as found.
+  const cancelRevert = () => {
+    onOverlayPreview?.(initialOverlay);
+    onCancel();
+  };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-0">
       <div className="px-6 pb-3">
@@ -558,9 +633,11 @@ function FlexibleBody({
         </div>
       </div>
 
-      {/* Lớp phủ — an optional colour/gradient wash over whichever media is chosen below. Purely
-          local state (see the section comment above FlexibleBody); it travels up only via
-          applyWithOverlay, at the same moment the chosen MediaRef does. */}
+      {/* Lớp phủ — an optional colour/gradient wash over whichever media is chosen below. Local
+          state (see the section comment above FlexibleBody) that ALSO streams live to the actual
+          preview page via onOverlayPreview on every change below, while only reaching `pending`
+          (the saved value) once, on Apply — inside onApply's payload, alongside whichever MediaRef
+          (or none) the user chose. */}
       <div className="mx-6 mb-3 flex flex-col gap-3 rounded-md border border-border p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-medium text-foreground">Lớp phủ</span>
@@ -572,7 +649,11 @@ function FlexibleBody({
             <button
               type="button"
               aria-pressed={overlay === undefined}
-              onClick={() => setOverlay(setOverlayKind(overlay, "none"))}
+              onClick={() => {
+                const next = setOverlayKind(overlay, "none");
+                setOverlay(next);
+                onOverlayPreview?.(next);
+              }}
               className={cn(
                 "rounded px-2.5 py-1 text-xs font-medium transition-colors",
                 overlay === undefined
@@ -585,7 +666,11 @@ function FlexibleBody({
             <button
               type="button"
               aria-pressed={overlay?.kind === "solid"}
-              onClick={() => setOverlay(setOverlayKind(overlay, "solid"))}
+              onClick={() => {
+                const next = setOverlayKind(overlay, "solid");
+                setOverlay(next);
+                onOverlayPreview?.(next);
+              }}
               className={cn(
                 "rounded px-2.5 py-1 text-xs font-medium transition-colors",
                 overlay?.kind === "solid"
@@ -598,7 +683,11 @@ function FlexibleBody({
             <button
               type="button"
               aria-pressed={overlay?.kind === "gradient"}
-              onClick={() => setOverlay(setOverlayKind(overlay, "gradient"))}
+              onClick={() => {
+                const next = setOverlayKind(overlay, "gradient");
+                setOverlay(next);
+                onOverlayPreview?.(next);
+              }}
               className={cn(
                 "rounded px-2.5 py-1 text-xs font-medium transition-colors",
                 overlay?.kind === "gradient"
@@ -616,11 +705,12 @@ function FlexibleBody({
             <input
               type="color"
               value={overlay.fill.color}
-              onChange={(e) =>
-                setOverlay((o) =>
-                  o?.kind === "solid" ? { ...o, fill: { ...o.fill, color: e.target.value } } : o,
-                )
-              }
+              onChange={(e) => {
+                if (overlay?.kind !== "solid") return;
+                const next: Overlay = { ...overlay, fill: { ...overlay.fill, color: e.target.value } };
+                setOverlay(next);
+                onOverlayPreview?.(next);
+              }}
               aria-label="Màu lớp phủ"
               className="h-9 w-9 shrink-0 cursor-pointer rounded-md border border-input p-0.5"
             />
@@ -630,13 +720,15 @@ function FlexibleBody({
               min={0}
               max={100}
               value={overlay.fill.opacity}
-              onChange={(e) =>
-                setOverlay((o) =>
-                  o?.kind === "solid"
-                    ? { ...o, fill: { ...o.fill, opacity: Number(e.target.value) } }
-                    : o,
-                )
-              }
+              onChange={(e) => {
+                if (overlay?.kind !== "solid") return;
+                const next: Overlay = {
+                  ...overlay,
+                  fill: { ...overlay.fill, opacity: Number(e.target.value) },
+                };
+                setOverlay(next);
+                onOverlayPreview?.(next);
+              }}
               aria-label="Độ mờ lớp phủ"
               className="min-w-0 flex-1"
             />
@@ -655,11 +747,12 @@ function FlexibleBody({
                 min={0}
                 max={360}
                 value={overlay.angle}
-                onChange={(e) =>
-                  setOverlay((o) =>
-                    o?.kind === "gradient" ? { ...o, angle: Number(e.target.value) } : o,
-                  )
-                }
+                onChange={(e) => {
+                  if (overlay?.kind !== "gradient") return;
+                  const next: Overlay = { ...overlay, angle: Number(e.target.value) };
+                  setOverlay(next);
+                  onOverlayPreview?.(next);
+                }}
                 aria-label="Góc gradient"
                 className="min-w-0 flex-1"
               />
@@ -677,18 +770,17 @@ function FlexibleBody({
                   <input
                     type="color"
                     value={stop.color}
-                    onChange={(e) =>
-                      setOverlay((o) =>
-                        o?.kind === "gradient"
-                          ? {
-                              ...o,
-                              stops: o.stops.map((s, idx) =>
-                                idx === i ? { ...s, color: e.target.value } : s,
-                              ),
-                            }
-                          : o,
-                      )
-                    }
+                    onChange={(e) => {
+                      if (overlay?.kind !== "gradient") return;
+                      const next: Overlay = {
+                        ...overlay,
+                        stops: overlay.stops.map((s, idx) =>
+                          idx === i ? { ...s, color: e.target.value } : s,
+                        ),
+                      };
+                      setOverlay(next);
+                      onOverlayPreview?.(next);
+                    }}
                     aria-label={`Màu điểm dừng ${i + 1}`}
                     className="h-8 w-8 shrink-0 cursor-pointer rounded-md border border-input p-0.5"
                   />
@@ -700,18 +792,17 @@ function FlexibleBody({
                         min={0}
                         max={100}
                         value={stop.opacity}
-                        onChange={(e) =>
-                          setOverlay((o) =>
-                            o?.kind === "gradient"
-                              ? {
-                                  ...o,
-                                  stops: o.stops.map((s, idx) =>
-                                    idx === i ? { ...s, opacity: Number(e.target.value) } : s,
-                                  ),
-                                }
-                              : o,
-                          )
-                        }
+                        onChange={(e) => {
+                          if (overlay?.kind !== "gradient") return;
+                          const next: Overlay = {
+                            ...overlay,
+                            stops: overlay.stops.map((s, idx) =>
+                              idx === i ? { ...s, opacity: Number(e.target.value) } : s,
+                            ),
+                          };
+                          setOverlay(next);
+                          onOverlayPreview?.(next);
+                        }}
                         aria-label={`Độ mờ điểm dừng ${i + 1}`}
                         className="min-w-0 flex-1"
                       />
@@ -726,18 +817,17 @@ function FlexibleBody({
                         min={0}
                         max={100}
                         value={stop.pos}
-                        onChange={(e) =>
-                          setOverlay((o) =>
-                            o?.kind === "gradient"
-                              ? {
-                                  ...o,
-                                  stops: o.stops.map((s, idx) =>
-                                    idx === i ? { ...s, pos: Number(e.target.value) } : s,
-                                  ),
-                                }
-                              : o,
-                          )
-                        }
+                        onChange={(e) => {
+                          if (overlay?.kind !== "gradient") return;
+                          const next: Overlay = {
+                            ...overlay,
+                            stops: overlay.stops.map((s, idx) =>
+                              idx === i ? { ...s, pos: Number(e.target.value) } : s,
+                            ),
+                          };
+                          setOverlay(next);
+                          onOverlayPreview?.(next);
+                        }}
                         aria-label={`Vị trí điểm dừng ${i + 1}`}
                         className="min-w-0 flex-1"
                       />
@@ -751,7 +841,11 @@ function FlexibleBody({
                     variant="ghost"
                     size="sm"
                     disabled={overlay.stops.length <= 2}
-                    onClick={() => setOverlay((o) => removeStop(o, i))}
+                    onClick={() => {
+                      const next = removeStop(overlay, i);
+                      setOverlay(next);
+                      onOverlayPreview?.(next);
+                    }}
                     aria-label={`Xoá điểm dừng ${i + 1}`}
                     className="shrink-0 text-muted-foreground"
                   >
@@ -766,7 +860,11 @@ function FlexibleBody({
               variant="outline"
               size="sm"
               disabled={overlay.stops.length >= 4}
-              onClick={() => setOverlay((o) => addStop(o))}
+              onClick={() => {
+                const next = addStop(overlay);
+                setOverlay(next);
+                onOverlayPreview?.(next);
+              }}
               className="self-start"
             >
               + Thêm điểm
@@ -782,8 +880,10 @@ function FlexibleBody({
           assets={assets}
           saving={saving}
           onAssetsRefresh={onAssetsRefresh}
-          onApply={applyWithOverlay}
-          onCancel={onCancel}
+          onApply={onApply}
+          onCancel={cancelRevert}
+          overlay={overlay}
+          flexible
         />
       ) : (
         <ImageBody
@@ -792,8 +892,10 @@ function FlexibleBody({
           assetsLoading={assetsLoading}
           saving={saving}
           onAssetsRefresh={onAssetsRefresh}
-          onApply={applyWithOverlay}
-          onCancel={onCancel}
+          onApply={onApply}
+          onCancel={cancelRevert}
+          overlay={overlay}
+          flexible
         />
       )}
     </div>
@@ -815,6 +917,7 @@ export function MediaPickerDialog({
   flexible = false,
   defaultKind,
   initialOverlay,
+  onOverlayPreview,
 }: Props) {
   const isVideo = target?.mediaKind === "video";
   const friendly = target ? fieldLabel(target.field) : null;
@@ -855,6 +958,7 @@ export function MediaPickerDialog({
               onApply={onApply}
               onCancel={() => onOpenChange(false)}
               initialOverlay={initialOverlay}
+              onOverlayPreview={onOverlayPreview}
             />
           ) : isVideo ? (
             <VideoBody
