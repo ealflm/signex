@@ -19,18 +19,19 @@ import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 export function Features({ dict, editable = false }: { dict: Dictionary["features"]; editable?: boolean }) {
   const t = dict;
 
-  // Workshop video: configurable VideoRef (features.video.media). All-or-nothing fallback —
-  // when a custom mp4 is attached, emit webm only if the editor provided one; the stock webm
-  // belongs solely to the full literal fallback (never spliced next to a custom mp4).
-  const hasFeatureVideo = !!t.videoMedia.mp4Url;
+  // Workshop video: configurable MediaRef (features.video.media) — image OR video. All-or-nothing
+  // fallback — when a custom mp4 is attached, emit webm only if the editor provided one; the stock
+  // webm belongs solely to the full literal fallback (never spliced next to a custom mp4).
+  const featVideo = t.videoMedia?.kind === "video" ? t.videoMedia : null;
+  const hasFeatureVideo = !!featVideo;
   const featPoster =
-    t.videoMedia.posterUrl ||
+    featVideo?.posterUrl ||
     "/assets/images/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_poster.0000000.jpg";
   const featMp4 =
-    t.videoMedia.mp4Url ||
+    featVideo?.mp4Url ||
     "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_mp4.mp4";
-  const featWebm = hasFeatureVideo
-    ? t.videoMedia.webmUrl
+  const featWebm = featVideo
+    ? featVideo.webmUrl
     : "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm";
 
   return (
@@ -69,9 +70,30 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
               {/* ① Featured value — Consistent Production Quality */}
               <div className="image_features">
                 <div className="image-inner_features" data-w-id="d354a09c-1c94-8247-3fc0-60e3f5ed678a">
-                  {/* featured tile image: now a configurable AssetRef (features.featured.image);
-                      falls back to the original literal still when no asset is attached. */}
-                  <img alt={t.featured.imageAlt || "Pexels saeb mahajna 14125913 6297105"} className="image_cover is-parallax" loading="lazy" src={t.featured.imageUrl || "/assets/images/69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif"} {...editableAttrs(editable, "features.featured.image", { image: true })} />
+                  {/* featured tile: now a configurable MediaRef (features.featured.image) — image OR
+                      video; falls back to the original literal still when no asset is attached. */}
+                  {t.featured.media?.kind === "video" ? (
+                    <video
+                      autoPlay
+                      className="image_cover is-parallax"
+                      loop
+                      muted
+                      playsInline
+                      poster={t.featured.media.posterUrl}
+                      {...editableAttrs(editable, "features.featured.image", { image: true, video: true })}
+                    >
+                      <source src={t.featured.media.mp4Url} type="video/mp4" />
+                      {t.featured.media.webmUrl && <source src={t.featured.media.webmUrl} type="video/webm" />}
+                    </video>
+                  ) : (
+                    <img
+                      alt={(t.featured.media?.kind === "image" && t.featured.media.alt) || "Pexels saeb mahajna 14125913 6297105"}
+                      className="image_cover is-parallax"
+                      loading="lazy"
+                      src={(t.featured.media?.kind === "image" && t.featured.media.url) || "/assets/images/69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif"}
+                      {...editableAttrs(editable, "features.featured.image", { image: true, video: true })}
+                    />
+                  )}
                   <div className="overlay_dark-16">
                   </div>
                 </div>
@@ -166,8 +188,19 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 </div>
               </div>
               {/* Complementary workshop/process video (added content) */}
-              <div className="video_features" id="w-node-_7592271b-69fa-3faa-e7e1-e8f1255559a7-5e872ff7" {...editableAttrs(editable, "features.video.media", { video: true })}>
+              <div className="video_features" id="w-node-_7592271b-69fa-3faa-e7e1-e8f1255559a7-5e872ff7">
                 <div className="image-inner_features" data-w-id="7592271b-69fa-3faa-e7e1-e8f1255559a8">
+                  {/* workshop tile: configurable MediaRef (features.video.media) — image OR video;
+                      the elaborate Webflow background-video markup below is the VIDEO branch, kept
+                      verbatim (falls back to the stock clip when unset). */}
+                  {t.videoMedia?.kind === "image" ? (
+                    <img
+                      alt={t.videoMedia.alt}
+                      className="image_cover"
+                      src={t.videoMedia.url}
+                      {...editableAttrs(editable, "features.video.media", { image: true, video: true })}
+                    />
+                  ) : (
                   <div
                     className="video_cover w-background-video w-background-video-atom"
                     data-autoplay="true"
@@ -175,6 +208,7 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                     data-poster-url={featPoster}
                     data-video-urls={[featMp4, featWebm].filter(Boolean).join(",")}
                     data-wf-ignore="true"
+                    {...editableAttrs(editable, "features.video.media", { image: true, video: true })}
                   >
                     <video autoPlay data-object-fit="cover" data-wf-ignore="true" id="40581aae-5301-9d32-a680-8d7bb2717107-video" loop muted playsInline style={{ backgroundImage: `url("${featPoster}")` }}>
                       <source data-wf-ignore="true" src={featMp4} />
@@ -219,6 +253,7 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                       </button>
                     </div>
                   </div>
+                  )}
                   <div className="overlay_dark-16">
                   </div>
                 </div>
