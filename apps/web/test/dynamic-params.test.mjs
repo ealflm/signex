@@ -127,7 +127,7 @@ test("marketing tags come from the GTM container constant, not the theme meta bl
 const SECTION_ROOT_FILES = [
   // [pathPartsFromApp, blockKey, expectedTopLevelSectionCount]
   [["components", "home", "hero.tsx"], "hero", 1],
-  [["components", "home", "features.tsx"], "features", 1],
+  [["components", "home", "features-compact.tsx"], "features", 1],
   [["components", "home", "home-about.tsx"], "about", 1],
   [["components", "home", "product-categories.tsx"], "productsHeader", 1],
   [["components", "footer.tsx"], "footer", 1],

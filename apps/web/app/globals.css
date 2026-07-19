@@ -1517,3 +1517,31 @@ body .w-webflow-badge {
   .sx-float-btn { transition: none; }
   .sx-float-btn:hover { transform: none; }
 }
+
+/* "Vì Sao Các Thương Hiệu Chọn Chúng Tôi" — compact criteria rendering (home + About).
+   Centred head, 4-up icon grid (2-up tablet, 1-up phone), size-capped and centred per the
+   client's "thu nhỏ, căn giữa, làm gọn" ask. Cards reuse the Caladan card_service-v2 atom. */
+.sx-features-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+.sx-features-criteria {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  max-width: 68rem;
+  margin: 0 auto;
+}
+.sx-features-criteria .card_service-v2 {
+  height: 100%;
+}
+@media (max-width: 991px) {
+  .sx-features-criteria { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 479px) {
+  .sx-features-criteria { grid-template-columns: 1fr; }
+}

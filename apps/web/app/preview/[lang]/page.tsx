@@ -19,7 +19,7 @@ import { getPreviewSnapshot } from "@/app/lib/content";
 import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { Hero } from "@/app/components/home/hero";
-import { Features } from "@/app/components/home/features";
+import { FeaturesCompact } from "@/app/components/home/features-compact";
 import { ProductCategories } from "@/app/components/home/product-categories";
 import { HomeAbout } from "@/app/components/home/home-about";
 import { Contact } from "@/app/components/home/contact";
@@ -50,7 +50,7 @@ async function PreviewHome({
       <main id="main" className="main-wrapper">
         <Hero dict={dict} editable />
         <div className="home-a_rest-content">
-          <Features dict={dict.features} editable />
+          <FeaturesCompact dict={dict.features} editable />
           <ProductCategories dict={dict.products} editable />
           <HomeAbout dict={dict.about} editable />
           <Contact dict={dict} editable />
