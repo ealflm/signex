@@ -1,5 +1,5 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editAttrs, editText } from "@/app/lib/edit-attrs";
+import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
 /**
  * Features — the section directly below the hero, adapted to signex's manufacturing
@@ -34,20 +34,20 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
     : "/assets/videos/69ac9062c7d860e7441b1f36_6168566-hd_1920_1080_30fps_webm.webm";
 
   return (
-    <section className="section_features">
+    <section className="section_features" data-sx-block="features">
       <div className="padding-global">
         <div className="w-layout-blockcontainer container-large w-container">
           <div className="headline_features" data-w-id="0f29df12-8c38-da6f-794d-3989ac10d663" style={{ opacity: 0, filter: 'blur(5px)' }}>
             <div className="heading_features">
               <div className="master_label" data-wf--tag--variant="base">
                 <div className="label-small">
-                  <span {...editText(editable, "features.eyebrow", { maxLength: 80 })}>{t.eyebrow}</span>
+                  <span {...editableAttrs(editable, "features.eyebrow", { text: { maxLength: 80 } })}>{t.eyebrow}</span>
                 </div>
               </div>
               <h2 className="margin-0">
-                <span {...editText(editable, "features.title.lead", { maxLength: 80 })}>{t.titleTop}</span>
+                <span {...editableAttrs(editable, "features.title.lead", { text: { maxLength: 80 } })}>{t.titleTop}</span>
                 <br />
-                <span className="tone-medium" {...editText(editable, "features.title.accent", { maxLength: 80 })}>
+                <span className="tone-medium" {...editableAttrs(editable, "features.title.accent", { text: { maxLength: 80 } })}>
                   {t.titleBottom}
                 </span>
               </h2>
@@ -56,7 +56,7 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
               <a button="" className="cta_primary w-inline-block" data-wf--cta-primary--variant="primary" href="#quote-form">
                 <div className="button_text-mask">
                   <div button-text="" className="text-button">
-                    <span {...editText(editable, "features.cta.label", { maxLength: 80 })}>{t.cta}</span>
+                    <span {...editableAttrs(editable, "features.cta.label", { text: { maxLength: 80 } })}>{t.cta}</span>
                   </div>
                 </div>
                 <div button-bg="" className="btn-bg">
@@ -71,17 +71,17 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 <div className="image-inner_features" data-w-id="d354a09c-1c94-8247-3fc0-60e3f5ed678a">
                   {/* featured tile image: now a configurable AssetRef (features.featured.image);
                       falls back to the original literal still when no asset is attached. */}
-                  <img alt={t.featured.imageAlt || "Pexels saeb mahajna 14125913 6297105"} className="image_cover is-parallax" loading="lazy" src={t.featured.imageUrl || "/assets/images/69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif"} {...editAttrs(editable, "features.featured.image", "image")} />
+                  <img alt={t.featured.imageAlt || "Pexels saeb mahajna 14125913 6297105"} className="image_cover is-parallax" loading="lazy" src={t.featured.imageUrl || "/assets/images/69a9746c7ab6e4371c4aae70_pexels-saeb-mahajna-14125913-6297105.avif"} {...editableAttrs(editable, "features.featured.image", { image: true })} />
                   <div className="overlay_dark-16">
                   </div>
                 </div>
                 <a className="content_image-features is-horizontal w-inline-block" href="#quote-form">
                   <div className="features_text-tile">
                     <div className="text_body-bold">
-                      <span {...editText(editable, "features.featured.title", { maxLength: 80 })}>{t.featured.title}</span>
+                      <span {...editableAttrs(editable, "features.featured.title", { text: { maxLength: 80 } })}>{t.featured.title}</span>
                     </div>
                     <p className="text-size-small">
-                      <span {...editText(editable, "features.featured.desc", { maxLength: 200 })}>{t.featured.desc}</span>
+                      <span {...editableAttrs(editable, "features.featured.desc", { text: { maxLength: 200 } })}>{t.featured.desc}</span>
                     </p>
                   </div>
                   <div className="icon_arrow-right w-embed">
@@ -108,10 +108,10 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 </div>
                 <div className="wrap_text-service-card">
                   <div className="text-size-large text_body-bold">
-                    <span {...editText(editable, "features.cards.0.title", { maxLength: 80 })}>{t.cards[0].title}</span>
+                    <span {...editableAttrs(editable, "features.cards.0.title", { text: { maxLength: 80 } })}>{t.cards[0].title}</span>
                   </div>
                   <p className="tone-medium margin-0">
-                    <span {...editText(editable, "features.cards.0.desc", { maxLength: 200 })}>{t.cards[0].desc}</span>
+                    <span {...editableAttrs(editable, "features.cards.0.desc", { text: { maxLength: 200 } })}>{t.cards[0].desc}</span>
                   </p>
                 </div>
               </div>
@@ -137,10 +137,10 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 </div>
                 <div className="wrap_text-service-card">
                   <div className="text-size-large text_body-bold">
-                    <span {...editText(editable, "features.cards.1.title", { maxLength: 80 })}>{t.cards[1].title}</span>
+                    <span {...editableAttrs(editable, "features.cards.1.title", { text: { maxLength: 80 } })}>{t.cards[1].title}</span>
                   </div>
                   <p className="tone-medium margin-0">
-                    <span {...editText(editable, "features.cards.1.desc", { maxLength: 200 })}>{t.cards[1].desc}</span>
+                    <span {...editableAttrs(editable, "features.cards.1.desc", { text: { maxLength: 200 } })}>{t.cards[1].desc}</span>
                   </p>
                 </div>
               </div>
@@ -158,15 +158,15 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 </div>
                 <div className="wrap_text-service-card">
                   <div className="text-size-large text_body-bold">
-                    <span {...editText(editable, "features.cards.2.title", { maxLength: 80 })}>{t.cards[2].title}</span>
+                    <span {...editableAttrs(editable, "features.cards.2.title", { text: { maxLength: 80 } })}>{t.cards[2].title}</span>
                   </div>
                   <p className="tone-medium margin-0">
-                    <span {...editText(editable, "features.cards.2.desc", { maxLength: 200 })}>{t.cards[2].desc}</span>
+                    <span {...editableAttrs(editable, "features.cards.2.desc", { text: { maxLength: 200 } })}>{t.cards[2].desc}</span>
                   </p>
                 </div>
               </div>
               {/* Complementary workshop/process video (added content) */}
-              <div className="video_features" id="w-node-_7592271b-69fa-3faa-e7e1-e8f1255559a7-5e872ff7" {...editAttrs(editable, "features.video.media", "video")}>
+              <div className="video_features" id="w-node-_7592271b-69fa-3faa-e7e1-e8f1255559a7-5e872ff7" {...editableAttrs(editable, "features.video.media", { video: true })}>
                 <div className="image-inner_features" data-w-id="7592271b-69fa-3faa-e7e1-e8f1255559a8">
                   <div
                     className="video_cover w-background-video w-background-video-atom"
@@ -224,10 +224,10 @@ export function Features({ dict, editable = false }: { dict: Dictionary["feature
                 </div>
                 <div className="content_image-features">
                   <div className="text_body-bold">
-                    <span {...editText(editable, "features.video.title", { maxLength: 80 })}>{t.videoTitle}</span>
+                    <span {...editableAttrs(editable, "features.video.title", { text: { maxLength: 80 } })}>{t.videoTitle}</span>
                   </div>
                   <p className="text-size-small">
-                    <span {...editText(editable, "features.video.text", { maxLength: 200 })}>{t.videoText}</span>
+                    <span {...editableAttrs(editable, "features.video.text", { text: { maxLength: 200 } })}>{t.videoText}</span>
                   </p>
                 </div>
               </div>

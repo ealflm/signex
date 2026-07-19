@@ -1,6 +1,6 @@
 import { HeroQuoteForm } from "@/app/components/home/hero-quote-form";
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { editAttrs, editText } from "@/app/lib/edit-attrs";
+import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
 // Server-rendered per locale, so this never re-renders client-side — a plain object is
 // fine (no IX2-reveal clobbering concern; language changes are a full navigation now).
@@ -10,7 +10,7 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
   const t = dict.hero;
 
   return (
-    <section className="section_hero-home-a">
+    <section className="section_hero-home-a" data-sx-block="hero">
       <div className="padding-global home-a">
         <div className="w-layout-blockcontainer container-large w-container">
           <div className="wrap_home-a">
@@ -21,16 +21,31 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                 <div className="headline_home-a" data-w-id="e727a2b9-869a-7dcf-ee76-b8e98292f022" style={REVEAL_STYLE}>
                   <div className="heading_home-a">
                     <h1 className="heading-style-h0">
-                      <span {...editText(editable, "hero.titleTop")}>{t.titleTop}</span>
+                      <span {...editableAttrs(editable, "hero.titleTop", { text: {} })}>{t.titleTop}</span>
                       <br />
-                      <span className="tone-medium" {...editText(editable, "hero.titleBottom")}>
+                      {/* One element, two capabilities. The inner CSS-inert span that used to carry
+                          the text stamp is gone: .tone-medium (which paints the colour) now carries
+                          both. Collapsing is appearance-neutral — colour inherits, so the glyphs
+                          render identically with one fewer wrapper. */}
+                      <span
+                        className="tone-medium"
+                        {...editableAttrs(editable, "hero.titleBottom", {
+                          text: { maxLength: 80 },
+                          // The engine resolves NO token for this one, and that is the correct
+                          // answer: .tone-medium reads --_🎨-color--tokens---tone--medium, which is
+                          // in neither TOKEN_VARS nor PALETTE_VARS (it derives from base--*-64). The
+                          // panel offers the per-element override instead. (An earlier hand-declared
+                          // `token: "accentAqua"` here was simply false — see EditableOpts.color.)
+                          color: true,
+                        })}
+                      >
                         {t.titleBottom}
                       </span>
                     </h1>
                   </div>
                   <div className="p_hero-home-a">
                     <p className="margin-0 text-size-large">
-                      <span {...editText(editable, "hero.subtitle", { maxLength: 200 })}>{t.subtitle}</span>
+                      <span {...editableAttrs(editable, "hero.subtitle", { text: { maxLength: 200 } })}>{t.subtitle}</span>
                     </p>
                   </div>
                 </div>
@@ -42,7 +57,7 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                 />
               </div>
               <div className="image_hero-home-a" data-w-id="e727a2b9-869a-7dcf-ee76-b8e98292f051">
-                <img alt={t.imageAlt} className="image_cover is-parallax" loading="lazy" src={t.imageUrl || "/assets/images/69b04fc10fe79a2becaf38a8_Contemporary_Cliffside_House_at_Twilight.avif"} {...editAttrs(editable, "hero.image", "image")} />
+                <img alt={t.imageAlt} className="image_cover is-parallax" loading="lazy" src={t.imageUrl || "/assets/images/69b04fc10fe79a2becaf38a8_Contemporary_Cliffside_House_at_Twilight.avif"} {...editableAttrs(editable, "hero.image", { image: true })} />
                 <div className="overlay_home-b-hero">
                 </div>
               </div>

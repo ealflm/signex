@@ -2,6 +2,7 @@ import { z } from "zod";
 import { BLOCK_REGISTRY } from "./registry";
 import { FrozenAsset } from "./assets";
 import { FrozenCatalog } from "./catalog";
+import { PaletteSchema } from "./palette";
 
 /** Stamped on every Release; web gates/migrates old snapshots on this. */
 export const SCHEMA_VERSION = 1 as const;
@@ -27,5 +28,6 @@ export const ReleaseSnapshotSchema = z.object({
   blocks: z.object(BLOCK_REGISTRY),
   catalog: FrozenCatalog.optional(),
   assets: z.record(z.string(), FrozenAsset), // assetId -> FrozenAsset; resolves block images
+  palette: PaletteSchema.optional(),
 });
 export type ReleaseSnapshot = z.infer<typeof ReleaseSnapshotSchema>;

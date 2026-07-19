@@ -55,6 +55,12 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
   }
 
   // businessContact helpers — phones and sites may be in any order
+  // The brand name has TWO renderings in the footer — the giant wordmark and the "<brand> – <suffix>"
+  // brand line — so it is resolved ONCE here. It used to be resolved once and hardcoded once:
+  // brandPrefix read this field while footer.tsx printed the wordmark as the JSX literal "SIGNEX",
+  // so renaming the brand moved the small line and left the wordmark showing the old name. Same
+  // species as the NAP labels (a literal over a field that exists), one font-size louder.
+  const brand = t(bc.brand, lang);
   const tel = bc.phones.find((p) => p.kind === "tel");
   const zalo = bc.phones.find((p) => p.kind === "zalo");
   const office = bc.sites.find((s) => s.kind === "office");
@@ -70,19 +76,27 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
   const officeIdx = bc.sites.findIndex((s) => s.kind === "office");
   const factoryIdx = bc.sites.findIndex((s) => s.kind === "factory");
   type NapLeaf = { text: string; field: string };
+  // A row whose label the schema guarantees (phones[].label, sites[].label, taxLabel) — the footer
+  // renders `label.field` unconditionally, so this non-null type is what keeps that honest.
+  type NapLabelledRow = { label: NapLeaf; value: NapLeaf };
   type NapRow = { label: NapLeaf | null; value: NapLeaf };
   const leaf = (text: string, field: string): NapLeaf => ({ text, field });
   const compact = <T,>(arr: (T | null | undefined)[]): T[] => arr.filter((x): x is T => x != null);
-  const phoneRow = (i: number): NapRow | null =>
+  const phoneRow = (i: number): NapLabelledRow | null =>
     i < 0
       ? null
       : { label: leaf(t(bc.phones[i].label, lang), `${BC}.phones.${i}.label`), value: leaf(bc.phones[i].value, `${BC}.phones.${i}.value`) };
-  const addrRow = (i: number): NapRow | null =>
+  const addrRow = (i: number): NapLabelledRow | null =>
     i < 0
       ? null
       : { label: leaf(t(bc.sites[i].label, lang), `${BC}.sites.${i}.label`), value: leaf(t(bc.sites[i].address, lang), `${BC}.sites.${i}.address`) };
+  // contactPage's email card carries NO per-row label (its card title "Email" names the whole card,
+  // and both rows are the same kind) — keep label null there so that card renders unchanged.
   const emailRows: NapRow[] = bc.emails.map((v, i) => ({ label: null, value: leaf(v, `${BC}.emails.${i}`) }));
-  const taxRow: NapRow = { label: leaf(t(bc.taxLabel, lang), `${BC}.taxLabel`), value: leaf(bc.taxId, `${BC}.taxId`) };
+  // The FOOTER's email line does print a field label. businessContact.emailLabel is OPTIONAL →
+  // fall back to the literal the footer used to hardcode, so the published v1 snapshot stays valid.
+  const emailLabelLeaf = leaf(t(bc.emailLabel, lang) || "Email", `${BC}.emailLabel`);
+  const taxRow: NapLabelledRow = { label: leaf(t(bc.taxLabel, lang), `${BC}.taxLabel`), value: leaf(bc.taxId, `${BC}.taxId`) };
   const legalNameLeaf = leaf(t(bc.legalName, lang), `${BC}.legalName`);
 
   // formConfig block
@@ -90,6 +104,7 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
   const fFields = fc.fields;
 
   return {
+    palette: snap.palette, // raw Palette (locale-agnostic); undefined on INITIAL_SNAPSHOT
     businessContact: {
       legalName: t(bc.legalName, lang),
       brand: t(bc.brand, lang),
@@ -258,10 +273,18 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       ],
     },
     footer: {
+      // The giant SIGNEX wordmark's string. businessContact.brand is REQUIRED (not optional), so
+      // unlike brandSuffix/shipping/watermark there is no fallback literal to keep an old snapshot
+      // valid — every valid ReleaseSnapshot has it, and both the live draft and published v14 hold
+      // {"en":"SIGNEX","vi":"SIGNEX"}, which is exactly the literal the wordmark used to hardcode.
+      // Editable in the admin's "Business contact" section panel (deriveFields → kind "localized").
+      // NOT click-to-edit: the wordmark is an SVG <text>, and SVGElement has no contentEditable —
+      // see the note in footer.tsx.
+      brand,
       // The brand line is "<brand> – <suffix>". footer.brandSuffix is OPTIONAL → fall back to the
       // original literal so the live site is byte-identical until edited. Split into prefix + suffix
       // so the component can stamp ONLY the editable suffix span (the "<brand> – " prefix is derived).
-      brandPrefix: `${t(bc.brand, lang)} – `,
+      brandPrefix: `${brand} – `,
       brandSuffix: t(b.footer.brandSuffix, lang) || "Manufacturing Brand Identity",
       tagline: ta(b.footer.tagline, lang),
       contactHeading: t(b.footer.contactHeading, lang),
@@ -272,10 +295,12 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       tax: bc.taxId,
       office: office ? t(office.address, lang) : "",
       factory: factory ? t(factory.address, lang) : "",
-      // Structured NAP with inline-edit field paths (footer renders these so each value is editable).
+      // Structured NAP with inline-edit field paths — the footer renders BOTH leaves of each row, so
+      // the label is click-to-edit on the SAME field the contactPage card stamps (they share
+      // phoneRow/addrRow/taxRow), and the two can no longer diverge.
       nap: {
         legalName: legalNameLeaf,
-        email: emailRows[0]?.value ?? leaf("", `${BC}.emails.0`),
+        email: { label: emailLabelLeaf, value: emailRows[0]?.value ?? leaf("", `${BC}.emails.0`) } satisfies NapLabelledRow,
         tel: phoneRow(telIdx),
         zalo: phoneRow(zaloIdx),
         tax: taxRow,

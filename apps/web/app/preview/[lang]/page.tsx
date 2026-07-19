@@ -24,6 +24,7 @@ import { ProductCategories } from "@/app/components/home/product-categories";
 import { HomeAbout } from "@/app/components/home/home-about";
 import { Contact } from "@/app/components/home/contact";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PaletteStyle } from "@/app/components/editor/palette-style";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
 
 async function PreviewHome({
@@ -43,6 +44,7 @@ async function PreviewHome({
 
   return (
     <div className="page-wrapper">
+      <PaletteStyle palette={dict.palette} />
       <Navbar dict={dict.nav} editable />
       <main id="main" className="main-wrapper">
         <Hero dict={dict} editable />

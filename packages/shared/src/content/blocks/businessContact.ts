@@ -11,6 +11,11 @@ export const businessContactBlock = z.object({
   legalName: LocalizedText,
   brand: LocalizedText,
   emails: z.array(z.string().email()).min(1),
+  // emailLabel OPTIONAL: the footer's "Email:" field label. Unlike phones/sites, an email carries
+  // no per-item label (`emails` is a bare string array), so this is the block-level one. The web
+  // falls back to "Email" when absent, so the published v1 snapshot (which predates this field)
+  // stays valid — no re-publish required. Editable as `businessContact.emailLabel`.
+  emailLabel: LocalizedText.optional(),
   phones: z
     .array(
       z.object({
@@ -45,8 +50,18 @@ export type BusinessContactBlock = z.infer<typeof businessContactBlock>;
 
 /**
  * Render-helper map (the §5.2 deliverable artifact): resolves a BusinessContactBlock
- * into the three per-presentation shapes the web renders. Keeps the "structural
- * superset of Dictionary" promise — web call sites read these, never raw fields.
+ * into the three per-presentation shapes the web renders.
+ *
+ * ⚠️ CURRENTLY UNUSED BY THE WEB. The docstring here used to claim "web call sites read these,
+ * never raw fields" — that was false: nothing in apps/web or apps/api calls this (only the tests
+ * below). apps/web/app/lib/content.ts does the businessContact→view transform itself, and it
+ * CANNOT use these helpers as they stand: it needs each label/value as a separate leaf carrying
+ * its own snapshot path (`businessContact.phones.0.label`) so the visual editor can stamp them
+ * individually, whereas these pre-compose "Tel: <value>" into one flat string. Composing them here
+ * is what the footer's now-removed hardcoded labels were doing by hand.
+ * Kept (not deleted) because it is the spec's named §5.2 artifact and the JSON-LD `sameAs` shape
+ * may still want it — but it describes an intent the web does not implement. Do not read it as
+ * documentation of the live read-path; content.ts is that.
  */
 export type Locale = "en" | "vi";
 export const resolveBusinessContact = (

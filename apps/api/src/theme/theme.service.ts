@@ -264,7 +264,7 @@ export class ThemeService {
     themeId: string,
     body: SaveDraftInput,
   ): Promise<{ draftRevision: number }> {
-    const { edits, expectedDraftRevision } = body;
+    const { edits, expectedDraftRevision, palette, replacePalette } = body;
 
     return this.applyDraftMutation(
       actor,
@@ -292,6 +292,42 @@ export class ThemeService {
               detail: e.message,
             });
           }
+        }
+
+        // `replacePalette` is the explicit "reset" signal: the merge below is additive-only (it can
+        // never DELETE a previously-saved key), so a client-side reset that must remove persisted
+        // keys sends `replacePalette: true` and we set the palette verbatim instead of merging.
+        if (replacePalette) {
+          snap.palette = palette ?? {};
+          return;
+        }
+
+        // Merge the palette patch, shallow-merged per slice, so a patch that only sends e.g.
+        // `seeds` doesn't wipe existing `tokens`/`overrides`.
+        // `overrides` is a LIST keyed by `selector`: merge role-wise per selector, because
+        // pendingPalette resets to {} across a save boundary — a whole-entry replace would drop a
+        // role saved in an earlier session (e.g. `text` now, `bg` later on the same element).
+        if (palette) {
+          const prev = (snap.palette ?? {}) as {
+            seeds?: Record<string, string>;
+            tokens?: Record<string, string>;
+            overrides?: Array<Record<string, string>>;
+          };
+          const bySelector = new Map<string, Record<string, string>>();
+          for (const ov of prev.overrides ?? []) {
+            if (ov?.selector) bySelector.set(ov.selector, { ...ov });
+          }
+          for (const ov of palette.overrides ?? []) {
+            bySelector.set(ov.selector, {
+              ...(bySelector.get(ov.selector) ?? {}),
+              ...ov,
+            });
+          }
+          snap.palette = {
+            seeds: { ...(prev.seeds ?? {}), ...(palette.seeds ?? {}) },
+            tokens: { ...(prev.tokens ?? {}), ...(palette.tokens ?? {}) },
+            overrides: [...bySelector.values()],
+          };
         }
       },
       { action: 'theme.savedraft', meta: { keys: edits.map((e) => e.key) } },

@@ -70,6 +70,20 @@ export interface FieldEditorProps {
    * re-focusing the same canvas leaf re-triggers the flash.
    */
   flashField?: { name: string; nonce: number } | null;
+  /**
+   * This plan came through a mode lens (`lensFields`), so a container's `children` are a PRUNED
+   * subset of the real shape rather than the whole of it. False/omitted in Content mode, which
+   * always passes the full plan.
+   *
+   * Editing is unaffected — every value here is read and written by key off the value itself, so a
+   * hidden sibling is carried through untouched. What is NOT safe under a partial plan is MINTING a
+   * value from `children`: `ArrayField`'s "Add item" builds a fresh item out of exactly the child
+   * plans it can see, so under a lens it would silently create an item missing every field the lens
+   * pruned. Hence the structural controls are hidden when this is set — which is also where the
+   * spec puts them ("Reordering/adding array items … Content mode's form remains the route",
+   * docs/superpowers/specs/2026-07-14-editor-modes-design.md §9).
+   */
+  partial?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -272,9 +286,14 @@ function VideoRefField({
   );
 }
 
-// Renders a (one-level) nested object as a grouped fieldset, with each child rendered by the
-// same FieldEditor. The object value is read/written as a whole; nested JSON validity bubbles
-// up through onValidityChange under a namespaced key (`${parent}.${child}`).
+// Renders a nested object as a grouped fieldset, with each child rendered by the same FieldEditor.
+// Nested JSON validity bubbles up through onValidityChange under a namespaced key
+// (`${parent}.${child}`).
+//
+// The object value is read and written BY KEY, never rebuilt from `field.children`: the spread in
+// onChange carries every sibling through, including ones a mode lens pruned from `children` and so
+// from this render. That is what lets a lens hand this a partial plan without changing what a save
+// produces.
 function ObjectField({
   field,
   value,
@@ -284,6 +303,7 @@ function ObjectField({
   onPickMedia,
   onFieldFocus,
   flashField,
+  partial,
 }: {
   field: FieldPlan;
   value: unknown;
@@ -293,6 +313,7 @@ function ObjectField({
   onPickMedia?: (fieldName: string, kind: "image" | "video") => void;
   onFieldFocus?: (fieldName: string) => void;
   flashField?: { name: string; nonce: number } | null;
+  partial?: boolean;
 }) {
   const obj = (value as Record<string, unknown>) ?? {};
   return (
@@ -311,6 +332,7 @@ function ObjectField({
           onPickMedia={onPickMedia}
           onFieldFocus={onFieldFocus}
           flashField={flashField}
+          partial={partial}
         />
       ))}
     </fieldset>
@@ -446,7 +468,9 @@ function StringArrayField({
 }
 
 // Repeater of object items (kind:"array" with children = the item shape). Each item is a card with
-// its child fields rendered by the same FieldEditor; supports add / remove / reorder.
+// its child fields rendered by the same FieldEditor; supports add / remove / reorder — except under
+// a lens (`partial`), where `children` is a pruned subset of the item shape and so no longer
+// describes what a NEW item must contain. See FieldEditorProps.partial.
 function ArrayField({
   field,
   value,
@@ -456,6 +480,7 @@ function ArrayField({
   onPickMedia,
   onFieldFocus,
   flashField,
+  partial,
 }: {
   field: FieldPlan;
   value: unknown;
@@ -465,6 +490,7 @@ function ArrayField({
   onPickMedia?: (fieldName: string, kind: "image" | "video") => void;
   onFieldFocus?: (fieldName: string) => void;
   flashField?: { name: string; nonce: number } | null;
+  partial?: boolean;
 }) {
   const items = (Array.isArray(value) ? value : []) as Record<string, unknown>[];
   const children = field.children ?? [];
@@ -503,40 +529,42 @@ function ArrayField({
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Item {i + 1}
             </span>
-            <div className="flex items-center gap-0.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground"
-                aria-label="Move up"
-                disabled={i === 0}
-                onClick={() => move(i, -1)}
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground"
-                aria-label="Move down"
-                disabled={i === items.length - 1}
-                onClick={() => move(i, 1)}
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                aria-label={`Remove item ${i + 1}`}
-                onClick={() => removeItem(i)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {!partial && (
+              <div className="flex items-center gap-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground"
+                  aria-label="Move up"
+                  disabled={i === 0}
+                  onClick={() => move(i, -1)}
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground"
+                  aria-label="Move down"
+                  disabled={i === items.length - 1}
+                  onClick={() => move(i, 1)}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                  aria-label={`Remove item ${i + 1}`}
+                  onClick={() => removeItem(i)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
           {children.map((child) => (
             <FieldEditor
@@ -549,16 +577,19 @@ function ArrayField({
               onPickMedia={onPickMedia}
               onFieldFocus={onFieldFocus}
               flashField={flashField}
+              partial={partial}
             />
           ))}
         </div>
       ))}
-      <div>
-        <Button type="button" variant="outline" size="sm" onClick={addItem}>
-          <Plus className="h-4 w-4" />
-          Add item
-        </Button>
-      </div>
+      {!partial && (
+        <div>
+          <Button type="button" variant="outline" size="sm" onClick={addItem}>
+            <Plus className="h-4 w-4" />
+            Add item
+          </Button>
+        </div>
+      )}
     </fieldset>
   );
 }
@@ -628,6 +659,7 @@ export function FieldEditor({
   onPickMedia,
   onFieldFocus,
   flashField,
+  partial,
 }: FieldEditorProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   // Flash this field when the matching canvas leaf is focused (canvas→panel highlight).
@@ -681,6 +713,7 @@ export function FieldEditor({
         onPickMedia={onPickMedia}
         onFieldFocus={onFieldFocus}
         flashField={flashField}
+        partial={partial}
       />
     );
   } else if (field.kind === "localizedArray") {
@@ -698,6 +731,7 @@ export function FieldEditor({
         onPickMedia={onPickMedia}
         onFieldFocus={onFieldFocus}
         flashField={flashField}
+        partial={partial}
       />
     );
   } else {

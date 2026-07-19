@@ -4,12 +4,13 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { deriveFields } from "@/app/lib/zodform-fields";
+import { deriveFields, type FieldPlan } from "@/app/lib/zodform-fields";
 import { BLOCK_REGISTRY } from "@signex/shared";
 import type { BlockKey } from "@signex/shared";
 import { FieldEditor } from "./_fields/field-editor";
 import type { FieldAssetRow } from "./_fields/field-editor";
 import { BLOCK_LABELS } from "./_lib/blocks";
+import { lensFields } from "./_lib/modes";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,14 @@ export interface ContextPanelProps {
   flashField?: { name: string; nonce: number } | null;
   /** Bumped on every section select → scroll this panel to top + flash it (right-zone half of #2). */
   panelFlash?: number;
+  /**
+   * The mode's field lens (see _lib/modes.ts's MODE_LENS): the predicate that decides which LEAVES
+   * are listed. Containers survive iff it claims a descendant. Omitted = Content mode = every
+   * field, untouched.
+   */
+  keepLeaf?: (f: FieldPlan) => boolean;
+  /** Names what is listed, replacing the block label in the header. Comes with `keepLeaf`. */
+  title?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -42,6 +51,8 @@ export function ContextPanel({
   onFieldFocus,
   flashField,
   panelFlash,
+  keepLeaf,
+  title,
 }: ContextPanelProps): React.ReactElement {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [flashing, setFlashing] = React.useState(false);
@@ -69,8 +80,15 @@ export function ContextPanel({
     );
   }
 
-  const fields = deriveFields(BLOCK_REGISTRY[blockKey]);
-  const label = BLOCK_LABELS[blockKey] ?? blockKey;
+  // Derived, then narrowed to the mode's lens. One derivation, one lens — the lens is a prop rather
+  // than a Media/Text copy of this whole component precisely so the header, the ScrollArea, the
+  // FieldEditor loop and the flash wiring below stay single-sourced.
+  //
+  // Content mode passes no `keepLeaf` and takes the `all` branch: the SAME array object
+  // `deriveFields` returned, never rebuilt, so its form is what it was before the lens existed.
+  const all = deriveFields(BLOCK_REGISTRY[blockKey]);
+  const fields = keepLeaf ? lensFields(all, keepLeaf) : all;
+  const label = title ?? BLOCK_LABELS[blockKey] ?? blockKey;
 
   return (
     <div
@@ -88,6 +106,13 @@ export function ContextPanel({
         )}
       >
         <h2 className="text-sm font-semibold text-foreground">{label}</h2>
+        {/* A lens title names the LENS, so on its own it would read the same for every section —
+            and a canvas click now re-targets this panel silently (selection-follows-click). The
+            section name stays on screen so you can always tell what you are editing, even with the
+            sections rail collapsed. */}
+        {title && (
+          <p className="text-xs text-muted-foreground">{BLOCK_LABELS[blockKey] ?? blockKey}</p>
+        )}
       </div>
 
       {/* Field list */}
@@ -104,11 +129,17 @@ export function ContextPanel({
               onValidityChange={onValidityChange}
               onFieldFocus={onFieldFocus}
               flashField={flashField}
+              partial={Boolean(keepLeaf)}
             />
           ))}
           {fields.length === 0 && (
+            // Which emptiness this is matters: under a lens the section usually HAS fields, just
+            // none of this kind, and the unqualified line below would claim the section is
+            // uneditable when switching to Content would show a full form.
             <p className="text-sm text-muted-foreground">
-              No editable fields for this section.
+              {keepLeaf
+                ? "No fields for the current mode in this section."
+                : "No editable fields for this section."}
             </p>
           )}
         </div>

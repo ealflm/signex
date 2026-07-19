@@ -445,4 +445,147 @@ describe('ThemeService.saveDraft', () => {
     expect(updatedSnap.assets).toHaveProperty('new-asset');
     expect(updatedSnap.assets).not.toHaveProperty('orphan-id');
   });
+
+  it('merges a palette patch into draftSnapshot.palette', async () => {
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      palette: { seeds: { accentAqua: '#123456' } },
+    } as any);
+
+    // Same read-back mechanism as the other saveDraft tests: the final
+    // theme.update call's data.draftSnapshot arg (there's no real DB here).
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    expect(updatedSnap.palette.seeds.accentAqua).toBe('#123456');
+  });
+
+  it('shallow-merges palette per slice, preserving an existing slice absent from the patch', async () => {
+    tx.theme.findUniqueOrThrow.mockReset();
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: {
+        ...BASE_SNAPSHOT,
+        palette: {
+          tokens: { inkBase: '#000000' },
+          overrides: [
+            {
+              selector: '[data-sx-c="hero.title"]',
+              bg: '#ffffff',
+              text: '#000000',
+              border: '#cccccc',
+            },
+          ],
+        },
+      },
+    });
+
+    // Patch sends only `seeds` — existing tokens/overrides must survive untouched.
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      palette: { seeds: { accentAqua: '#123456' } },
+    } as any);
+
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    expect(updatedSnap.palette.seeds.accentAqua).toBe('#123456');
+    expect(updatedSnap.palette.tokens).toEqual({ inkBase: '#000000' });
+    expect(updatedSnap.palette.overrides).toEqual([
+      {
+        selector: '[data-sx-c="hero.title"]',
+        bg: '#ffffff',
+        text: '#000000',
+        border: '#cccccc',
+      },
+    ]);
+  });
+
+  it('deep-merges override roles for the same selector across saves (no cross-save role loss)', async () => {
+    tx.theme.findUniqueOrThrow.mockReset();
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: {
+        ...BASE_SNAPSHOT,
+        palette: {
+          overrides: [
+            { selector: '[data-sx-c="nav.cta.color"]', text: '#111111' },
+          ],
+        },
+      },
+    });
+
+    // A later save only touches `bg` on the same element — `text` from the earlier save must survive.
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      palette: {
+        overrides: [{ selector: '[data-sx-c="nav.cta.color"]', bg: '#222222' }],
+      },
+    } as any);
+
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    expect(updatedSnap.palette.overrides).toEqual([
+      { selector: '[data-sx-c="nav.cta.color"]', text: '#111111', bg: '#222222' },
+    ]);
+  });
+
+  it('replacePalette:true replaces the whole palette verbatim, discarding stale keys (reset support)', async () => {
+    tx.theme.findUniqueOrThrow.mockReset();
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: {
+        ...BASE_SNAPSHOT,
+        palette: {
+          seeds: { accentAqua: '#111111' },
+          tokens: { inkBase: '#222222' },
+        },
+      },
+    });
+
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      palette: { seeds: { accentOcean: '#333333' } },
+      replacePalette: true,
+    } as any);
+
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    // Old accentAqua AND the whole tokens slice must be gone — this is a full replace, not a merge.
+    expect(updatedSnap.palette).toEqual({ seeds: { accentOcean: '#333333' } });
+  });
+
+  it('replacePalette:true with an absent palette clears the draft palette entirely', async () => {
+    tx.theme.findUniqueOrThrow.mockReset();
+    tx.theme.findUniqueOrThrow.mockResolvedValue({
+      draftSnapshot: {
+        ...BASE_SNAPSHOT,
+        palette: { seeds: { accentAqua: '#111111' } },
+      },
+    });
+
+    await service.saveDraft(ACTOR, THEME_ID, {
+      edits: [],
+      expectedDraftRevision: 5,
+      replacePalette: true,
+    } as any);
+
+    const finalUpdate = tx.theme.update.mock.calls.find(
+      ([arg]: [any]) => arg?.data?.draftSnapshot !== undefined,
+    );
+    expect(finalUpdate).toBeDefined();
+    const updatedSnap = finalUpdate[0].data.draftSnapshot;
+    expect(updatedSnap.palette).toEqual({});
+  });
 });

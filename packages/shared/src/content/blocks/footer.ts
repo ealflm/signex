@@ -26,9 +26,27 @@ export const footerBlock = z.object({
   shipLabel: LocalizedText,
   // shipping OPTIONAL: courier-partner badges (Lalamove/Grab — brand names, locale-invariant).
   // The web falls back to ["Lalamove","Grab"] when absent, so the published v1 snapshot (which
-  // predates this field) stays valid — no re-publish required. Editable as `footer.shipping`.
+  // predates this field) stays valid — no re-publish required.
+  //
+  // OPTIONAL is a COMPATIBILITY hatch for old snapshots, NOT the steady state. It used to be the
+  // steady state by accident: this field was declared editable but nothing ever WROTE it — the
+  // importer's buildFooter did not emit it and no snapshot in the database carried it, so every
+  // badge on the live site came from the web's fallback literal while the admin's own string-list
+  // editor showed "shipping (0 items)". A field the panel reports as empty and the page renders
+  // two of is the same divergence class as the NAP labels. Both halves are now closed: buildFooter
+  // seeds it for new sites, and migration 20260716_footer_shipping_backfill backfills existing
+  // theme drafts. Keep the `??` fallback anyway — a snapshot published before either is still a
+  // valid FooterBlock, and that is exactly what `.optional()` is promising.
+  //
+  // Both badge lists are editable TWO ways: click-to-edit on the canvas (footer.shipping.<i> /
+  // footer.payments.<i>) and the section panel's string-list editor (deriveFields → "stringArray").
+  // Per-item inline editing REQUIRES the array to exist in the draft: the admin resolves an inline
+  // edit by inspecting the value already at the path, so an index into an absent array cannot be
+  // recognised as a string-array item — which is why seeding it is load-bearing, not tidying.
   shipping: z.array(z.string()).min(1).optional(),
   payLabel: LocalizedText,
-  payments: z.array(z.string()).min(1), // brand codes: VISA/JCB/Napas/COD (locale-invariant)
+  // Brand codes: VISA/JCB/Napas/COD. LOCALE-INVARIANT — one array, rendered verbatim in both
+  // locales (there is no en/vi split here, so /vi shows whatever /en shows).
+  payments: z.array(z.string()).min(1),
 });
 export type FooterBlock = z.infer<typeof footerBlock>;

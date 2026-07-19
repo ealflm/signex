@@ -15,7 +15,7 @@ import { Footer } from "@/app/components/footer";
 import { Contact } from "@/app/components/home/contact";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
-import { editAttrs, editText } from "@/app/lib/edit-attrs";
+import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
 // Contact info-card icons (lucide), index-aligned with contactPage.cards: mail / phone / map-pin —
 // kept identical to the public page (icons aren't translated / editable).
@@ -66,26 +66,26 @@ async function PreviewContact({
     <div className="page-wrapper">
       <Navbar dict={dict.nav} editable />
       <main id="main" className="main-wrapper">
-        <section className="section_hero-contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18">
+        <section className="section_hero-contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18" data-sx-block="contactPage">
           <div className="padding-global">
             <div className="w-layout-blockcontainer container-large w-container">
               <div className="headline_contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb1b" style={{ opacity: 0, filter: 'blur(5px)' }}>
                 <div className="heading_contact-c">
                   <div className="master_label" data-wf--tag--variant="base">
                     <div className="label-small">
-                      <span {...editText(true, "contactPage.hero.eyebrow", { maxLength: 40 })}>{dict.contactPage.hero.eyebrow}</span>
+                      <span {...editableAttrs(true, "contactPage.hero.eyebrow", { text: { maxLength: 40 } })}>{dict.contactPage.hero.eyebrow}</span>
                     </div>
                   </div>
                   <h1>
-                    <span {...editText(true, "contactPage.hero.title.lead", { maxLength: 80 })}>{dict.contactPage.hero.title}</span>
-                    <span className="tone-medium" {...editText(true, "contactPage.hero.title.accent", { maxLength: 80 })}>
+                    <span {...editableAttrs(true, "contactPage.hero.title.lead", { text: { maxLength: 80 } })}>{dict.contactPage.hero.title}</span>
+                    <span className="tone-medium" {...editableAttrs(true, "contactPage.hero.title.accent", { text: { maxLength: 80 } })}>
                       {dict.contactPage.hero.titleAccent}
                     </span>
                   </h1>
                 </div>
                 <div className="contact-c_hero-p">
                   <p className="tone-medium margin-0">
-                    <span {...editText(true, "contactPage.hero.subtitle", { maxLength: 200 })}>{dict.contactPage.hero.subtitle}</span>
+                    <span {...editableAttrs(true, "contactPage.hero.subtitle", { text: { maxLength: 200 } })}>{dict.contactPage.hero.subtitle}</span>
                   </p>
                 </div>
               </div>
@@ -99,24 +99,24 @@ async function PreviewContact({
                     </div>
                     <div className="text_contact-c-card">
                       <div className="text-size-large text_body-bold">
-                        <span {...editText(true, `contactPage.cardLabels.${CARD_KEYS[i]}`, { maxLength: 40 })}>{c.title}</span>
+                        <span {...editableAttrs(true, `contactPage.cardLabels.${CARD_KEYS[i]}`, { text: { maxLength: 40 } })}>{c.title}</span>
                       </div>
                       <div className="tone-medium contact-card_lines">
                         {c.company && (
                           <div>
-                            <span {...editText(true, c.company.field, { maxLength: 80 })}>{c.company.text}</span>
+                            <span {...editableAttrs(true, c.company.field, { text: { maxLength: 80 } })}>{c.company.text}</span>
                           </div>
                         )}
                         {c.rows.map((row, j) => (
                           <div key={j}>
                             {row.label &&
                               (c.strongLabel ? (
-                                <strong {...editText(true, row.label.field, { maxLength: 80 })}>{row.label.text}</strong>
+                                <strong {...editableAttrs(true, row.label.field, { text: { maxLength: 80 } })}>{row.label.text}</strong>
                               ) : (
-                                <span {...editText(true, row.label.field, { maxLength: 80 })}>{row.label.text}</span>
+                                <span {...editableAttrs(true, row.label.field, { text: { maxLength: 80 } })}>{row.label.text}</span>
                               ))}
                             {row.label ? ": " : ""}
-                            <span {...editText(true, row.value.field, { maxLength: 160 })}>{row.value.text}</span>
+                            <span {...editableAttrs(true, row.value.field, { text: { maxLength: 160 } })}>{row.value.text}</span>
                           </div>
                         ))}
                       </div>
@@ -125,7 +125,7 @@ async function PreviewContact({
                 ))}
               </div>
               <div className="image_contact-c" data-w-id="a7c263a0-bae9-4cd0-4784-0bc0e59ff63b" style={{ opacity: 0, filter: 'blur(5px)' }}>
-                <img alt={dict.contactPage.hero.imageAlt || "Sara dubler koei 7y yt io unsplash"} className="image_cover is-parallax" loading="lazy" src={dict.contactPage.hero.imageUrl || "/assets/images/69aeefb3f6044f0563d94f4b_sara-dubler-Koei_7yYtIo-unsplash.avif"} {...editAttrs(true, "contactPage.hero.image", "image")} />
+                <img alt={dict.contactPage.hero.imageAlt || "Sara dubler koei 7y yt io unsplash"} className="image_cover is-parallax" loading="lazy" src={dict.contactPage.hero.imageUrl || "/assets/images/69aeefb3f6044f0563d94f4b_sara-dubler-Koei_7yYtIo-unsplash.avif"} {...editableAttrs(true, "contactPage.hero.image", { image: true })} />
               </div>
             </div>
           </div>
@@ -138,18 +138,18 @@ async function PreviewContact({
           showCards={false}
           editable
         />
-        <section className="section_faq">
+        <section className="section_faq" data-sx-block="contactPage">
           <div className="padding-global">
             <div className="w-layout-blockcontainer container-large w-container">
               <div className="headline_faq-v1" data-w-id="9dfc7646-5801-a3d5-162a-aebf30a19078">
                 <div className="master_label" data-wf--tag--variant="base">
                   <div className="label-small">
-                    <span {...editText(true, "contactPage.map.eyebrow", { maxLength: 80 })}>{dict.contactPage.map.eyebrow}</span>
+                    <span {...editableAttrs(true, "contactPage.map.eyebrow", { text: { maxLength: 80 } })}>{dict.contactPage.map.eyebrow}</span>
                   </div>
                 </div>
                 <h2 className="margin-0">
-                  <span {...editText(true, "contactPage.map.title.lead", { maxLength: 80 })}>{dict.contactPage.map.title}</span>
-                  <span className="tone-medium" {...editText(true, "contactPage.map.title.accent", { maxLength: 80 })}>
+                  <span {...editableAttrs(true, "contactPage.map.title.lead", { text: { maxLength: 80 } })}>{dict.contactPage.map.title}</span>
+                  <span className="tone-medium" {...editableAttrs(true, "contactPage.map.title.accent", { text: { maxLength: 80 } })}>
                     {dict.contactPage.map.titleAccent}
                   </span>
                 </h2>
