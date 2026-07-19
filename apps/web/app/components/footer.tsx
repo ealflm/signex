@@ -4,8 +4,8 @@ import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
 /**
  * Footer — signex content poured into Caladan's master_footer shell. The shell
- * (master_footer / padding-global / container-large / the giant SIGNEX wordmark /
- * decorative corner watermark / progressive_blur) is kept; only the CONTENT of footer_top-tile
+ * (master_footer / padding-global / container-large / decorative corner watermark /
+ * progressive_blur) is kept; only the CONTENT of footer_top-tile
  * (now 3 columns: brand + socials | Contact us | Quick links) and footer_mid-tile
  * (now a shipping | payment utility row) is signex's, dict-driven (EN + VI).
  *
@@ -243,61 +243,6 @@ export function Footer({ dict, editable = false }: { dict: Dictionary["footer"];
               </div>
             </div>
 
-            {/* The giant brand wordmark (inline SVG <text> in the loaded Interdisplay webfont;
-                viewBox scales it to full container width like the original image,
-                textLength + lengthAdjust="spacing" force edge-to-edge fill via tracking
-                only, keeping the glyph shapes authentic).
-
-                TEXT: businessContact.brand, not a literal — the same field the brand line's prefix
-                reads (content.ts resolves it once). Editable in the admin's "Business contact"
-                section panel. It is NOT click-to-edit, and that is a browser fact rather than a
-                policy: the inline engine works by setting `el.contentEditable = "true"`, and
-                `"contentEditable" in <text>` is FALSE — SVGElement does not implement the
-                ElementContentEditable mixin, so the assignment silently creates an expando, sets no
-                attribute, and Chrome refuses the element as an editing host (measured:
-                isContentEditable undefined, matches(":read-write") false, focus() no-op — against an
-                HTML <span> in this same footer where all three succeed). Editing it inline needs
-                HTML text, and HTML cannot reproduce `textLength` — see the note below.
-
-                ⚠️ THE WORDMARK IS TUNED FOR A 6-CHARACTER BRAND, and `textLength` makes that a
-                LEGIBILITY limit, not a layout one. lengthAdjust="spacing" forces the string's advance
-                to exactly 516 user units whatever it says, so the BOX never moves (measured at 40
-                chars: ink 530.79 units vs 516 — ±7.4 units, no reflow, nothing overflows). What
-                moves is the tracking, and it goes negative past 6 glyphs (measured per inter-glyph
-                gap at fontSize 134: "SIGNE" +29.2 · "SIGNEX" +4.6 ← today, essentially natural ·
-                7 chars −11.7 (glyphs overlap 14%) · 10 chars −38.9 (45%) · "SIGNEX GROUP" −42.7
-                (52% — an illegible smear). So renaming the brand to anything longer than ~6
-                characters smears this wordmark while the small brand line above reflows fine.
-                NOT guarded here: the alternatives all change today's render (dropping textLength and
-                re-tuning fontSize to 140.3 fills the box naturally but alters the tracking the
-                acceptance test pins), and clamping someone's brand name is a product decision nobody
-                asked for. The honest trade is recorded instead: before this comment existed the
-                wordmark simply showed the WRONG name after a rename, which is worse than showing the
-                right one badly.
-
-                FILL: `currentColor`, not `#ffffff` — and this is a BUG FIX, not a hook. The computed
-                `color` at this <text> is ALREADY exactly rgb(255,255,255) (inherited from
-                master_footer's dark-context tone remap), so the render is unchanged to the pixel;
-                what changes is that the colour panel stops LYING. The engine's painterFor collects
-                "ink bearers" as (elements owning a text node) ∪ (marks whose paint follows `color`).
-                An SVG <text> owns a text node, so it entered as a TEXT bearer and never faced
-                paintFollowsColor at all — the `fill="#ffffff"` exclusion that ink-paint.ts's own
-                comment promises was reached through the other door. The click therefore reported a
-                `text` role, hex #ffffff, with a unique per-element selector, and applying that
-                override moved the <a>'s color to magenta and left the glyph white (measured
-                before/after/restored). A control that paints nothing — the same species as
-                19102d2's accentAqua. With `currentColor` the reported hex is one the glyph really
-                has, and the override really repaints it.
-
-                No `data-sx-c` anchor: the engine's generated structural selector already resolves
-                this element uniquely (selectorMatches: 1, matchesTheAnchor: true), and an anchor is
-                emitted on the PUBLIC render too — so adding one would change public bytes to buy
-                stability nothing has measured a need for. */}
-            <a aria-label={t.brand} className="link_footer-logo w-inline-block" href="#">
-              <svg className="logo_footer" viewBox="0 0 516 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label={t.brand} xmlns="http://www.w3.org/2000/svg">
-                <text x="258" y="99" textAnchor="middle" textLength="516" lengthAdjust="spacing" fontFamily="Interdisplay, Arial, sans-serif" fontWeight="700" fontSize="134" fill="currentColor">{t.brand}</text>
-              </svg>
-            </a>
             {/* Decorative lotus watermark (replaces Caladan's palm). Keeps the palm's
                 position/size/opacity via .palm-footer; .footer-signex_lotus recolours the
                 black source art to a faint white silhouette (brightness(0) invert(1)) so it

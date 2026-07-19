@@ -56,11 +56,9 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
   }
 
   // businessContact helpers — phones and sites may be in any order
-  // The brand name has TWO renderings in the footer — the giant wordmark and the "<brand> – <suffix>"
-  // brand line — so it is resolved ONCE here. It used to be resolved once and hardcoded once:
-  // brandPrefix read this field while footer.tsx printed the wordmark as the JSX literal "SIGNEX",
-  // so renaming the brand moved the small line and left the wordmark showing the old name. Same
-  // species as the NAP labels (a literal over a field that exists), one font-size louder.
+  // The brand name feeds the footer's "<brand> – <suffix>" brand line (brandPrefix/brandSuffix,
+  // below), resolved ONCE here. (The footer also used to print a giant SVG wordmark of this same
+  // string — removed on request — so the brand now has a single footer rendering.)
   const brand = t(bc.brand, lang);
   const tel = bc.phones.find((p) => p.kind === "tel");
   const zalo = bc.phones.find((p) => p.kind === "zalo");
@@ -272,14 +270,6 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       ],
     },
     footer: {
-      // The giant SIGNEX wordmark's string. businessContact.brand is REQUIRED (not optional), so
-      // unlike brandSuffix/shipping/watermark there is no fallback literal to keep an old snapshot
-      // valid — every valid ReleaseSnapshot has it, and both the live draft and published v14 hold
-      // {"en":"SIGNEX","vi":"SIGNEX"}, which is exactly the literal the wordmark used to hardcode.
-      // Editable in the admin's "Business contact" section panel (deriveFields → kind "localized").
-      // NOT click-to-edit: the wordmark is an SVG <text>, and SVGElement has no contentEditable —
-      // see the note in footer.tsx.
-      brand,
       // The brand line is "<brand> – <suffix>". footer.brandSuffix is OPTIONAL → fall back to the
       // original literal so the live site is byte-identical until edited. Split into prefix + suffix
       // so the component can stamp ONLY the editable suffix span (the "<brand> – " prefix is derived).

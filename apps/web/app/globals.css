@@ -793,7 +793,7 @@
 .footer_mid-tile.footer-signex_utility {
   flex-wrap: wrap;
   border-top: none;
-  border-bottom: 1px solid var(--_🎨-color--base---base--light-8);
+  border-bottom: none;
   padding-top: 0;
   padding-bottom: var(--spacing--space-micro);
 }
