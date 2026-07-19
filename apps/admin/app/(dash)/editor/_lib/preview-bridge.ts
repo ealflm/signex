@@ -39,8 +39,12 @@ export interface MediaPreview {
   webmUrl?: string;
 }
 
-/** The union the overlay's applyEdits handler accepts (media live-swap + inline-text re-apply). */
-export type ApplyEdit = MediaPreview | { field: string; kind: "text"; text: string };
+/** The union the overlay's applyEdits handler accepts (media live-swap + inline-text re-apply +
+ *  the flexible slot's colour/gradient wash — see apps/web's edit-overlay.tsx "overlay" branch). */
+export type ApplyEdit =
+  | MediaPreview
+  | { field: string; kind: "text"; text: string }
+  | { field: string; kind: "overlay"; css: { backgroundColor?: string; backgroundImage?: string } };
 
 /**
  * An inbound message that has passed the origin + source gate. Deliberately loose: the gate proves

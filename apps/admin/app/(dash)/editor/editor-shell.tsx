@@ -27,8 +27,10 @@ import { useRouter } from "next/navigation";
 import {
   paletteStyle,
   isVideoRef,
+  overlayCss,
   type BlockKey,
   type MediaRef as SharedMediaRef,
+  type Overlay,
   type ReleaseSnapshot,
 } from "@signex/shared";
 
@@ -128,6 +130,21 @@ function getPath(obj: Record<string, unknown>, path: string): unknown {
     if (acc && typeof acc === "object") return (acc as Record<string, unknown>)[k];
     return undefined;
   }, obj);
+}
+
+// Delete a nested path (dot-separated) on a deep-cloned object, returning the new object. Used to
+// REMOVE a cleared overlay's key so "absent = transparent" is single-valued (never a stored undefined).
+function deletePath(obj: Record<string, unknown>, path: string): Record<string, unknown> {
+  const clone = structuredClone(obj ?? {});
+  const parts = path.split(".");
+  let cur: Record<string, unknown> = clone;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const k = parts[i];
+    if (typeof cur[k] !== "object" || cur[k] === null) return clone; // parent missing → nothing to delete
+    cur = cur[k] as Record<string, unknown>;
+  }
+  delete cur[parts[parts.length - 1]];
+  return clone;
 }
 
 // Inline text edits arrive as a locale-agnostic path + a raw string for the CURRENT locale. The
@@ -448,11 +465,25 @@ export function EditorShell(props: EditorShellProps) {
     return value == null ? null : isVideoRef(value as SharedMediaRef) ? "video" : "image";
   }, [mediaTarget, workingBlockData]);
 
+  // The open target field's CURRENT overlay, read straight from the working block data — mirrors
+  // storedMediaKind above. Only flexible slots carry an overlay field (<block>.overlay, the media
+  // field's last path segment replaced), so a non-flexible target (e.g. a logo) always seeds "none".
+  const initialOverlay = useMemo<Overlay | undefined>(() => {
+    if (!mediaTarget?.flexible) return undefined;
+    const [blockKey, ...rest] = mediaTarget.field.split(".") as [BlockKey, ...string[]];
+    const overlayPath = [...rest.slice(0, -1), "overlay"].join(".");
+    return (getPath(workingBlockData(blockKey), overlayPath) as Overlay | undefined) ?? undefined;
+  }, [mediaTarget, workingBlockData]);
+
   const applyMediaRef = useCallback(
-    async (ref: MediaRef) => {
+    async (ref: MediaRef, overlay?: Overlay) => {
       if (!mediaTarget) return;
       const [blockKey, ...rest] = mediaTarget.field.split(".") as [BlockKey, ...string[]];
       const path = rest.join(".");
+      // The overlay field for this media slot: the same path with its LAST segment replaced by
+      // "overlay" — <block>.overlay in snapshot terms, matching Task 3's data-sx-overlay stamp.
+      const overlayPath = [...rest.slice(0, -1), "overlay"].join(".");
+      const overlayField = [blockKey, ...rest.slice(0, -1), "overlay"].join(".");
 
       // Ensure a just-uploaded asset is resolvable to a URL for the live swap.
       let list = pickerAssets;
@@ -487,7 +518,13 @@ export function EditorShell(props: EditorShellProps) {
 
       setPending((prev) => {
         const n = new Map(prev);
-        n.set(blockKey, setPath(base, path, nextValue));
+        let next = setPath(base, path, nextValue);
+        // Flexible slots also own an overlay: write it when present, DELETE the key when cleared —
+        // "absent = transparent" stays single-valued (never a stored `overlay: undefined`).
+        if (mediaTarget.flexible) {
+          next = overlay ? setPath(next, overlayPath, overlay) : deletePath(next, overlayPath);
+        }
+        n.set(blockKey, next);
         return n;
       });
       const entry: MediaPreview = { field: mediaTarget.field, ...preview };
@@ -496,7 +533,15 @@ export function EditorShell(props: EditorShellProps) {
         n.set(mediaTarget.field, entry);
         return n;
       });
-      bridge.postApplyEdits([entry]);
+      // Second live edit for flexible slots: re-paint the canvas's [data-sx-overlay] background
+      // straight away, same as the media swap above — Save/publish persist it, this makes it visible
+      // NOW. overlayCss(undefined) resolves to {} (no backgroundColor/backgroundImage), which the
+      // overlay's applyEdits handler (apps/web edit-overlay.tsx) reads as "clear the inline style".
+      const edits: ApplyEdit[] = [entry];
+      if (mediaTarget.flexible) {
+        edits.push({ field: overlayField, kind: "overlay", css: overlayCss(overlay) });
+      }
+      bridge.postApplyEdits(edits);
       setPickerOpen(false);
       setMediaTarget(null);
     },
@@ -1167,6 +1212,7 @@ export function EditorShell(props: EditorShellProps) {
         saving={false}
         flexible={mediaTarget?.flexible ?? false}
         defaultKind={pickerDefaultKind(storedMediaKind, mediaTarget?.mediaKind ?? "image")}
+        initialOverlay={initialOverlay}
         onAssetsRefresh={() => void loadAssets()}
         onApply={applyMediaRef}
         onOpenChange={(o) => {
