@@ -786,12 +786,14 @@
   gap: 0.1rem;
 }
 /* Shipping | Payment utility row (footer_mid-tile keeps its space-between layout).
-   Move Caladan's divider from ABOVE the row to BELOW it (between the shipping/payment
-   row and the SIGNEX wordmark): drop the inherited border-top, add a matching
-   border-bottom, and flip the divider padding from top to bottom. Same faint
-   light-8 hairline colour. */
+   The giant SIGNEX wordmark that used to sit below this row — and the divider between
+   them — were removed. Drop Caladan's inherited borders and tighten the vertical margins:
+   its space-huge top margin (~160px) left a big empty band above the badges once the
+   wordmark was gone, so pull the badges up into a balanced bottom bar. */
 .footer_mid-tile.footer-signex_utility {
   flex-wrap: wrap;
+  margin-top: 4rem;
+  margin-bottom: 1rem;
   border-top: none;
   border-bottom: none;
   padding-top: 0;
