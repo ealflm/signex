@@ -7,6 +7,8 @@ import {
   TwoToneTitle,
   AssetRef,
   VideoRef,
+  MediaRef,
+  isVideoRef,
 } from "./primitives";
 import { z } from "zod";
 
@@ -75,5 +77,41 @@ describe("VideoRef", () => {
       VideoRef.safeParse({ posterAssetId: CUID, mp4AssetId: CUID, webmAssetId: CUID }).success,
     ).toBe(true);
     expect(VideoRef.safeParse({ posterAssetId: CUID }).success).toBe(false);
+  });
+});
+
+const IMG = { assetId: "clxxxxxxxxxxxxxxxxxxxxxxx1" };
+const VID = { posterAssetId: "clxxxxxxxxxxxxxxxxxxxxxxx2", mp4AssetId: "clxxxxxxxxxxxxxxxxxxxxxxx3" };
+
+describe("MediaRef", () => {
+  it("parses a stored AssetRef as an image (union tries AssetRef first)", () => {
+    const m = MediaRef.parse(IMG);
+    expect(isVideoRef(m)).toBe(false);
+    expect((m as { assetId: string }).assetId).toBe(IMG.assetId);
+  });
+
+  it("parses a stored VideoRef as a video", () => {
+    const m = MediaRef.parse(VID);
+    expect(isVideoRef(m)).toBe(true);
+    expect((m as { mp4AssetId: string }).mp4AssetId).toBe(VID.mp4AssetId);
+  });
+
+  it("accepts a video with an optional webm", () => {
+    const m = MediaRef.parse({ ...VID, webmAssetId: "clxxxxxxxxxxxxxxxxxxxxxxx4" });
+    expect(isVideoRef(m)).toBe(true);
+  });
+
+  it("rejects a value that is neither (no assetId, no mp4AssetId)", () => {
+    expect(() => MediaRef.parse({ foo: "bar" })).toThrow();
+    expect(() => MediaRef.parse({ posterAssetId: VID.posterAssetId })).toThrow(); // poster without mp4 is not a VideoRef
+  });
+
+  it("strips the video keys off a HYBRID and reads it back as an image — the exact hazard the save path must avoid", () => {
+    // AssetRef matches first (assetId present) and .object() strips unknown keys, so a hybrid loses
+    // its video. This documents WHY editor-shell.applyMediaRef must clean-replace, never merge.
+    const hybrid = { ...IMG, ...VID };
+    const m = MediaRef.parse(hybrid);
+    expect(isVideoRef(m)).toBe(false);
+    expect("mp4AssetId" in m).toBe(false);
   });
 });
