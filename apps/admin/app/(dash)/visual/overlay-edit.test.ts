@@ -63,6 +63,25 @@ describe("setKind", () => {
     const result = setKind(undefined, "gradient");
     expect(result).toEqual(TWO_STOP_GRADIENT);
   });
+
+  it('re-picking the already-active "solid" kind preserves the user\'s customized value, not the default', () => {
+    const customSolid: Overlay = { kind: "solid", fill: { color: "#ff0000", opacity: 80 } };
+    const result = setKind(customSolid, "solid");
+    expect(result).toEqual(customSolid);
+    expect(result).not.toEqual({ kind: "solid", fill: { color: "#000000", opacity: 40 } });
+  });
+
+  it('re-picking the already-active "gradient" kind preserves the user\'s customized value, not the default', () => {
+    const result = setKind(THREE_STOP_GRADIENT, "gradient");
+    expect(result).toEqual(THREE_STOP_GRADIENT);
+    expect(result).not.toEqual(TWO_STOP_GRADIENT);
+  });
+
+  it('switching "solid" -> "gradient" (a genuine kind change) still yields the gradient default, not the prior solid', () => {
+    const customSolid: Overlay = { kind: "solid", fill: { color: "#ff0000", opacity: 80 } };
+    const result = setKind(customSolid, "gradient");
+    expect(result).toEqual(TWO_STOP_GRADIENT);
+  });
 });
 
 describe("addStop", () => {

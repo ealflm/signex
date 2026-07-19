@@ -24,17 +24,20 @@ export function emptyStop(): OverlayStop {
 
 /**
  * Switches the overlay's kind. "none" is `undefined` — absence IS the "no overlay" case (see
- * Overlay's doc comment in primitives.ts), so there's no empty-but-present state to model. "solid"
- * and "gradient" each reset to THAT kind's default rather than trying to carry a colour across
- * shapes that don't share one (a solid's single fill has no natural angle/stop-list to become) —
- * so switching solid↔gradient (or re-picking the kind already active) always yields the same
- * default, and the previous value is intentionally unused.
+ * Overlay's doc comment in primitives.ts), so there's no empty-but-present state to model.
+ * Re-picking the kind that's already active is a no-op: it returns `o` unchanged, preserving
+ * whatever the user has customized (e.g. clicking "Màu đặc" while already on a hand-tuned solid
+ * must not wipe it back to the default). Only a genuine kind CHANGE resets to that kind's
+ * default — "solid" and "gradient" each reset to THAT kind's default rather than trying to carry
+ * a colour across shapes that don't share one (a solid's single fill has no natural angle/
+ * stop-list to become) — so switching solid↔gradient always yields the same default.
  */
 export function setKind(
-  _o: Overlay | undefined,
+  o: Overlay | undefined,
   kind: "none" | "solid" | "gradient",
 ): Overlay | undefined {
   if (kind === "none") return undefined;
+  if (o?.kind === kind) return o; // already this kind → keep the user's current config, don't reset to default
   if (kind === "solid") return { kind: "solid", fill: { color: "#000000", opacity: 40 } };
   return {
     kind: "gradient",
