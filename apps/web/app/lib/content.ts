@@ -18,6 +18,7 @@ import type { Locale } from "@/app/lib/i18n-config";
 import { INITIAL_SNAPSHOT } from "@/app/lib/initial-snapshot";
 import { INITIAL_CATALOG } from "@/app/lib/initial-catalog";
 import { readPublishedCatalog } from "@/app/lib/catalog";
+import { resolveMedia } from "@/app/lib/media-ref";
 
 /** The catalog slice the resolver consumes — the published catalog OR a preview draft catalog. */
 type CatalogLike = { categories: CatalogSnapshot["categories"] };
@@ -119,9 +120,9 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       titleTop: t(b.hero.titleTop, lang),
       titleBottom: t(b.hero.titleBottom, lang),
       subtitle: t(b.hero.subtitle, lang),
-      // hero.image is AssetRef { assetId, alt? }; resolve alt and URL from the assets map
-      imageAlt: t(b.hero.image.alt, lang),
-      imageUrl: assetUrl(b.hero.image.assetId),
+      // hero.image is MediaRef (AssetRef | VideoRef) — resolve to a discriminated view-model so
+      // the component can render either an <img> or a <video> for this slot.
+      media: resolveMedia(b.hero.image, lang, assetUrl, (l) => t(l, lang)),
     },
     form: {
       name: t(fFields.name.label, lang),
@@ -161,25 +162,17 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       titleTop: t(b.features.title.lead, lang),
       titleBottom: t(b.features.title.accent, lang),
       cta: t(b.features.cta.label, lang),
-      // video.media is VideoRef? — resolve asset refs to URLs; falls back to "" when absent
+      // video.media is MediaRef? (image OR video) — resolve to a discriminated view-model so
+      // the component can render either an <img> or the Webflow background <video> for this slot.
       videoTitle: t(b.features.video.title, lang),
       videoText: t(b.features.video.text, lang),
-      videoMedia: b.features.video.media
-        ? {
-            posterUrl: assetUrl(b.features.video.media.posterAssetId),
-            mp4Url: assetUrl(b.features.video.media.mp4AssetId),
-            webmUrl: b.features.video.media.webmAssetId
-              ? assetUrl(b.features.video.media.webmAssetId)
-              : "",
-          }
-        : { posterUrl: "", mp4Url: "", webmUrl: "" },
+      videoMedia: resolveMedia(b.features.video.media, lang, assetUrl, (l) => t(l, lang)),
       featured: {
         title: t(b.features.featured.title, lang),
         desc: t(b.features.featured.desc, lang),
-        // featured.image is AssetRef? — resolve URL/alt; "" when absent so the
-        // component falls back to the literal still (published v1 snapshot stays valid).
-        imageUrl: assetUrl(b.features.featured.image?.assetId ?? ""),
-        imageAlt: t(b.features.featured.image?.alt, lang),
+        // featured.image is MediaRef? (image OR video) — resolve to a discriminated view-model;
+        // null when absent so the component falls back to the literal still (published v1 stays valid).
+        media: resolveMedia(b.features.featured.image, lang, assetUrl, (l) => t(l, lang)),
       },
       cards: b.features.cards.map((card) => ({
         title: t(card.title, lang),
@@ -347,17 +340,10 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
         title: t(b.aboutPage.hero.title.lead, lang),
         titleAccent: t(b.aboutPage.hero.title.accent, lang),
         subtitle: t(b.aboutPage.hero.subtitle, lang),
-        // hero.video is VideoRef? — resolve asset refs to URLs (mirrors features.video.media);
-        // all "" when absent so the component falls back to the literal 8440992-uhd poster+mp4+webm.
-        videoMedia: b.aboutPage.hero.video
-          ? {
-              posterUrl: assetUrl(b.aboutPage.hero.video.posterAssetId),
-              mp4Url: assetUrl(b.aboutPage.hero.video.mp4AssetId),
-              webmUrl: b.aboutPage.hero.video.webmAssetId
-                ? assetUrl(b.aboutPage.hero.video.webmAssetId)
-                : "",
-            }
-          : { posterUrl: "", mp4Url: "", webmUrl: "" },
+        // hero.video is MediaRef? (image OR video; mirrors features.video.media) — resolve to a
+        // discriminated view-model; null when absent so the component falls back to the literal
+        // 8440992-uhd poster+mp4+webm.
+        videoMedia: resolveMedia(b.aboutPage.hero.video, lang, assetUrl, (l) => t(l, lang)),
       },
       testimonial: {
         eyebrow: t(b.aboutPage.testimonial.eyebrow, lang),
