@@ -1522,9 +1522,6 @@ body .w-webflow-badge {
    the viewport edges (the header above stays centred in the container); inner gutter keeps the cells
    off the screen edge. Criteria are boxless — icon + title + desc, neutral ink. */
 .sx-features-row5 {
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  padding: 0 1.5rem;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1.5rem;
