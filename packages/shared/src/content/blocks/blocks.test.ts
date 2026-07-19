@@ -626,6 +626,28 @@ describe("contactPageBlock", () => {
     const { map: _, ...d } = valid;
     expect(contactPageBlock.safeParse(d).success).toBe(false);
   });
+
+  it("hero.image accepts a stored AssetRef (backward compat)", () => {
+    const d = structuredClone(valid);
+    (d.hero as Record<string, unknown>).image = { assetId: cuid() };
+    expect(contactPageBlock.safeParse(d).success).toBe(true);
+  });
+  it("hero.image accepts a VideoRef (flexible slot)", () => {
+    const d = structuredClone(valid);
+    (d.hero as Record<string, unknown>).image = { posterAssetId: cuid(), mp4AssetId: cuid() };
+    expect(contactPageBlock.safeParse(d).success).toBe(true);
+  });
+  it("hero accepts an overlay and parses with it absent", () => {
+    const d = structuredClone(valid);
+    (d.hero as Record<string, unknown>).overlay = { kind: "solid", fill: { color: "#0b1f33", opacity: 40 } };
+    expect(contactPageBlock.safeParse(d).success).toBe(true);
+    expect(contactPageBlock.safeParse(valid).success).toBe(true);
+  });
+  it("rejects a malformed overlay", () => {
+    const d = structuredClone(valid);
+    (d.hero as Record<string, unknown>).overlay = { kind: "solid", fill: { color: "navy", opacity: 40 } };
+    expect(contactPageBlock.safeParse(d).success).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
