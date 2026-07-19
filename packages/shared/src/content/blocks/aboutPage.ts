@@ -4,7 +4,7 @@ import {
   LocalizedTextArray,
   TwoToneTitle,
   AssetRef,
-  VideoRef,
+  MediaRef,
 } from "../primitives";
 
 const section = z.object({
@@ -20,7 +20,7 @@ export const aboutPageBlock = z.object({
   hero: z.object({
     title: TwoToneTitle,
     subtitle: LocalizedText,
-    video: VideoRef.optional(),
+    video: MediaRef.optional(), // image OR video
   }),
   // testimonial.image OPTIONAL: web falls back to the literal pexels-stephanlouis still.
   testimonial: section.extend({

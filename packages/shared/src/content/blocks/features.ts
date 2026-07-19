@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LocalizedText, TwoToneTitle, Href, VideoRef, AssetRef } from "../primitives";
+import { LocalizedText, TwoToneTitle, Href, MediaRef } from "../primitives";
 
 /** Home "Why Brands Choose Us" (dict.features). */
 export const featuresBlock = z.object({
@@ -9,14 +9,14 @@ export const featuresBlock = z.object({
   video: z.object({
     title: LocalizedText,
     text: LocalizedText,
-    media: VideoRef.optional(),
+    media: MediaRef.optional(), // image OR video
   }),
   featured: z.object({
     title: LocalizedText,
     desc: LocalizedText,
-    // Featured value-tile image. OPTIONAL: web falls back to the literal
+    // Featured value-tile image OR video. OPTIONAL: web falls back to the literal
     // pexels-saeb-mahajna still when absent (published v1 snapshot stays valid).
-    image: AssetRef.optional(),
+    image: MediaRef.optional(), // image OR video
   }),
   cards: z
     .array(z.object({ title: LocalizedText, desc: LocalizedText }))

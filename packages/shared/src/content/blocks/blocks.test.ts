@@ -659,3 +659,60 @@ describe("notFoundBlock", () => {
     expect(notFoundBlock.safeParse(d).success).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 13. flexible media slots (hero.image, features.featured.image, features.video.media,
+//     aboutPage.hero.video) accept MediaRef = AssetRef | VideoRef
+// ---------------------------------------------------------------------------
+describe("flexible media slots accept image OR video", () => {
+  const img = { assetId: cuid() };
+  const vid = { posterAssetId: cuid(), mp4AssetId: cuid() };
+  const baseHero = { titleTop: lt("a", "a"), titleBottom: lt("b", "b"), subtitle: lt("c", "c") };
+
+  it("hero.image accepts an image and a video", () => {
+    expect(() => heroBlock.parse({ ...baseHero, image: img })).not.toThrow();
+    expect(() => heroBlock.parse({ ...baseHero, image: vid })).not.toThrow();
+    expect(() => heroBlock.parse({ ...baseHero, image: { nope: 1 } })).toThrow();
+  });
+
+  it("features.featured.image and features.video.media each accept image and video", () => {
+    const base = {
+      eyebrow: lt("e", "e"), title: twoTone(lt("l", "l"), lt("a", "a")),
+      cta: { label: lt("c", "c"), href: "#" },
+      video: { title: lt("t", "t"), text: lt("x", "x"), media: vid },
+      featured: { title: lt("t", "t"), desc: lt("d", "d"), image: img },
+      cards: [{ title: lt("t", "t"), desc: lt("d", "d") }],
+    };
+    expect(() => featuresBlock.parse(base)).not.toThrow();
+    expect(() => featuresBlock.parse({ ...base, featured: { ...base.featured, image: vid } })).not.toThrow();
+    expect(() => featuresBlock.parse({ ...base, video: { ...base.video, media: img } })).not.toThrow();
+  });
+
+  it("aboutPage.hero.video accepts an image and a video", () => {
+    // aboutPageBlock has several other required sections (testimonial/approach/intro/capability/
+    // process/timeline) — the assertion below is about hero.video, but the whole object must parse,
+    // so this fixture is filled out completely (mirrors the "aboutPageBlock" describe's own `valid`).
+    const mk = (media: unknown) => ({
+      hero: { title: twoTone(lt("l", "l"), lt("a", "a")), subtitle: lt("s", "s"), video: media },
+      testimonial: { title: twoTone(lt("l", "l"), lt("a", "a")), body: lta(["x"], ["x"]) },
+      approach: [{ title: lt("t", "t"), body: lta(["x"], ["x"]) }],
+      intro: { title: twoTone(lt("l", "l"), lt("a", "a")) },
+      capability: {
+        title: twoTone(lt("l", "l"), lt("a", "a")),
+        groups: [{ title: lt("g", "g"), items: lta(["x"], ["x"]) }],
+        closing: lta(["x"], ["x"]),
+      },
+      process: {
+        title: twoTone(lt("l", "l"), lt("a", "a")),
+        steps: [{ title: lt("s", "s"), body: lt("b", "b") }],
+      },
+      timeline: {
+        title: twoTone(lt("l", "l"), lt("a", "a")),
+        intro: lta(["x"], ["x"]),
+        milestones: [{ num: "1", title: lt("t", "t"), body: lt("b", "b") }],
+      },
+    });
+    expect(() => aboutPageBlock.parse(mk(vid))).not.toThrow();
+    expect(() => aboutPageBlock.parse(mk(img))).not.toThrow();
+  });
+});
