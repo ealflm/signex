@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import { hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { getSiteContent } from "@/app/lib/content";
 import { Contact } from "@/app/components/home/contact";
+import { ContactHeroMedia } from "@/app/components/contact-hero-media";
 import { buildMetadata } from "@/app/lib/seo";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 
@@ -115,7 +116,7 @@ export default async function ContactPage({ params }: { params: Promise<{ lang: 
               ))}
             </div>
             <div className="image_contact-c" data-w-id="a7c263a0-bae9-4cd0-4784-0bc0e59ff63b" style={{ opacity: 0, filter: 'blur(5px)' }}>
-              <img alt={dict.contactPage.hero.imageAlt || "Sara dubler koei 7y yt io unsplash"} className="image_cover is-parallax" loading="lazy" src={dict.contactPage.hero.imageUrl || "/assets/images/69aeefb3f6044f0563d94f4b_sara-dubler-Koei_7yYtIo-unsplash.avif"} />
+              <ContactHeroMedia hero={dict.contactPage.hero} />
             </div>
           </div>
         </div>

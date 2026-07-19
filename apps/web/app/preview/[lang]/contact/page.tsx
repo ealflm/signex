@@ -13,6 +13,7 @@ import { getPreviewSnapshot } from "@/app/lib/content";
 import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { Contact } from "@/app/components/home/contact";
+import { ContactHeroMedia } from "@/app/components/contact-hero-media";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
@@ -125,7 +126,7 @@ async function PreviewContact({
                 ))}
               </div>
               <div className="image_contact-c" data-w-id="a7c263a0-bae9-4cd0-4784-0bc0e59ff63b" style={{ opacity: 0, filter: 'blur(5px)' }}>
-                <img alt={dict.contactPage.hero.imageAlt || "Sara dubler koei 7y yt io unsplash"} className="image_cover is-parallax" loading="lazy" src={dict.contactPage.hero.imageUrl || "/assets/images/69aeefb3f6044f0563d94f4b_sara-dubler-Koei_7yYtIo-unsplash.avif"} {...editableAttrs(true, "contactPage.hero.image", { image: true })} />
+                <ContactHeroMedia hero={dict.contactPage.hero} editable />
               </div>
             </div>
           </div>

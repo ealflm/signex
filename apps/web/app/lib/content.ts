@@ -406,10 +406,11 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
         title: t(b.contactPage.hero.title.lead, lang),
         titleAccent: t(b.contactPage.hero.title.accent, lang),
         subtitle: t(b.contactPage.hero.subtitle, lang),
-        // hero.image is AssetRef? — "" when absent so the contact page falls back to the literal
-        // sara-dubler still (published v1 snapshot stays valid). Editable as contactPage.hero.image.
-        imageUrl: assetUrl(b.contactPage.hero.image?.assetId ?? ""),
-        imageAlt: t(b.contactPage.hero.image?.alt, lang),
+        // hero.image is MediaRef? (image OR video, mirrors the home/about heroes) — resolved
+        // discriminated view-model; null when absent so the page falls back to the literal
+        // sara-dubler still. hero.overlay rides raw; the component resolves it via overlayCss.
+        media: resolveMedia(b.contactPage.hero.image, lang, assetUrl, (l) => t(l, lang)),
+        overlay: b.contactPage.hero.overlay,
       },
       cards: [
         {

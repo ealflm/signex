@@ -1459,3 +1459,9 @@ body .w-webflow-badge {
   pointer-events: none;
   z-index: 1;
 }
+
+/* The contact hero's media box: give the overlay_media-config child (absolute, inset 0) its
+   positioning context. Vendor .image_contact-c has width/height/overflow but no position. */
+.image_contact-c {
+  position: relative;
+}
