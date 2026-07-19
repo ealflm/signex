@@ -855,19 +855,32 @@ export function EditOverlay() {
         return;
       }
 
-      // applyEdits: live DOM swap for image/video AND re-apply of pending inline TEXT — no reload.
-      // edits: Array<{ field, kind:"image"|"video"|"text", url?, posterUrl?, mp4Url?, webmUrl?, text? }>
+      // applyEdits: live DOM swap for image/video/overlay AND re-apply of pending inline TEXT — no reload.
+      // edits: Array<{ field, kind:"image"|"video"|"text"|"overlay", url?, posterUrl?, mp4Url?, webmUrl?, text?, css? }>
+      //       { field, kind:"overlay", css:{ backgroundColor?, backgroundImage? } }  // live overlay background
       if (data.type === "applyEdits" && Array.isArray(data.edits)) {
         let didText = false;
         for (const ed of data.edits as Array<{
           field: string;
-          kind: "image" | "video" | "text";
+          kind: "image" | "video" | "text" | "overlay";
           url?: string;
           posterUrl?: string;
           mp4Url?: string;
           webmUrl?: string;
           text?: string;
+          css?: { backgroundColor?: string; backgroundImage?: string };
         }>) {
+          // Overlay lives on [data-sx-overlay] (not [data-edit-field]); resolve its own targets and
+          // set the inline background from the pre-resolved css (clear both first so an emptied
+          // overlay goes transparent). Own query + continue so it skips the [data-edit-field] path.
+          if (ed.kind === "overlay") {
+            for (const node of document.querySelectorAll<HTMLElement>(`[data-sx-overlay="${CSS.escape(ed.field)}"]`)) {
+              node.style.backgroundColor = ed.css?.backgroundColor ?? "";
+              node.style.backgroundImage = ed.css?.backgroundImage ?? "";
+            }
+            continue;
+          }
+
           // ALL matches, not the first: one content field legitimately renders in several places
           // (businessContact.* appears in both the footer and the contactPage card on /vi; each
           // formConfig label appears twice). querySelector re-applied a pending edit to whichever
