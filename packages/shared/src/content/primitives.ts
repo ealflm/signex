@@ -57,3 +57,24 @@ export type MediaRef = z.infer<typeof MediaRef>;
 /** True when this MediaRef is a video. The one discriminator the web resolver and the admin picker
  *  both read: a video carries `mp4AssetId`, an image never does. */
 export const isVideoRef = (m: MediaRef): m is VideoRef => "mp4AssetId" in m;
+
+/** A colour + its opacity (0–100). Renders as rgba(). */
+export const OverlayFill = z.object({
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "hex #RRGGBB"),
+  opacity: z.number().min(0).max(100),
+});
+export type OverlayFill = z.infer<typeof OverlayFill>;
+
+/** A gradient colour stop: a fill plus its position along the axis (0–100%). */
+export const OverlayStop = OverlayFill.extend({ pos: z.number().min(0).max(100) });
+
+/**
+ * A media slot's overlay. ABSENT (the field is optional) means transparent — the default. A present
+ * value is a solid fill or a 2–4 stop linear gradient. `kind` discriminates; nothing to migrate
+ * because the absence itself is the "none" case.
+ */
+export const Overlay = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("solid"), fill: OverlayFill }),
+  z.object({ kind: z.literal("gradient"), angle: z.number().min(0).max(360), stops: z.array(OverlayStop).min(2).max(4) }),
+]);
+export type Overlay = z.infer<typeof Overlay>;

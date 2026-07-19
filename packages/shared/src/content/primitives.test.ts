@@ -115,3 +115,15 @@ describe("MediaRef", () => {
     expect("mp4AssetId" in m).toBe(false);
   });
 });
+
+import { Overlay } from "./primitives";
+describe("Overlay", () => {
+  const solid = { kind: "solid", fill: { color: "#000000", opacity: 40 } };
+  const grad = { kind: "gradient", angle: 0, stops: [{ color: "#000000", opacity: 100, pos: 0 }, { color: "#000000", opacity: 0, pos: 60 }] };
+  it("parses a solid overlay", () => expect(Overlay.parse(solid)).toEqual(solid));
+  it("parses a 2-stop gradient", () => expect(Overlay.parse(grad)).toEqual(grad));
+  it("rejects a gradient with 1 stop", () => expect(() => Overlay.parse({ ...grad, stops: [grad.stops[0]] })).toThrow());
+  it("rejects opacity > 100", () => expect(() => Overlay.parse({ kind: "solid", fill: { color: "#000000", opacity: 140 } })).toThrow());
+  it("rejects a non-hex colour", () => expect(() => Overlay.parse({ kind: "solid", fill: { color: "black", opacity: 10 } })).toThrow());
+  it("rejects more than 4 stops", () => expect(() => Overlay.parse({ ...grad, stops: [grad.stops[0], grad.stops[1], grad.stops[0], grad.stops[1], grad.stops[0]] })).toThrow());
+});

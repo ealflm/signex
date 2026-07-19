@@ -5,6 +5,7 @@ import {
   TwoToneTitle,
   AssetRef,
   MediaRef,
+  Overlay,
 } from "../primitives";
 
 const section = z.object({
@@ -21,6 +22,7 @@ export const aboutPageBlock = z.object({
     title: TwoToneTitle,
     subtitle: LocalizedText,
     video: MediaRef.optional(), // image OR video
+    overlay: Overlay.optional(),
   }),
   // testimonial.image OPTIONAL: web falls back to the literal pexels-stephanlouis still.
   testimonial: section.extend({

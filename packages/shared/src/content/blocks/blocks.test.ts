@@ -716,3 +716,66 @@ describe("flexible media slots accept image OR video", () => {
     expect(() => aboutPageBlock.parse(mk(img))).not.toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// 14. overlay is optional on the four flexible media slots (hero.overlay,
+//     features.featured.overlay, features.video.overlay, aboutPage.hero.overlay)
+// ---------------------------------------------------------------------------
+describe("overlay is optional on the four flexible media slots", () => {
+  const img = { assetId: cuid() };
+  const overlay = { kind: "solid", fill: { color: "#000000", opacity: 40 } };
+
+  it("heroBlock parses with overlay present and with it absent", () => {
+    const base = {
+      titleTop: lt("a", "a"), titleBottom: lt("b", "b"), subtitle: lt("c", "c"), image: img,
+    };
+    expect(heroBlock.safeParse(base).success).toBe(true);
+    expect(heroBlock.safeParse({ ...base, overlay }).success).toBe(true);
+  });
+
+  it("featuresBlock.featured and featuresBlock.video each parse with overlay present and with it absent", () => {
+    const base = {
+      eyebrow: lt("e", "e"), title: twoTone(lt("l", "l"), lt("a", "a")),
+      cta: { label: lt("c", "c"), href: "#" },
+      video: { title: lt("t", "t"), text: lt("x", "x") },
+      featured: { title: lt("t", "t"), desc: lt("d", "d") },
+      cards: [{ title: lt("t", "t"), desc: lt("d", "d") }],
+    };
+    expect(featuresBlock.safeParse(base).success).toBe(true);
+    expect(
+      featuresBlock.safeParse({ ...base, featured: { ...base.featured, overlay } }).success,
+    ).toBe(true);
+    expect(
+      featuresBlock.safeParse({ ...base, video: { ...base.video, overlay } }).success,
+    ).toBe(true);
+  });
+
+  it("aboutPageBlock.hero parses with overlay present and with it absent", () => {
+    const mk = (heroOverlay?: unknown) => ({
+      hero: {
+        title: twoTone(lt("l", "l"), lt("a", "a")),
+        subtitle: lt("s", "s"),
+        ...(heroOverlay ? { overlay: heroOverlay } : {}),
+      },
+      testimonial: { title: twoTone(lt("l", "l"), lt("a", "a")), body: lta(["x"], ["x"]) },
+      approach: [{ title: lt("t", "t"), body: lta(["x"], ["x"]) }],
+      intro: { title: twoTone(lt("l", "l"), lt("a", "a")) },
+      capability: {
+        title: twoTone(lt("l", "l"), lt("a", "a")),
+        groups: [{ title: lt("g", "g"), items: lta(["x"], ["x"]) }],
+        closing: lta(["x"], ["x"]),
+      },
+      process: {
+        title: twoTone(lt("l", "l"), lt("a", "a")),
+        steps: [{ title: lt("s", "s"), body: lt("b", "b") }],
+      },
+      timeline: {
+        title: twoTone(lt("l", "l"), lt("a", "a")),
+        intro: lta(["x"], ["x"]),
+        milestones: [{ num: "1", title: lt("t", "t"), body: lt("b", "b") }],
+      },
+    });
+    expect(aboutPageBlock.safeParse(mk()).success).toBe(true);
+    expect(aboutPageBlock.safeParse(mk(overlay)).success).toBe(true);
+  });
+});
