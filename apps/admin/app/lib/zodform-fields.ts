@@ -9,6 +9,7 @@ export type FieldKind =
   | "array"
   | "assetRef"
   | "videoRef"
+  | "mediaRef"
   | "object"
   | "json";
 
@@ -96,6 +97,21 @@ function isVideoRef(s: z.ZodTypeAny): boolean {
   return Boolean(shape && "posterAssetId" in shape && "mp4AssetId" in shape);
 }
 
+// MediaRef = z.union([AssetRef, VideoRef]) (packages/shared/src/content/primitives.ts) — a
+// flexible slot that may hold EITHER an image or a video. Zod v3 exposes a union's members via the
+// `.options` getter, which is just `_def.options` (verified against the installed zod@3.25 source:
+// node_modules/zod/v3/types.js `get options() { return this._def.options; }`) — a plain array of
+// the member schemas, so detect it structurally the same way isAssetRef/isVideoRef detect their own
+// shapes: exactly two options, one AssetRef-shaped and one VideoRef-shaped (either order).
+function isMediaRef(s: z.ZodTypeAny): boolean {
+  if (typeName(s) !== "ZodUnion") return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const options = ((s as any)._def.options as z.ZodTypeAny[] | undefined) ?? [];
+  if (options.length !== 2) return false;
+  const [a, b] = options.map((o) => unwrap(o));
+  return (isAssetRef(a) && isVideoRef(b)) || (isAssetRef(b) && isVideoRef(a));
+}
+
 // A "plain object" we may recurse into: a ZodObject that is NOT one of the special
 // structural shapes (localized / localizedArray / assetRef / videoRef).
 function isPlainObject(s: z.ZodTypeAny): boolean {
@@ -118,6 +134,10 @@ function classify(name: string, raw: z.ZodTypeAny, depth = 0): FieldPlan {
   if (typeName(s) === "ZodBoolean") return { name, kind: "boolean", label: name };
   if (isLocalizedArray(s)) return { name, kind: "localizedArray", label: name };
   if (isLocalized(s)) return { name, kind: "localized", label: name };
+  // MediaRef is a z.ZodUnion, so it MUST be caught before the generic "unions stay JSON" fallback
+  // at the bottom of this function — otherwise a flexible image-OR-video slot silently degrades to
+  // a raw-JSON textarea (see zodform-fields.test.ts).
+  if (isMediaRef(s)) return { name, kind: "mediaRef", label: name };
   if (isVideoRef(s)) return { name, kind: "videoRef", label: name };
   if (isAssetRef(s)) return { name, kind: "assetRef", label: name };
   if (typeName(s) === "ZodArray") {

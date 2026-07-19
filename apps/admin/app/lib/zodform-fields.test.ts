@@ -43,6 +43,14 @@ describe("deriveFields", () => {
     expect(plan.find((f) => f.name === "media")?.kind).not.toBe("assetRef");
   });
 
+  it("classifies a MediaRef (z.union([AssetRef, VideoRef])) as mediaRef, not json", () => {
+    // A MediaRef IS a z.ZodUnion, so this also pins the ordering requirement: it must be caught
+    // BEFORE the generic union→json fallback ("falls back to json for shapes it cannot cleanly
+    // model" below), or a flexible image-OR-video slot silently degrades to a raw-JSON textarea.
+    const plan = deriveFields(z.object({ m: z.union([assetRef, videoRef]) }));
+    expect(plan.find((f) => f.name === "m")?.kind).toBe("mediaRef");
+  });
+
   it("recurses ONE level into a plain object, classifying nested leaves (string/localized/assetRef/videoRef)", () => {
     const plan = deriveFields(
       z.object({
@@ -122,18 +130,20 @@ describe("deriveFields", () => {
     const child = (plan: ReturnType<typeof deriveFields>, parent: string, name: string) =>
       plan.find((f) => f.name === parent)?.children?.find((c) => c.name === name)?.kind;
 
-    // footer.logo — top-level assetRef
+    // footer.logo — top-level assetRef (unchanged: still a plain AssetRef, not a flexible slot)
     const footer = deriveFields(BLOCK_REGISTRY.footer as z.ZodTypeAny);
     expect(footer.find((f) => f.name === "logo")?.kind).toBe("assetRef");
 
-    // features.featured.image — nested assetRef ; features.video.media — nested videoRef
+    // features.featured.image and features.video.media are now flexible (image OR video) slots —
+    // both AssetRef and VideoRef were widened to MediaRef, so both classify as mediaRef.
     const features = deriveFields(BLOCK_REGISTRY.features as z.ZodTypeAny);
-    expect(child(features, "featured", "image")).toBe("assetRef");
-    expect(child(features, "video", "media")).toBe("videoRef");
+    expect(child(features, "featured", "image")).toBe("mediaRef");
+    expect(child(features, "video", "media")).toBe("mediaRef");
 
-    // aboutPage.hero.video — nested videoRef ; aboutPage.testimonial.image — nested assetRef
+    // aboutPage.hero.video is now a flexible slot (mediaRef) ; aboutPage.testimonial.image is
+    // unchanged — still a plain AssetRef.
     const aboutPage = deriveFields(BLOCK_REGISTRY.aboutPage as z.ZodTypeAny);
-    expect(child(aboutPage, "hero", "video")).toBe("videoRef");
+    expect(child(aboutPage, "hero", "video")).toBe("mediaRef");
     expect(child(aboutPage, "testimonial", "image")).toBe("assetRef");
   });
 });

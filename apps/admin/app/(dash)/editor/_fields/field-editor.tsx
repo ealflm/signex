@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { isVideoRef, type MediaRef } from "@signex/shared";
 import type { FieldPlan } from "@/app/lib/zodform-fields";
 import { Field } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -27,6 +28,7 @@ function defaultForField(plan: FieldPlan): unknown {
       return [];
     case "assetRef":
     case "videoRef":
+    case "mediaRef":
       return {};
     case "object":
       return Object.fromEntries(
@@ -695,6 +697,31 @@ export function FieldEditor({
   } else if (field.kind === "videoRef") {
     inner = (
       <VideoRefField
+        field={field}
+        value={value}
+        onChange={onChange}
+        assets={assets}
+        onPickMedia={onPickMedia}
+      />
+    );
+  } else if (field.kind === "mediaRef") {
+    // A flexible slot (image OR video, @signex/shared MediaRef). No dedicated editor: render
+    // whichever of the two existing sub-renderers matches what's CURRENTLY stored, so an
+    // image-holding slot shows the image editor and a video-holding slot shows the video editor.
+    // Empty/null defaults to the image editor. The full image↔video switch itself happens on the
+    // canvas via the visual-editor picker (its flexible toggle) — this sidebar only has to reflect
+    // the current kind, not offer the swap.
+    const holdsVideo = value != null && isVideoRef(value as MediaRef);
+    inner = holdsVideo ? (
+      <VideoRefField
+        field={field}
+        value={value}
+        onChange={onChange}
+        assets={assets}
+        onPickMedia={onPickMedia}
+      />
+    ) : (
+      <AssetRefField
         field={field}
         value={value}
         onChange={onChange}

@@ -71,7 +71,8 @@ describe("edit modes", () => {
 
 describe("field classifiers", () => {
   // Probed against the real registry rather than assumed:
-  //   hero → titleTop/titleBottom/subtitle are `localized`, image is `assetRef`.
+  //   hero → titleTop/titleBottom/subtitle are `localized`, image is `mediaRef` (a flexible
+  //   image-OR-video slot — see packages/shared/src/content/primitives.ts MediaRef).
   const heroFields = deriveFields(BLOCK_REGISTRY.hero);
 
   it("Media mode lists the hero image and no strings", () => {
@@ -88,6 +89,10 @@ describe("field classifiers", () => {
 
   it("every field lands in at most one visual mode", () => {
     for (const f of heroFields) expect(isMediaField(f) && isTextField(f)).toBe(false);
+  });
+
+  it("isMediaField also claims the flexible mediaRef kind (image OR video), directly — not just via a derived plan", () => {
+    expect(isMediaField({ name: "x", kind: "mediaRef", label: "x" })).toBe(true);
   });
 
   it("claims no container: they are LEAF predicates — lensFields decides containers", () => {

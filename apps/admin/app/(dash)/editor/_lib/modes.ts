@@ -41,11 +41,13 @@ export const DEFAULT_MODE: EditMode = DEFAULT_EDIT_MODE;
 // They are LEAF predicates. Containers are not their business; `lensFields` below owns those.
 
 /**
- * Media = the two structural media shapes: AssetRef ({assetId, alt?}) and VideoRef
- * ({posterAssetId, mp4AssetId, webmAssetId?}). Both open the media picker, and nothing else does.
+ * Media = the three structural media shapes: AssetRef ({assetId, alt?}), VideoRef
+ * ({posterAssetId, mp4AssetId, webmAssetId?}), and MediaRef (the flexible AssetRef|VideoRef union —
+ * a slot that may hold either, per packages/shared/src/content/primitives.ts). All three open the
+ * media picker, and nothing else does.
  */
 export function isMediaField(f: FieldPlan): boolean {
-  return f.kind === "assetRef" || f.kind === "videoRef";
+  return f.kind === "assetRef" || f.kind === "videoRef" || f.kind === "mediaRef";
 }
 
 /**
