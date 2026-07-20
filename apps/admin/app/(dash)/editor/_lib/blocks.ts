@@ -109,6 +109,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
       { blockKey: "businessContact", label: "Business contact" },
       { blockKey: "formConfig", label: "Form config" },
       { blockKey: "notFound", label: "404 page" },
+      { blockKey: "floatingButtons", label: "Floating buttons" },
     ],
   },
 ];
@@ -133,5 +134,6 @@ export const SURFACE_PATH_BY_BLOCK: Record<BlockKey, string | null> = {
   meta: null,
   businessContact: null,
   formConfig: null,
+  floatingButtons: null,
   notFound: "/404",
 };
