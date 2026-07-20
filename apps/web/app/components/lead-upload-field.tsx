@@ -141,6 +141,7 @@ export interface LeadUploadFieldProps {
   /** Reject files larger than this on the client (defaults to 50 MB). */
   maxBytes?: number;
   tabIndex?: number;
+  required?: boolean;
 }
 
 export function LeadUploadField({
@@ -152,6 +153,7 @@ export function LeadUploadField({
   hintEditAttrs,
   maxBytes = DEFAULT_MAX_BYTES,
   tabIndex,
+  required,
 }: LeadUploadFieldProps) {
   const c = VARIANT[variant];
   const pathname = usePathname();
@@ -225,6 +227,7 @@ export function LeadUploadField({
         accept={accept}
         type="file"
         tabIndex={tabIndex}
+        required={required}
         onChange={(e) => onPick(e.target.files?.[0] ?? null)}
         className="sx-upload__input"
       />

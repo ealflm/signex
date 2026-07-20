@@ -25,6 +25,16 @@
   backdrop-filter: blur(14px);
 }
 
+/* Required-field marker — CSS content on the LABEL SPAN (not a DOM <sup>) so it always inherits
+   the span's own colour: uniform form colour, per-label override, or default alike. A11y comes
+   from the input's `required` attribute; the glyph is decoration. */
+.text_input-label .sx-required::after {
+  content: "*";
+  margin-left: 0.15em;
+  font-size: 0.8em;
+  vertical-align: super;
+}
+
 .hero-quote_inner {
   display: flex;
   flex-direction: column;

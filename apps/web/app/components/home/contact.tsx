@@ -153,36 +153,33 @@ export function Contact({
                   <div className="profile-form_inner contact-form_grid">
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-name">
-                        <span {...editableAttrs(editable, "formConfig.fields.name.label", { text: { maxLength: 80 } })}>{t.name}</span>
-                        <sup>*</sup>
+                        <span className={t.required.name ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.name.label", { text: { maxLength: 80 } })}>{t.name}</span>
                       </label>
-                      <input className="text-field w-input" data-name="Name" id="contact-name" maxLength={256} name="Name" placeholder={t.namePlaceholder} required type="text" />
+                      <input className="text-field w-input" data-name="Name" id="contact-name" maxLength={256} name="Name" placeholder={t.namePlaceholder} required={t.required.name} type="text" />
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-email">
-                        <span {...editableAttrs(editable, "formConfig.fields.email.label", { text: { maxLength: 80 } })}>{t.email}</span>
-                        <sup>*</sup>
+                        <span className={t.required.email ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.email.label", { text: { maxLength: 80 } })}>{t.email}</span>
                       </label>
-                      <input className="text-field w-input" data-name="Email" id="contact-email" maxLength={256} name="Email" placeholder={t.emailPlaceholder} required type="email" />
+                      <input className="text-field w-input" data-name="Email" id="contact-email" maxLength={256} name="Email" placeholder={t.emailPlaceholder} required={t.required.email} type="email" />
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-phone">
-                        <span {...editableAttrs(editable, "formConfig.fields.phone.label", { text: { maxLength: 80 } })}>{t.phone}</span>
-                        <sup>*</sup>
+                        <span className={t.required.phone ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.phone.label", { text: { maxLength: 80 } })}>{t.phone}</span>
                       </label>
-                      <input className="text-field w-input" data-name="Phone" id="contact-phone" maxLength={256} name="Phone" placeholder={t.phonePlaceholder} required type="tel" />
+                      <input className="text-field w-input" data-name="Phone" id="contact-phone" maxLength={256} name="Phone" placeholder={t.phonePlaceholder} required={t.required.phone} type="tel" />
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-quantity">
-                        <span {...editableAttrs(editable, "formConfig.fields.quantity.label", { text: { maxLength: 80 } })}>{t.quantity}</span>
+                        <span className={t.required.quantity ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.quantity.label", { text: { maxLength: 80 } })}>{t.quantity}</span>
                       </label>
-                      <input className="text-field w-input" data-name="Quantity" id="contact-quantity" name="Quantity" placeholder={t.quantityPlaceholder} type="text" />
+                      <input className="text-field w-input" data-name="Quantity" id="contact-quantity" name="Quantity" placeholder={t.quantityPlaceholder} required={t.required.quantity} type="text" />
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-standard">
-                        <span {...editableAttrs(editable, "formConfig.fields.standard.label", { text: { maxLength: 80 } })}>{t.standard}</span>
+                        <span className={t.required.standard ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.standard.label", { text: { maxLength: 80 } })}>{t.standard}</span>
                       </label>
-                      <select className="text-field select w-select" data-name="Standard" defaultValue="" id="contact-standard" name="Standard">
+                      <select className="text-field select w-select" data-name="Standard" defaultValue="" id="contact-standard" name="Standard" required={t.required.standard}>
                         <option value="">
                           {t.standardPlaceholder}
                         </option>
@@ -195,7 +192,7 @@ export function Contact({
                     </div>
                     <div className="input_wrap">
                       <label className="text_input-label label-large" htmlFor="contact-sample">
-                        <span {...editableAttrs(editable, "formConfig.fields.upload.label", { text: { maxLength: 80 } })}>{t.upload}</span>
+                        <span className={t.required.upload ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.upload.label", { text: { maxLength: 80 } })}>{t.upload}</span>
                       </label>
                       {/* Dashed dropzone when empty; a thumbnail/file chip with
                           change + remove once a file is picked. */}
@@ -206,33 +203,34 @@ export function Contact({
                         accept="image/*,application/pdf"
                         hint={t.uploadHelp}
                         hintEditAttrs={editableAttrs(editable, "formConfig.uploadHelp", { text: { maxLength: 80 } })}
+                        required={t.required.upload}
                       />
                     </div>
                     <div className="contact-form_dims">
                       <div className="input_wrap">
                         <label className="text_input-label label-large" htmlFor="contact-height">
-                          <span {...editableAttrs(editable, "formConfig.fields.height.label", { text: { maxLength: 80 } })}>{t.height}</span>
+                          <span className={t.required.height ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.height.label", { text: { maxLength: 80 } })}>{t.height}</span>
                         </label>
-                        <input className="text-field w-input" data-name="Height" id="contact-height" inputMode="decimal" name="Height" placeholder={t.heightPlaceholder} type="text" />
+                        <input className="text-field w-input" data-name="Height" id="contact-height" inputMode="decimal" name="Height" placeholder={t.heightPlaceholder} required={t.required.height} type="text" />
                       </div>
                       <div className="input_wrap">
                         <label className="text_input-label label-large" htmlFor="contact-width">
-                          <span {...editableAttrs(editable, "formConfig.fields.width.label", { text: { maxLength: 80 } })}>{t.width}</span>
+                          <span className={t.required.width ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.width.label", { text: { maxLength: 80 } })}>{t.width}</span>
                         </label>
-                        <input className="text-field w-input" data-name="Width" id="contact-width" inputMode="decimal" name="Width" placeholder={t.widthPlaceholder} type="text" />
+                        <input className="text-field w-input" data-name="Width" id="contact-width" inputMode="decimal" name="Width" placeholder={t.widthPlaceholder} required={t.required.width} type="text" />
                       </div>
                       <div className="input_wrap">
                         <label className="text_input-label label-large" htmlFor="contact-thickness">
-                          <span {...editableAttrs(editable, "formConfig.fields.thickness.label", { text: { maxLength: 80 } })}>{t.thickness}</span>
+                          <span className={t.required.thickness ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.thickness.label", { text: { maxLength: 80 } })}>{t.thickness}</span>
                         </label>
-                        <input className="text-field w-input" data-name="Thickness" id="contact-thickness" inputMode="decimal" name="Thickness" placeholder={t.thicknessPlaceholder} type="text" />
+                        <input className="text-field w-input" data-name="Thickness" id="contact-thickness" inputMode="decimal" name="Thickness" placeholder={t.thicknessPlaceholder} required={t.required.thickness} type="text" />
                       </div>
                     </div>
                     <div className="input_wrap contact-form_full">
                       <label className="text_input-label label-large" htmlFor="contact-message">
-                        <span {...editableAttrs(editable, "formConfig.fields.message.label", { text: { maxLength: 80 } })}>{t.message}</span>
+                        <span className={t.required.message ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.message.label", { text: { maxLength: 80 } })}>{t.message}</span>
                       </label>
-                      <textarea className="text-field text-area w-input" data-name="Message" id="contact-message" name="Message" placeholder={t.messagePlaceholder}></textarea>
+                      <textarea className="text-field text-area w-input" data-name="Message" id="contact-message" name="Message" placeholder={t.messagePlaceholder} required={t.required.message}></textarea>
                     </div>
                   </div>
                   <div button="" className="button_submit-static">

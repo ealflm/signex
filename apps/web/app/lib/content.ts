@@ -160,6 +160,21 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       submitting: t(fc.submitting, lang, lang === "vi" ? "Vui lòng đợi..." : "Please wait..."),
       success: t(fc.success, lang),
       fail: t(fc.fail, lang),
+      // Per-field `required` (formConfig.fields.<k>.required, zod-defaulted false; the importer
+      // seeds true only for name/email/phone) — drives the (*) marker and the native `required`
+      // attribute on BOTH forms (hero quote + contact page).
+      required: {
+        name: fFields.name.required,
+        email: fFields.email.required,
+        phone: fFields.phone.required,
+        quantity: fFields.quantity.required,
+        standard: fFields.standard.required,
+        height: fFields.height.required,
+        width: fFields.width.required,
+        thickness: fFields.thickness.required,
+        upload: fFields.upload.required,
+        message: fFields.message.required,
+      },
     },
     features: {
       eyebrow: t(b.features.eyebrow, lang),
