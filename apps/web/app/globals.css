@@ -36,10 +36,17 @@
 }
 
 /* Uniform hero-form label colour (hero.formLabelColor → --sx-form-label set inline on the panel).
-   `inherit` keeps today's colour bit-for-bit when unset. Per-label per-element overrides still
-   win: the palette <style> (injected after app CSS) targets the anchored SPAN directly, and the
-   span's own colour beats what it would inherit from this label rule. */
-.hero-quote_panel .text_input-label { color: var(--sx-form-label, inherit); }
+   The fallback is the SAME token the base template rule uses (caladan-template.shared css:
+   `.text_input-label { color: var(--_🎨-color--tokens---input--label); }`), so this rule reproduces
+   that rule exactly when `--sx-form-label` is unset — today's look is bit-for-bit unchanged.
+   `inherit` was tried here first and verified (via getComputedStyle, toggling the rule in/out)
+   to NOT be a no-op: this selector (.hero-quote_panel .text_input-label, specificity 0,2,0)
+   out-specifies the base rule (.text_input-label, 0,1,0), so `inherit` would cut off the base
+   rule's token and take whatever colour cascades from an ancestor instead (measured: opaque
+   white vs. the token's translucent 64%-alpha white) — a real, if subtle, regression. Per-label
+   per-element overrides still win: the palette <style> (injected after app CSS) targets the
+   anchored SPAN directly, and the span's own colour beats what it would inherit from this rule. */
+.hero-quote_panel .text_input-label { color: var(--sx-form-label, var(--_🎨-color--tokens---input--label)); }
 
 .hero-quote_inner {
   display: flex;
