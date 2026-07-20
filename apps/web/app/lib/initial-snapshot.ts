@@ -714,6 +714,10 @@ export const INITIAL_SNAPSHOT = {
         }
       }
     },
+    "floatingButtons": {
+      "callHref": "",
+      "zaloHref": ""
+    },
     "businessContact": {
       "brand": {
         "en": "SIGNEX",

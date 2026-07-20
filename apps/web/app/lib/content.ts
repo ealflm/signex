@@ -114,6 +114,10 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       sites: bc.sites.map((s) => ({ kind: s.kind, label: t(s.label, lang), address: t(s.address, lang) })),
       social: bc.social.map((s) => ({ kind: s.kind, href: s.href })),
     },
+    floatingButtons: {
+      callHref: b.floatingButtons.callHref,
+      zaloHref: b.floatingButtons.zaloHref,
+    },
     hero: {
       titleTop: t(b.hero.titleTop, lang),
       titleBottom: t(b.hero.titleBottom, lang),
