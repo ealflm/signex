@@ -1,7 +1,9 @@
 // app/components/home/features-full.tsx
 // The ABOUT-page "Vì Sao Các Thương Hiệu Chọn Chúng Tôi" block — header (eyebrow + title + CTA) in the
-// container, then ONE full-width row of 5 equal cells: the workshop video (1/5) + the 4 criteria
-// (boxless, icon + title + desc). Same features data as the homepage USP bar (shared buildCriteria).
+// container, then a full-width 2-column split row: the workshop video filling the LEFT half + the 4
+// criteria as a 2×2 quad on the right (boxless, icon + title + desc). Collapses to one column ≤991px
+// (video on top), and the quad to a single column ≤479px. Same features data as the homepage USP bar
+// (shared buildCriteria).
 // NO data-w-id reveals here — those ids are home-registered and would leave this invisible on /about.
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";

@@ -41,4 +41,7 @@ test("displayNumber: the user-facing number behind a resolved href (labels deriv
   assert.equal(displayNumber("https://zalo.me/signex.oa"), null); // OA link → generic label
   assert.equal(displayNumber("mailto:x@y.z"), null);
   assert.equal(displayNumber(""), null);
+  // scheme is case-insensitive (an admin may paste an uppercase-scheme override; resolveCallHref
+  // passes SAFE_HREF matches through verbatim), matching the zalo.me branch's own /i.
+  assert.equal(displayNumber("TEL:+84982633377"), "0982633377");
 });

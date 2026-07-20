@@ -48,7 +48,7 @@ export function resolveZaloHref(explicit: string, phone: string | undefined): st
  *  zaloHref). Null when the target isn't a plain number (Zalo OA/group links, mailto, …): the
  *  button then gets a generic label instead of a fabricated number. */
 export function displayNumber(href: string): string | null {
-  const m = /^tel:(\+?\d+)$/.exec(href) ?? /^https:\/\/zalo\.me\/(\d+)$/i.exec(href);
+  const m = /^tel:(\+?\d+)$/i.exec(href) ?? /^https:\/\/zalo\.me\/(\d+)$/i.exec(href);
   if (!m) return null;
   let d = m[1];
   if (d.startsWith("+84")) d = "0" + d.slice(3);

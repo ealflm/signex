@@ -13,7 +13,8 @@ export const heroBlock = z.object({
   showQuoteForm: z.boolean().default(true),
   // Uniform colour for ALL 10 field-label spans of the HERO form only. The contact form is
   // deliberately out of scope (its light card needs different colours; per-label overrides cover
-  // it). `.describe("color")` is the admin zodform's colour-picker marker. Absent = inherit.
+  // it). `.describe("color")` is the admin zodform's colour-picker marker. Absent = the template's
+  // own input--label token (the web's --sx-form-label fallback), i.e. today's colour, no change.
   formLabelColor: HexA.describe("color").optional(),
 });
 export type HeroBlock = z.infer<typeof heroBlock>;
