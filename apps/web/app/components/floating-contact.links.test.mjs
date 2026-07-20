@@ -26,3 +26,10 @@ test("unsafe scheme is never emitted verbatim", () => {
   assert.ok(!/^javascript:/i.test(c), `call must not emit javascript: got ${c}`);
   assert.ok(!/^javascript:/i.test(z), `zalo must not emit javascript: got ${z}`);
 });
+test("garbage explicit value (no digits) falls back to the phone", () => {
+  assert.equal(resolveCallHref("abc", "(+84) 979 700 072"), "tel:+84979700072");
+  assert.equal(resolveZaloHref("!!!", "(+84) 94 9999 326"), "https://zalo.me/0949999326");
+});
+test("garbage explicit value + no phone -> empty (button hidden)", () => {
+  assert.equal(resolveCallHref("abc", undefined), "");
+});

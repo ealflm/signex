@@ -17,6 +17,7 @@ const BLOCK_KEYS = [
   'aboutPage',
   'contactPage',
   'notFound',
+  'floatingButtons',
 ];
 
 jest.mock('./dict-source', () => ({
@@ -55,7 +56,7 @@ jest.mock('./catalog-builder', () => ({
   })),
 }));
 jest.mock('./block-builder', () => ({
-  // 12 registry-keyed blocks; data carries no asset refs (irrelevant here).
+  // 13 registry-keyed blocks; data carries no asset refs (irrelevant here).
   buildBlocks: jest.fn(() =>
     BLOCK_KEYS.map((key) => ({ kind: 'PAGE', key, data: { stub: key } })),
   ),
@@ -161,7 +162,7 @@ describe('ImporterService', () => {
     delete process.env.MEDIA_PUBLIC_BASE;
   });
 
-  it('mints one Default theme + Release v1: assembles a 12-block snapshot with minted catalog ids + assets map', async () => {
+  it('mints one Default theme + Release v1: assembles a 13-block snapshot with minted catalog ids + assets map', async () => {
     const { prisma, assets, release } = makeDeps();
     const svc = new ImporterService(
       { client: prisma } as any,

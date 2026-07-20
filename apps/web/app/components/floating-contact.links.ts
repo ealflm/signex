@@ -21,14 +21,24 @@ export function zaloHref(value: string): string {
 
 export function resolveCallHref(explicit: string, phone: string | undefined): string {
   const e = (explicit ?? "").trim();
-  if (e) return SAFE_HREF.test(e) ? e : telHref(e);
+  if (e) {
+    if (SAFE_HREF.test(e)) return e;
+    const formatted = telHref(e);
+    if (/\d/.test(formatted)) return formatted; // a real number was given
+    // else: no digits → treat as unset and fall through to the phone
+  }
   const p = phone?.trim();
   return p ? telHref(p) : "";
 }
 
 export function resolveZaloHref(explicit: string, phone: string | undefined): string {
   const e = (explicit ?? "").trim();
-  if (e) return SAFE_HREF.test(e) ? e : zaloHref(e);
+  if (e) {
+    if (SAFE_HREF.test(e)) return e;
+    const formatted = zaloHref(e);
+    if (/\d/.test(formatted)) return formatted; // a real number was given
+    // else: no digits → treat as unset and fall through to the phone
+  }
   const p = phone?.trim();
   return p ? zaloHref(p) : "";
 }
