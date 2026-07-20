@@ -83,7 +83,7 @@ const goodBusinessContact = {
 // BLOCK_REGISTRY tests (from brief)
 // ---------------------------------------------------------------------------
 describe("BLOCK_REGISTRY", () => {
-  it("has exactly the 12 expected keys", () => {
+  it("has exactly the 13 expected keys", () => {
     expect(Object.keys(BLOCK_REGISTRY).sort()).toEqual([...EXPECTED_KEYS].sort());
     expect(BLOCK_KEYS.length).toBe(13);
   });
@@ -183,7 +183,7 @@ describe("parseBlock", () => {
 //   • businessContact is UNIFIED NAP: constructed from footer NAP fields
 //     present in both dict files (en.json + vi.json).
 // ---------------------------------------------------------------------------
-describe("dict conformance: all 12 blocks", () => {
+describe("dict conformance: all 12 dict-sourced blocks", () => {
   // ---- 1. hero ----------------------------------------------------------------
   it("hero: text fields conform (image stubbed)", () => {
     const fixture = {

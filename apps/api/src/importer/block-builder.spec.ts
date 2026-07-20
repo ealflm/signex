@@ -24,7 +24,7 @@ describe('buildBlocks', () => {
   const { en, vi } = loadDicts();
   const blocks = buildBlocks(en, vi, assetsStub());
 
-  it('builds exactly the 12 registry keys', () => {
+  it('builds exactly the 13 registry keys', () => {
     expect(blocks.map((b) => b.key).sort()).toEqual(
       Object.keys(BLOCK_REGISTRY).sort(),
     );

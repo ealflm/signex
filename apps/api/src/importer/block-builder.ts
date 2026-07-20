@@ -522,7 +522,7 @@ function buildNotFound(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
 // ---------------------------------------------------------------------------
 
 /**
- * Fold the two locale dicts + asset map into the 12 BLOCK_REGISTRY blocks.
+ * Fold the two locale dicts + asset map into the 13 BLOCK_REGISTRY blocks.
  * Calls parseBlock(kind, key, data) on each — the conformance gate.
  * Throws ZodError on any schema mismatch (fix the mapping, not the schema).
  */
