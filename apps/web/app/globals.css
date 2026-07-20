@@ -316,7 +316,8 @@
 
 /* Navbar Signex logo (user-supplied SVG, recoloured to #241018). Sized by height; its
    width auto-derives from the ~2.4:1 aspect ratio and stays within .brand_navbar's cap.
-   r3: client asked for the nav logo doubled — 1.85rem -> 3.7rem (×2). */
+   r3: client asked for the nav logo doubled — 1.85rem -> 3.7rem (×2) on DESKTOP; mobile keeps the
+   original height (the media query below) because the mobile bar can't fit a 2× logo beside the CTA. */
 .signex-logo-nav {
   height: 3.7rem;
   aspect-ratio: 2048 / 855;
@@ -336,12 +337,23 @@
   display: block;
   object-fit: contain;
 }
-/* r3: the 2× logo (≈8.9rem wide at 3.7rem tall) needs more room than the template cap allows.
-   Verified in-browser (≤767px real viewport): without this, the wordmark overflows .brand_navbar's
-   width cap and overlaps .nav_right (CTA button) by ~30px; this removes the cap so the anchor's
-   own shrink-to-fit width (hence the flex "sole item" centering) matches the logo's real width. */
+/* r3: the desktop 2× logo (≈8.9rem wide at 3.7rem tall) is wider than the template's .brand_navbar
+   width cap (7rem), which would clip it — so remove the cap. Verified in-browser at 1440px: the
+   centred brand then clears the nav links by ~130px and the CTA by ~160px. */
 .brand_navbar.w-nav-brand {
   max-width: none;
+}
+/* Mobile (≤767px): the bar is hamburger + centred logo + the "Nhận báo giá" CTA, and the CTA is
+   pinned to the right padding edge. Measured in-browser at 375px: the centred 2× logo (142px wide)
+   overlaps the CTA by ~30px — and the ORIGINAL 1.85rem logo already had only ~5px there, so the bar
+   simply cannot fit an enlarged logo beside a visible CTA. The ×2 is therefore a desktop enlargement
+   (where the client asked for it and it fits); mobile keeps the original height so the logo never
+   overlaps the CTA. Same desktop-full / mobile-reduced split as the floating buttons (r3). */
+@media (max-width: 767px) {
+  .signex-logo-nav,
+  .signex-logo-nav-img {
+    height: 1.85rem;
+  }
 }
 
 /* Resorts collection section on the HOME page.
