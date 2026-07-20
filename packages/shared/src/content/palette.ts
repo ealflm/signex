@@ -145,6 +145,7 @@ export const TOKEN_VARS = {
   btnPrimaryBg:       { cssVar: "--_🎨-color--tokens---button--primary--default--background", label: "Nút chính — nền" },
   btnPrimaryText:     { cssVar: "--_🎨-color--tokens---button--primary--default--text",       label: "Nút chính — chữ" },
   btnPrimaryHoverBg:  { cssVar: "--_🎨-color--tokens---button--primary--hover--background",    label: "Nút chính — nền (hover)" },
+  btnPrimaryHoverText: { cssVar: "--_🎨-color--tokens---button--primary--hover--text", label: "Nút chính — chữ (hover)" },
   btnSecondaryBg:     { cssVar: "--_🎨-color--tokens---button--secondary--default--background", label: "Nút phụ — nền" },
   btnSecondaryText:   { cssVar: "--_🎨-color--tokens---button--secondary--default--text",       label: "Nút phụ — chữ" },
   btnTertiaryText:    { cssVar: "--_🎨-color--tokens---button--tertiary--default--text",         label: "Nút chữ — màu chữ" },

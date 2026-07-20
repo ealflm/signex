@@ -285,6 +285,11 @@ describe("PALETTE_VARS / TOKEN_VARS", () => {
       expect(PaletteTokensSchema.safeParse({ [k]: "#123456" }).success).toBe(true);
     }
   });
+
+  it("registers the primary-button hover pair against the template vars", () => {
+    expect(TOKEN_VARS.btnPrimaryHoverBg.cssVar).toBe("--_🎨-color--tokens---button--primary--hover--background");
+    expect(TOKEN_VARS.btnPrimaryHoverText.cssVar).toBe("--_🎨-color--tokens---button--primary--hover--text");
+  });
 });
 
 describe("INERT_SEED_KEYS", () => {

@@ -557,6 +557,31 @@ export function ColorPanel({ target, palette, broken, onChange, onReset }: Color
                   />
                 ))
               )}
+
+              {/* Hover companions. The :hover state cannot be click-resolved (roles are measured from the
+                  DEFAULT state's CSSOM), so when the click landed on a primary-button role we offer the two
+                  hover TOKENS as extra site-wide rows. Sparse values: unset = template default → checkered. */}
+              {target.roles.some((r) => r.tokenKey === "btnPrimaryBg" || r.tokenKey === "btnPrimaryText") && (
+                <div className="flex flex-col gap-1.5">
+                  <ColorRow
+                    id="color-token-hover-bg"
+                    label={`Đổi cả site — ${tokenLabel("btnPrimaryHoverBg")}`}
+                    value={tokenValueFor("btnPrimaryHoverBg")}
+                    alpha
+                    onCommit={(hex) => onChange(setTokenColor(palette, "btnPrimaryHoverBg", hex))}
+                  />
+                  <ColorRow
+                    id="color-token-hover-text"
+                    label={`Đổi cả site — ${tokenLabel("btnPrimaryHoverText")}`}
+                    value={tokenValueFor("btnPrimaryHoverText")}
+                    alpha
+                    onCommit={(hex) => onChange(setTokenColor(palette, "btnPrimaryHoverText", hex))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Màu khi rê chuột vào nút — áp dụng cho mọi nút chính trên toàn site.
+                  </p>
+                </div>
+              )}
             </fieldset>
           ) : (
             <p className="p-4 text-sm text-muted-foreground">Bấm vào một phần tử trên trang để đổi màu.</p>
