@@ -1223,14 +1223,19 @@ git add -A && git commit -m "feat(web): about features block — video takes the
 
 In the two rules, change `height: 1.85rem;` → `height: 3.7rem;` (`.signex-logo-nav` and `.signex-logo-nav-img`). Update the comment to note the r3 ×2.
 
-- [ ] **Step 2: Verify the navbar visually (Task 11 covers it in full)**
+- [ ] **Step 2: Navbar fit (browser-verified — needed BOTH the cap removal AND a mobile revert)**
 
-Quick check now: `cd /home/ealflm/dev/signex/apps/web && node /home/ealflm/dev/signex/node_modules/typescript/bin/tsc --noEmit`. In Task 11's browser pass, IF the wordmark is clipped by `.brand_navbar`'s template width cap or collides with the nav links at ≤991px, add (and only then):
+Browser measurement (iframe at real widths, dev server on branch) showed two things: (a) the 2× logo (142px) is wider than `.brand_navbar`'s 7rem template cap and would clip, so the cap must be removed; (b) at ≤~560px the centred 142px logo OVERLAPS the right-pinned "Nhận báo giá" CTA (−30px at 375px; the original 1.85rem already had only ~5px there) — the mobile bar cannot fit an enlarged logo beside a visible CTA. So the ×2 is a DESKTOP enlargement; mobile reverts to the original height. Add BOTH:
 
 ```css
-/* r3: the 2× logo (≈8.9rem wide at 3.7rem tall) needs more room than the template cap allows. */
-.brand_navbar.w-nav-brand { max-width: none; }
+.brand_navbar.w-nav-brand { max-width: none; }   /* desktop: let the 2× logo show at full width */
+@media (max-width: 767px) {                       /* mobile: revert so the logo never overlaps the CTA */
+  .signex-logo-nav,
+  .signex-logo-nav-img { height: 1.85rem; }
+}
 ```
+
+Verified across 375–1440px: no width has any logo↔CTA overlap (mobile ≤767px clears by +5…+190px, desktop ≥768px by +144…+160px). Same desktop-full / mobile-reduced split as the r3 floating buttons.
 
 - [ ] **Step 3: Commit**
 
