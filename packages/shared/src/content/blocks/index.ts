@@ -10,3 +10,4 @@ export * from "./formConfig";
 export * from "./aboutPage";
 export * from "./contactPage";
 export * from "./notFound";
+export * from "./floatingButtons";

@@ -12,6 +12,7 @@ import {
   aboutPageBlock,
   contactPageBlock,
   notFoundBlock,
+  floatingButtonsBlock,
 } from "./blocks";
 
 /**
@@ -49,6 +50,7 @@ export const BLOCK_REGISTRY = {
   aboutPage: aboutPageBlock,
   contactPage: contactPageBlock,
   notFound: notFoundBlock,
+  floatingButtons: floatingButtonsBlock,
 } as const;
 
 export type BlockKey = keyof typeof BLOCK_REGISTRY;
@@ -80,6 +82,7 @@ export const BLOCK_KIND_BY_KEY: Record<BlockKey, BlockKind> = {
   footer: 'SETTINGS',
   businessContact: 'SETTINGS',
   formConfig: 'SETTINGS',
+  floatingButtons: 'SETTINGS',
   nav: 'NAV',
   meta: 'SEO',
 };

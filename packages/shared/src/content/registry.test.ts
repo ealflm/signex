@@ -47,6 +47,7 @@ const EXPECTED_KEYS = [
   "aboutPage",
   "contactPage",
   "notFound",
+  "floatingButtons",
 ];
 
 // ---------------------------------------------------------------------------
@@ -84,7 +85,7 @@ const goodBusinessContact = {
 describe("BLOCK_REGISTRY", () => {
   it("has exactly the 12 expected keys", () => {
     expect(Object.keys(BLOCK_REGISTRY).sort()).toEqual([...EXPECTED_KEYS].sort());
-    expect(BLOCK_KEYS.length).toBe(12);
+    expect(BLOCK_KEYS.length).toBe(13);
   });
 });
 
