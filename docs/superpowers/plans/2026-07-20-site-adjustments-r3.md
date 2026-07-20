@@ -14,7 +14,7 @@
 - `@signex/shared` compiles to CommonJS `dist/` before consumers see changes: run `npm run build -w @signex/shared` after EVERY schema edit, before web/admin typecheck.
 - **NEVER `npm run test` at the repo root (turbo-all).** Per-workspace only: `npm run test -w @signex/shared` (vitest), `npm run test -w @signex/web` (node/jiti chain), `npm run test -w @signex/admin` (vitest).
 - web tsc: `cd /home/ealflm/dev/signex/apps/web && node /home/ealflm/dev/signex/node_modules/typescript/bin/tsc --noEmit` (`npx tsc` is a decoy). admin tsc: same from `apps/admin`.
-- Every new schema field is `.optional()` or `.default(...)` — published snapshots stay valid, NO migration, NO re-publish, NO importer/`initial-snapshot.ts` edits (that file is AUTO-GENERATED, "DO NOT EDIT BY HAND"; zod defaults backfill it at parse time).
+- Every new schema field is `.optional()` or `.default(...)` — published snapshots stay valid, NO migration, NO re-publish, NO importer edits (zod defaults backfill DB snapshots at `ReleaseSnapshotSchema.parse` time). **One exception:** `apps/web/app/lib/initial-snapshot.ts` (the DB-empty fallback) ends with `as const satisfies ReleaseSnapshot` AND is consumed **unparsed** (content.ts:505,509), so a new **`.default()`** field — which zod makes *required* in the output type — must be added there by hand (one line) or `satisfies` fails tsc. New **`.optional()`** fields need NO edit. In this plan that is exactly one field: `hero.showQuoteForm` (Task 2). Despite the file's "DO NOT EDIT BY HAND" banner, hand-adding a defaulted field is the established practice (the floating-buttons round did the same); regenerating requires a live DB.
 - NEVER rename existing CSS classes, `data-sx-c` anchor ids, or `data-sx-block` keys (stored palette-override selectors reference them). New classes/wrappers are fine.
 - `data-sx-c` renders on BOTH public + preview (override CSS must match). `data-edit-*` is preview-only. `data-sx-overlay` follows the hero pattern: attribute stamped only when `editable` (preview); the overlay `<div>` itself renders always.
 - No new translated copy except the two float-button fallback labels (static per-locale constants in the component).
@@ -132,6 +132,7 @@ git add -A && git commit -m "feat(web): required checkbox drives the form asteri
 **Files:**
 - Modify: `packages/shared/src/content/blocks/hero.ts`
 - Create: `packages/shared/src/content/blocks/hero.test.ts`
+- Modify: `apps/web/app/lib/initial-snapshot.ts` (one line — the `.default()` exception, see Global Constraints)
 - Modify: `apps/web/app/lib/edit-attrs.ts` (+ its test `apps/web/app/lib/edit-attrs.test.mjs`)
 - Modify: `apps/web/app/lib/content.ts` (hero resolver)
 - Modify: `apps/web/app/components/home/hero.tsx`
@@ -212,6 +213,21 @@ export type HeroBlock = z.infer<typeof heroBlock>;
 npm run build -w @signex/shared && npm run test -w @signex/shared
 ```
 Expected: PASS (including existing registry/release tests — new fields are defaulted/optional).
+
+- [ ] **Step 4b: Keep `INITIAL_SNAPSHOT` valid (the `.default()` exception)**
+
+`hero.showQuoteForm`'s `.default(true)` makes it *required* in `HeroBlock`'s output type, and `apps/web/app/lib/initial-snapshot.ts` ends with `as const satisfies ReleaseSnapshot` (and is consumed unparsed). Add one line to the **top-level `blocks.hero`** object (line ~1162, the sibling of `image`/`subtitle`/`titleBottom`/`titleTop` — NOT `aboutPage.hero` at ~435 nor `contactPage.hero` at ~798, which have their own schemas):
+
+```json
+      "showQuoteForm": true,
+```
+
+`formLabelColor` is optional → no entry needed. Verify the web still typechecks after Step 4:
+
+```bash
+cd /home/ealflm/dev/signex/apps/web && node /home/ealflm/dev/signex/node_modules/typescript/bin/tsc --noEmit
+```
+Expected: clean (a missing `showQuoteForm` here would surface as a `satisfies` error on the `blocks.hero` object).
 
 - [ ] **Step 5: `EditableOpts.color` accepts a custom anchor id**
 

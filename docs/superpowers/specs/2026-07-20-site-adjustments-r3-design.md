@@ -131,7 +131,7 @@ export const heroBlock = z.object({
 
 ## Data flow & back-compat
 
-Published `Release.snapshot` (Postgres) → shared zod validation → `resolveForLang` (`content.ts`) → CSS vars / inline styles / dict. All schema additions are optional/defaulted ⇒ the live published snapshot, existing Themes (named snapshots), the admin draft, AND the generated `initial-snapshot.ts` fallback all stay valid with zero migration (zod backfills at parse time — no importer or snapshot-file edits needed); new capabilities activate only when configured. Catalog (`Catalog.snapshot` singleton) is untouched by schema changes (items 4/5 touch only its *rendering*).
+Published `Release.snapshot` (Postgres) → shared zod validation → `resolveForLang` (`content.ts`) → CSS vars / inline styles / dict. All schema additions are optional/defaulted ⇒ the live published snapshot, existing Themes (named snapshots), and the admin draft stay valid with zero migration (zod backfills at `ReleaseSnapshotSchema.parse` time); new capabilities activate only when configured. The DB-empty fallback `initial-snapshot.ts` is the one exception: it is consumed *unparsed* under `satisfies ReleaseSnapshot`, so the single new **defaulted** field (`hero.showQuoteForm`) gets a one-line addition there; the optional fields (`formLabelColor`, the three overlays) need none. No importer edits (the importer output is re-validated through zod, which applies the default). Catalog (`Catalog.snapshot` singleton) is untouched by schema changes (items 4/5 touch only its *rendering*).
 
 ## Error handling & edge cases
 
