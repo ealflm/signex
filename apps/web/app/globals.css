@@ -1578,3 +1578,12 @@ body .w-webflow-badge {
 }
 @media (max-width: 991px) { .sx-usp-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 479px) { .sx-usp-bar { grid-template-columns: 1fr; } }
+
+/* Home-only: the USP bar has no section head + no content below it, so the section's
+   default bottom padding stacks on top of the next section's (ProductCategories) top
+   padding — leaving the thin bar sitting in the top third of the whitespace. Zeroing it
+   makes the gap below the bar equal the gap above (both = one section-padding), centering
+   the bar. Scoped to the compact home section; About keeps .section_features padding.
+   Selector doubles up (.section_features.sx-features-compact) so it out-specifies the
+   vendor `.section_features` padding rule, which loads after globals in the cascade. */
+.section_features.sx-features-compact { padding-bottom: 0; }

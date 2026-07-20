@@ -13,7 +13,7 @@ export function FeaturesCompact({
   editable?: boolean;
 }) {
   return (
-    <section className="section_features" data-sx-block="features">
+    <section className="section_features sx-features-compact" data-sx-block="features">
       <div className="padding-global">
         <div className="w-layout-blockcontainer container-large w-container">
           <FeaturesUspBar dict={dict} editable={editable} />
