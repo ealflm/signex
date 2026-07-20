@@ -88,9 +88,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 <span className="product-detail_dot">•</span>
                 <strong>{pl.materialLabel}:</strong> {item.tag}
               </div>
-              <p className="tone-medium product-detail_desc">
-                {item.desc}
-              </p>
+              {item.desc && (
+                <p className="tone-medium product-detail_desc">
+                  {item.desc}
+                </p>
+              )}
               {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Webflow-runtime nav, not next/link */}
               <a button="" className="cta_primary w-inline-block" data-wf--cta-primary--variant="primary" href="/contact">
                 <div className="button_text-mask">

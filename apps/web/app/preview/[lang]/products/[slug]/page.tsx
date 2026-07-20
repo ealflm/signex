@@ -138,9 +138,6 @@ async function PreviewCategory({
                             <div className="text-size-large text_body-bold">
                               {p.title}
                             </div>
-                            <p className="tone-medium margin-0">
-                              {p.desc}
-                            </p>
                           </div>
                         </div>
                       </a>
