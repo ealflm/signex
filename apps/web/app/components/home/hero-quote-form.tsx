@@ -33,7 +33,16 @@ export function HeroQuoteForm({
   style?: React.CSSProperties;
 }) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
-  const [expanded, setExpanded] = useState(editable); // editor: start (and stay) expanded
+  // Progressive disclosure clips the 7 detail fields to 0 height (not display:none) until focus — but
+  // a clipped field carrying the native `required` attr makes the browser silently refuse to submit
+  // (it cannot focus an unfocusable field, so no validation bubble appears — a dead submit button).
+  // So if the admin marked ANY detail field required, start expanded (and never auto-collapse): the
+  // required fields are then visible, focusable, and validate with feedback. The shipped default only
+  // marks name/email/phone required — all in the always-visible bar — so disclosure is unchanged there.
+  const req = dict.required;
+  const anyDetailRequired =
+    req.quantity || req.standard || req.height || req.width || req.thickness || req.upload || req.message;
+  const [expanded, setExpanded] = useState(editable || anyDetailRequired); // editor OR a required detail field → start (and stay) expanded
   const [ids, setIds] = useState<{ visitorId: string; sessionId: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -58,7 +67,7 @@ export function HeroQuoteForm({
       if (el instanceof HTMLTextAreaElement) return el.value.trim() !== "";
       return false;
     });
-    if (!hasValue && !editable) setExpanded(false);
+    if (!hasValue && !editable && !anyDetailRequired) setExpanded(false);
   };
 
   const detailTab = expanded ? 0 : -1;
