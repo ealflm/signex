@@ -1505,9 +1505,15 @@ body .w-webflow-badge {
    position:absolute (see .overlay_media-config) — these parents are its containing blocks. */
 .product-detail_media { position: relative; }
 .image_resort-v1 .overlay_media-config,
-.wrap_image-blog-b .overlay_media-config { z-index: 1; }
+.wrap_image-blog-b .overlay_media-config,
+.image_feature-blog-b .overlay_media-config { z-index: 1; }
 .image_resort-v1 .overlay_resort-card-v1,
-.wrap_image-blog-b .overlay_tag-home { z-index: 2; }
+.wrap_image-blog-b .overlay_tag-home,
+.image_feature-blog-b .overlay_featured-blog { z-index: 2; }
+/* product-detail: keep the "Click to zoom" hint above the wash. The hint is positioned but
+   .product-zoom_trigger is not a stacking context, so this z-index lands in
+   .product-detail_media's context and outranks the wash. */
+.product-detail_media .product-zoom_hint { z-index: 2; }
 
 /* Floating quick-contact stack (call + Zalo), bottom-right on every page. z-index 900: above
    page content, below the editor hotspot layer. Call button follows the primary-button palette
