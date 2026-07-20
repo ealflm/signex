@@ -61,7 +61,7 @@ export function FeaturesFull({
             </div>
           </div>
         </div>
-        {/* Full-width 5-cell row (breaks out of container-large; header above stays centred). */}
+        {/* Split row: video fills the left HALF, 4 criteria as a 2×2 quad on the right. */}
         <div className="sx-features-row5">
           <div className="sx-features-cell sx-features-cell--video">
             <div className="image-inner_features">
@@ -140,17 +140,19 @@ export function FeaturesFull({
               </p>
             </div>
           </div>
-          {criteria.map((c, i) => (
-            <div className="sx-features-cell" key={i}>
-              <div className="icon_service-card w-embed">{c.icon}</div>
-              <div className="text-size-large text_body-bold">
-                <span {...editableAttrs(editable, c.titleField, { text: { maxLength: 80 } })}>{c.title}</span>
+          <div className="sx-features-quad">
+            {criteria.map((c, i) => (
+              <div className="sx-features-cell" key={i}>
+                <div className="icon_service-card w-embed">{c.icon}</div>
+                <div className="text-size-large text_body-bold">
+                  <span {...editableAttrs(editable, c.titleField, { text: { maxLength: 80 } })}>{c.title}</span>
+                </div>
+                <p className="tone-medium margin-0">
+                  <span {...editableAttrs(editable, c.descField, { text: { maxLength: 200 } })}>{c.desc}</span>
+                </p>
               </div>
-              <p className="tone-medium margin-0">
-                <span {...editableAttrs(editable, c.descField, { text: { maxLength: 200 } })}>{c.desc}</span>
-              </p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>

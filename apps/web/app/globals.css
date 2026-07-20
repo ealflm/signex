@@ -1589,14 +1589,15 @@ body .w-webflow-badge {
   .sx-float-label { transition: none; }
 }
 
-/* About page: full-width 5-cell row (video + 4 boxless criteria). Breaks out of container-large to
-   the viewport edges (the header above stays centred in the container); inner gutter keeps the cells
-   off the screen edge. Criteria are boxless — icon + title + desc, neutral ink. */
+/* About page features: split row — video fills the left half, the 4 criteria sit as a 2×2 quad
+   on the right ("cho xuống dòng, căn video to ra"). Class name .sx-features-row5 predates the
+   split and is KEPT: stored per-element colour selectors may reference it (renames mint stale
+   entries). ≤991px: one column (video 16/10 on top, quad below); ≤479px: quad to one column. */
 .sx-features-row5 {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 1.5rem;
-  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem;
+  align-items: stretch;
 }
 .sx-features-cell {
   display: flex;
@@ -1607,16 +1608,29 @@ body .w-webflow-badge {
   width: 2.5rem;
   height: 2.5rem;
 }
-/* the video tile needs a determinate box at 1/5 width (video_cover fills absolutely) */
+/* video cell fills its half: the media box stretches, the caption stays beneath it */
+.sx-features-cell--video { height: 100%; }
 .sx-features-cell--video .image-inner_features {
   position: relative;
+  flex: 1 1 auto;
   height: auto;
-  aspect-ratio: 4 / 5;
+  min-height: 24rem;
   overflow: hidden;
   border-radius: var(--_🔘-radius---general--large, 0.75rem);
 }
-@media (max-width: 991px) { .sx-features-row5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 479px) { .sx-features-row5 { grid-template-columns: 1fr; } }
+.sx-features-quad {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem 1.5rem;
+  align-content: center;
+}
+@media (max-width: 991px) {
+  .sx-features-row5 { grid-template-columns: 1fr; }
+  .sx-features-cell--video .image-inner_features { flex: none; aspect-ratio: 16 / 10; min-height: 0; }
+}
+@media (max-width: 479px) {
+  .sx-features-quad { grid-template-columns: 1fr; }
+}
 
 /* Homepage USP bar: 4 coloured items (icon-left + uppercase coloured title-right), no box, no desc.
    Per-item colour comes from the item's inline `color` (icon stroke = currentColor, title inherits). */
