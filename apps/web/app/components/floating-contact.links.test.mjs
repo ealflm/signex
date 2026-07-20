@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveCallHref, resolveZaloHref } from "./floating-contact.links.ts";
+import { resolveCallHref, resolveZaloHref, displayNumber } from "./floating-contact.links.ts";
 
 test("empty explicit -> derive tel: from the phone", () => {
   assert.equal(resolveCallHref("", "(+84) 979 700 072"), "tel:+84979700072");
@@ -32,4 +32,13 @@ test("garbage explicit value (no digits) falls back to the phone", () => {
 });
 test("garbage explicit value + no phone -> empty (button hidden)", () => {
   assert.equal(resolveCallHref("abc", undefined), "");
+});
+test("displayNumber: the user-facing number behind a resolved href (labels derive from CONFIG)", () => {
+  assert.equal(displayNumber("tel:0982633377"), "0982633377");
+  assert.equal(displayNumber("tel:+84982633377"), "0982633377");
+  assert.equal(displayNumber("https://zalo.me/0979700072"), "0979700072");
+  assert.equal(displayNumber("https://zalo.me/84979700072"), "0979700072");
+  assert.equal(displayNumber("https://zalo.me/signex.oa"), null); // OA link → generic label
+  assert.equal(displayNumber("mailto:x@y.z"), null);
+  assert.equal(displayNumber(""), null);
 });

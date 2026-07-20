@@ -1515,10 +1515,11 @@ body .w-webflow-badge {
    .product-detail_media's context and outranks the wash. */
 .product-detail_media .product-zoom_hint { z-index: 2; }
 
-/* Floating quick-contact stack (call + Zalo), bottom-right on every page. z-index 900: above
-   page content, below the editor hotspot layer. Call button follows the primary-button palette
-   token (themes with the site); Zalo keeps its brand blue (hardcoded, same convention as the
-   Facebook/YouTube chips). */
+/* Floating quick-contact stack (call + Zalo), fixed bottom-right on every page. z-index 900:
+   above page content, below the editor hotspot layer. Call bg follows the primary-button token;
+   Zalo keeps its brand blue. r3: 3× size on desktop (~1.5× on mobile), infinite pulse ring
+   ("nhấp nháy" — off under reduced motion), and a hover/focus label pill to the LEFT whose text
+   derives from the configured link (see floating-contact.tsx). */
 .sx-float-contact {
   position: fixed;
   right: 1.25rem;
@@ -1526,33 +1527,66 @@ body .w-webflow-badge {
   z-index: 900;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  align-items: flex-end;
+  gap: 1rem;
 }
+.sx-float-item { position: relative; display: flex; align-items: center; }
 .sx-float-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 9.75rem;   /* 3 × 3.25rem */
+  height: 9.75rem;
   border-radius: 50%;
   color: #fff;
   box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28);
   transition: transform 0.15s ease;
+  animation: sx-float-pulse 2s ease-out infinite;
 }
+.sx-float-item:nth-child(2) .sx-float-btn { animation-delay: 1s; } /* de-sync the two rings */
 .sx-float-btn:hover { transform: scale(1.05); }
 .sx-float-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .sx-float-btn.is-call {
   background-color: var(--_🎨-color--tokens---button--primary--default--background, #0b1f33);
 }
+.sx-float-btn.is-call svg { width: 42%; height: 42%; }
 .sx-float-btn.is-zalo {
   background-color: #0068ff;
   font-weight: 800;
-  font-size: 0.82rem;
+  font-size: 2.4rem;
   letter-spacing: 0.01em;
 }
+@keyframes sx-float-pulse {
+  0%   { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 0 rgba(255, 255, 255, 0.45); }
+  70%  { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 1.1rem rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+.sx-float-label {
+  position: absolute;
+  right: calc(100% + 0.75rem);
+  white-space: nowrap;
+  background: rgba(8, 10, 12, 0.85);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  opacity: 0;
+  transform: translateX(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+.sx-float-item:hover .sx-float-label,
+.sx-float-item:focus-within .sx-float-label { opacity: 1; transform: none; }
+@media (max-width: 767px) {
+  .sx-float-btn { width: 4.875rem; height: 4.875rem; } /* ~1.5× — user decision for mobile */
+  .sx-float-btn.is-zalo { font-size: 1.2rem; }
+  .sx-float-label { display: none; } /* no hover concept — tap acts immediately */
+}
 @media (prefers-reduced-motion: reduce) {
-  .sx-float-btn { transition: none; }
+  .sx-float-btn { transition: none; animation: none; }
   .sx-float-btn:hover { transform: none; }
+  .sx-float-label { transition: none; }
 }
 
 /* About page: full-width 5-cell row (video + 4 boxless criteria). Breaks out of container-large to

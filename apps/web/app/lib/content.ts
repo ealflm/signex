@@ -104,6 +104,7 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
 
   return {
     palette: snap.palette, // raw Palette (locale-agnostic); undefined on INITIAL_SNAPSHOT
+    locale: lang, // which language this view was resolved for (labels, fallback copy)
     businessContact: {
       legalName: t(bc.legalName, lang),
       brand: t(bc.brand, lang),
