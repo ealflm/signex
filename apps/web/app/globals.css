@@ -315,9 +315,10 @@
 }
 
 /* Navbar Signex logo (user-supplied SVG, recoloured to #241018). Sized by height; its
-   width auto-derives from the ~2.4:1 aspect ratio and stays within .brand_navbar's cap. */
+   width auto-derives from the ~2.4:1 aspect ratio and stays within .brand_navbar's cap.
+   r3: client asked for the nav logo doubled — 1.85rem -> 3.7rem (×2). */
 .signex-logo-nav {
-  height: 1.85rem;
+  height: 3.7rem;
   aspect-ratio: 2048 / 855;
   width: auto;
   display: block;
@@ -327,12 +328,20 @@
   -webkit-mask: url("/assets/images/signex-logo.svg") center / contain no-repeat;
   mask: url("/assets/images/signex-logo.svg") center / contain no-repeat;
 }
-/* Custom uploaded nav logo — true-colour <img> variant of .signex-logo-nav (same box, no mask). */
+/* Custom uploaded nav logo — true-colour <img> variant of .signex-logo-nav (same box, no mask).
+   r3: doubled in lockstep with .signex-logo-nav above (1.85rem -> 3.7rem) so both variants match. */
 .signex-logo-nav-img {
-  height: 1.85rem;
+  height: 3.7rem;
   width: auto;
   display: block;
   object-fit: contain;
+}
+/* r3: the 2× logo (≈8.9rem wide at 3.7rem tall) needs more room than the template cap allows.
+   Verified in-browser (≤767px real viewport): without this, the wordmark overflows .brand_navbar's
+   width cap and overlaps .nav_right (CTA button) by ~30px; this removes the cap so the anchor's
+   own shrink-to-fit width (hence the flex "sole item" centering) matches the logo's real width. */
+.brand_navbar.w-nav-brand {
+  max-width: none;
 }
 
 /* Resorts collection section on the HOME page.
