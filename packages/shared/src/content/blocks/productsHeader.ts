@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LocalizedText, TwoToneTitle, Href } from "../primitives";
+import { LocalizedText, TwoToneTitle, Href, Overlay } from "../primitives";
 
 /** dict.products UI copy minus categories[] (those become relational Catalog). */
 export const productsHeaderBlock = z.object({
@@ -16,5 +16,11 @@ export const productsHeaderBlock = z.object({
     back: LocalizedText,
     zoomHint: LocalizedText,
   }),
+  // r3 — per-AREA colour washes over catalog imagery ("phủ màu"), the same Overlay primitive as
+  // the hero banner. One uniform wash per area, each independently configurable on-canvas
+  // (click any image in the area). Absent = transparent = today's look.
+  homeCardOverlay: Overlay.optional(),      // homepage category cards
+  categoryImageOverlay: Overlay.optional(), // category page: hero image + product-grid cards
+  productImageOverlay: Overlay.optional(),  // product-detail main image (NOT the zoom lightbox)
 });
 export type ProductsHeaderBlock = z.infer<typeof productsHeaderBlock>;

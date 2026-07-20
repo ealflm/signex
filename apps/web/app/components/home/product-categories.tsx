@@ -1,6 +1,7 @@
 import type { Dictionary } from "@/app/[lang]/dictionaries";
 import { categoryImage } from "@/app/lib/product-images";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
+import { overlayCss } from "@signex/shared";
 
 /**
  * ProductCategories — the home-page product-category grid. Repurposes Caladan's
@@ -63,6 +64,7 @@ export function ProductCategories({ dict, editable = false }: { dict: Dictionary
                         </div>
                       </div>
                       <img alt="" className="image_cover is-parallax" loading="lazy" src={cat.image.url || categoryImage(i)} />
+                      <div className="overlay_media-config" style={overlayCss(t.homeCardOverlay)} {...(editable ? { "data-sx-overlay": "productsHeader.homeCardOverlay" } : {})} />
                     </div>
                     <div className="wrap_content-resort-v1">
                       <div className="text-size-large text_body-bold">

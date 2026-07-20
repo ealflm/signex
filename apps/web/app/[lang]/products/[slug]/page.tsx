@@ -17,6 +17,7 @@ import { hasLocale, DEFAULT_LOCALE } from "@/app/lib/i18n-config";
 import { getSiteContent } from "@/app/lib/content";
 import { buildMetadata } from "@/app/lib/seo";
 import { AnalyticsView } from "@/app/components/analytics-view";
+import { overlayCss } from "@signex/shared";
 
 // Under cacheComponents the `dynamicParams` route config is not allowed; slugs
 // not in generateStaticParams render on demand then cache (invalid → notFound in-render).
@@ -44,6 +45,7 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
   const stats = dict.products.statLabels;
   const t = dict.products.detail;
   const heroImg = cat.image.url;
+  const washes = dict.products;
 
   return (
     <>
@@ -60,6 +62,7 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
                       <img alt={cat.title} className="image_cover is-parallax" loading="lazy" src={heroImg} />
                       <div className="overlay_featured-blog">
                       </div>
+                      <div className="overlay_media-config" style={overlayCss(washes.categoryImageOverlay)} />
                     </div>
                     <div className="inner_feautred-blog-b" id="w-node-_8f8401f9-3939-d0bc-a190-0631b0360199-f81de99c">
                       <div className="left_blog-a">
@@ -123,6 +126,7 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
                         <div className="image_blog-a">
                           <img alt={p.title} className="image_cover is-parallax" loading="lazy" src={p.image.url} />
                         </div>
+                        <div className="overlay_media-config" style={overlayCss(washes.categoryImageOverlay)} />
                         <div className="overlay_tag-home">
                           <div className="master_label w-variant-84e91bde-75c3-dd4c-a083-7846b4ae6170" data-wf--tag--variant="lighter">
                             <div className="label-small">

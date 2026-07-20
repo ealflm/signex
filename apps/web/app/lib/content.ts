@@ -244,6 +244,10 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
         back: t(b.productsHeader.product.back, lang),
         zoomHint: t(b.productsHeader.product.zoomHint, lang),
       },
+      // r3 per-area image washes — raw passthrough, rendered via overlayCss.
+      homeCardOverlay: b.productsHeader.homeCardOverlay,
+      categoryImageOverlay: b.productsHeader.categoryImageOverlay,
+      productImageOverlay: b.productsHeader.productImageOverlay,
       // Catalog categories come from the GLOBAL catalog domain (composed by the
       // loader), NOT from the content snapshot — the catalog publishes on its own
       // track. Images are inline FrozenAssets; resolve r2Key → URL at read time so

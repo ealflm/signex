@@ -16,6 +16,7 @@ import { getSiteContent, type SiteContent } from "@/app/lib/content";
 import { buildMetadata } from "@/app/lib/seo";
 import { ProductImageZoom } from "@/app/components/product-image-zoom";
 import { AnalyticsView } from "@/app/components/analytics-view";
+import { overlayCss } from "@signex/shared";
 
 // Under cacheComponents the `dynamicParams` route config is not allowed; slugs
 // not in generateStaticParams render on demand then cache (invalid → notFound in-render).
@@ -71,6 +72,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <div className="product-detail_grid">
             <div className="product-detail_media">
               <ProductImageZoom src={image} alt={item.title} hint={pl.zoomHint} />
+              <div className="overlay_media-config" style={overlayCss(dict.products.productImageOverlay)} />
             </div>
             <div className="product-detail_info">
               <div className="master_label" data-wf--tag--variant="base">
