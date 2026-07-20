@@ -682,13 +682,21 @@ Render the description guarded (`{item.desc && (<p className="tone-medium produc
 `apps/web/app/globals.css`, next to the existing `.overlay_media-config` notes:
 
 ```css
-/* r3 catalog washes: above the image, below the tag chip / template scrims. The wash div is
-   position:absolute (see .overlay_media-config) — these parents are its containing blocks. */
+/* r3 catalog washes: above the image, below the tag chip / template scrims / UI chrome. The wash
+   div is position:absolute (see .overlay_media-config) — these parents are its containing blocks.
+   Every template scrim that must stay above the wash needs an explicit z-index:2 pair, because the
+   wash's own z-index:1 (base rule) would otherwise win the tie by DOM order. The category HERO
+   vignette (.overlay_featured-blog) and the product-detail "Click to zoom" hint are two such
+   surfaces that are easy to miss — the hint is positioned but .product-zoom_trigger is NOT a
+   stacking context, so its z-index lands in .product-detail_media's context and outranks the wash. */
 .product-detail_media { position: relative; }
 .image_resort-v1 .overlay_media-config,
-.wrap_image-blog-b .overlay_media-config { z-index: 1; }
+.wrap_image-blog-b .overlay_media-config,
+.image_feature-blog-b .overlay_media-config { z-index: 1; }
 .image_resort-v1 .overlay_resort-card-v1,
-.wrap_image-blog-b .overlay_tag-home { z-index: 2; }
+.wrap_image-blog-b .overlay_tag-home,
+.image_feature-blog-b .overlay_featured-blog { z-index: 2; }
+.product-detail_media .product-zoom_hint { z-index: 2; }
 ```
 
 - [ ] **Step 9: Verify**
