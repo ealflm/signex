@@ -113,6 +113,44 @@ function StringField({
   );
 }
 
+// kind:"color" — a shared HexA leaf marked `.describe("color")`. Native picker for the RGB part +
+// a hex text input that also accepts #rrggbbaa. Empty text = undefined = "use the default"
+// (the field is optional in the schema; the API's zod validates the hex on save).
+function ColorField({
+  field,
+  value,
+  onChange,
+}: {
+  field: FieldPlan;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const hex = typeof value === "string" ? value : "";
+  const rgb = /^#[0-9a-fA-F]{6}/.test(hex) ? hex.slice(0, 7) : "#888888";
+  return (
+    <Field label={field.label} htmlFor={`field-${field.name}`}>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={`${field.label} — chọn màu`}
+          value={rgb}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 w-9 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-1"
+        />
+        <Input
+          id={`field-${field.name}`}
+          value={hex}
+          placeholder="#rrggbb — bỏ trống = mặc định"
+          onChange={(e) => {
+            const v = e.target.value.trim();
+            onChange(v === "" ? undefined : v);
+          }}
+        />
+      </div>
+    </Field>
+  );
+}
+
 function BooleanField({
   field,
   value,
@@ -679,6 +717,8 @@ export function FieldEditor({
   let inner: ReactElement;
   if (field.kind === "string") {
     inner = <StringField field={field} value={value} onChange={onChange} />;
+  } else if (field.kind === "color") {
+    inner = <ColorField field={field} value={value} onChange={onChange} />;
   } else if (field.kind === "boolean") {
     inner = <BooleanField field={field} value={value} onChange={onChange} />;
   } else if (field.kind === "localized") {

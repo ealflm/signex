@@ -2,6 +2,7 @@ import { z } from "@signex/shared";
 
 export type FieldKind =
   | "string"
+  | "color"
   | "localized"
   | "localizedArray"
   | "stringArray"
@@ -130,6 +131,9 @@ function isPlainObject(s: z.ZodTypeAny): boolean {
 // array/union shapes stay JSON-editable.
 function classify(name: string, raw: z.ZodTypeAny, depth = 0): FieldPlan {
   const s = unwrap(raw);
+  // A colour hex field (a shared HexA marked `.describe("color")`). MUST precede the string
+  // check or it degrades to a plain text input.
+  if (s.description === "color") return { name, kind: "color", label: name };
   if (isStringSchema(s)) return { name, kind: "string", label: name };
   if (typeName(s) === "ZodBoolean") return { name, kind: "boolean", label: name };
   if (isLocalizedArray(s)) return { name, kind: "localizedArray", label: name };

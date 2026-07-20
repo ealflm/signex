@@ -146,4 +146,12 @@ describe("deriveFields", () => {
     expect(child(aboutPage, "hero", "video")).toBe("mediaRef");
     expect(child(aboutPage, "testimonial", "image")).toBe("assetRef");
   });
+
+  it('classifies a `.describe("color")` string as kind:"color" (before the string kind)', () => {
+    const schema = z.object({
+      formLabelColor: z.string().regex(/^#[0-9a-fA-F]{8}$|^#[0-9a-fA-F]{6}$/).describe("color").optional(),
+    });
+    const [f] = deriveFields(schema);
+    expect(f).toMatchObject({ name: "formLabelColor", kind: "color" });
+  });
 });
