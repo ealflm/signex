@@ -17,7 +17,7 @@
 - **NEVER `npm run test` (turbo-all). Per-workspace only.** web tsc: `cd apps/web && node /home/ealflm/dev/signex/node_modules/typescript/bin/tsc --noEmit` (`npx tsc` is a decoy); admin likewise from `apps/admin`.
 - **Every new schema field is `.optional()` or `.default(...)`** — the published snapshot and existing themes stay valid with no migration and no re-publish.
 - **NEVER rename existing CSS classes, `data-sx-c` anchor ids, or `data-sx-block` keys** — stored palette-override selectors reference them (renames are exactly what mints "Màu không còn áp dụng" entries). New wrappers/classes are fine; renames are not.
-- `data-sx-block` / `data-sx-c` / `data-sx-overlay` are rendered on the **public** site (override CSS + overlay styles must match there); all `data-edit-*` hooks stay preview-only via `editable()` (`apps/web/app/lib/edit-attrs.ts`).
+- `data-sx-block` / `data-sx-c` are rendered on the **public** site (override CSS must match there); `data-sx-overlay` follows the hero's actual pattern — the overlay `<div>` renders always, the *attribute* is stamped only in preview/editable mode; all `data-edit-*` hooks stay preview-only via `editable()` (`apps/web/app/lib/edit-attrs.ts`).
 - Next 16.2.x has breaking changes vs training data — read `node_modules/next/dist/docs/` before touching Next-side code. Load the UI skills (frontend-design, web-design-guidelines) before implementing the UI items.
 - Branch `feat/site-adjustments-r3` off `main`.
 
@@ -66,7 +66,7 @@ export const heroBlock = z.object({
 
 *Admin:* `showQuoteForm` auto-renders as a checkbox (existing `boolean` kind). `formLabelColor` needs a new **`color` FieldKind** in `apps/admin/app/lib/zodform-fields.ts` + `field-editor.tsx`: detected via a `.describe("color")` marker on the schema; renders a colour picker + clear ("bỏ trống = mặc định"). Generic — reusable for future colour fields.
 
-*API:* `buildHero` in `apps/api/src/importer/block-builder.ts` seeds `showQuoteForm: true`, omits `formLabelColor`. `apps/web/app/lib/initial-snapshot.ts` likewise.
+*API:* no importer changes — `showQuoteForm` has a zod `.default(true)` and `formLabelColor` is optional, so `parseBlock` backfills existing and future imports. `apps/web/app/lib/initial-snapshot.ts` is AUTO-GENERATED ("DO NOT EDIT BY HAND") and stays untouched for the same reason.
 
 ## Item 4 — Per-area colour-wash on product imagery
 
@@ -131,7 +131,7 @@ export const heroBlock = z.object({
 
 ## Data flow & back-compat
 
-Published `Release.snapshot` (Postgres) → shared zod validation → `resolveForLang` (`content.ts`) → CSS vars / inline styles / dict. All schema additions are optional/defaulted ⇒ the live published snapshot, existing Themes (named snapshots), and the admin draft all stay valid with zero migration; new capabilities activate only when configured. `initial-snapshot.ts` (web fallback) and `block-builder.ts` (api importer) are updated in the same commits as their schema fields. Catalog (`Catalog.snapshot` singleton) is untouched by schema changes (items 4/5 touch only its *rendering*).
+Published `Release.snapshot` (Postgres) → shared zod validation → `resolveForLang` (`content.ts`) → CSS vars / inline styles / dict. All schema additions are optional/defaulted ⇒ the live published snapshot, existing Themes (named snapshots), the admin draft, AND the generated `initial-snapshot.ts` fallback all stay valid with zero migration (zod backfills at parse time — no importer or snapshot-file edits needed); new capabilities activate only when configured. Catalog (`Catalog.snapshot` singleton) is untouched by schema changes (items 4/5 touch only its *rendering*).
 
 ## Error handling & edge cases
 
