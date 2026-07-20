@@ -36,3 +36,9 @@ test("one element can declare BOTH text and colour", () => {
 test("media caps", () => {
   assert.equal(editable(true, "hero.image", { image: true })["data-edit-caps"], "image");
 });
+
+// color: "<id>" → explicit anchor id on BOTH renders (public flag=false included)
+assert.deepEqual(
+  editable(false, "formConfig.fields.name.label", { color: "heroForm.name" }),
+  { "data-sx-c": "heroForm.name" },
+);

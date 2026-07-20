@@ -35,6 +35,12 @@
   vertical-align: super;
 }
 
+/* Uniform hero-form label colour (hero.formLabelColor → --sx-form-label set inline on the panel).
+   `inherit` keeps today's colour bit-for-bit when unset. Per-label per-element overrides still
+   win: the palette <style> (injected after app CSS) targets the anchored SPAN directly, and the
+   span's own colour beats what it would inherit from this label rule. */
+.hero-quote_panel .text_input-label { color: var(--sx-form-label, inherit); }
+
 .hero-quote_inner {
   display: flex;
   flex-direction: column;

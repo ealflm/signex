@@ -1167,6 +1167,7 @@ export const INITIAL_SNAPSHOT = {
         },
         "assetId": "ca4b66de045a269b48b297bb6"
       },
+      "showQuoteForm": true,
       "subtitle": {
         "en": "Specialized in manufacturing logos, emblems, labels, badges, and custom identity components for the garment and fashion industry.",
         "vi": "Chuyên sản xuất logo, emblem, nhãn mác, badge và các chi tiết nhận diện theo yêu cầu cho ngành may mặc và thời trang."

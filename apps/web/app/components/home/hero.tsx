@@ -50,12 +50,19 @@ export function Hero({ dict, editable = false }: { dict: Dictionary; editable?: 
                     </p>
                   </div>
                 </div>
-                <HeroQuoteForm
-                  dict={dict.form}
-                  editable={editable}
-                  data-w-id="e727a2b9-869a-7dcf-ee76-b8e98292f02d"
-                  style={REVEAL_STYLE}
-                />
+                {t.showQuoteForm !== false && (
+                  <HeroQuoteForm
+                    dict={dict.form}
+                    editable={editable}
+                    data-w-id="e727a2b9-869a-7dcf-ee76-b8e98292f02d"
+                    style={{
+                      ...REVEAL_STYLE,
+                      ...(t.formLabelColor
+                        ? ({ "--sx-form-label": t.formLabelColor } as React.CSSProperties)
+                        : {}),
+                    }}
+                  />
+                )}
               </div>
               <div className="image_hero-home-a" data-w-id="e727a2b9-869a-7dcf-ee76-b8e98292f051">
                 {t.media?.kind === "video" ? (

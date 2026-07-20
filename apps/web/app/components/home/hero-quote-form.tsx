@@ -33,7 +33,7 @@ export function HeroQuoteForm({
   style?: React.CSSProperties;
 }) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(editable); // editor: start (and stay) expanded
   const [ids, setIds] = useState<{ visitorId: string; sessionId: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -58,7 +58,7 @@ export function HeroQuoteForm({
       if (el instanceof HTMLTextAreaElement) return el.value.trim() !== "";
       return false;
     });
-    if (!hasValue) setExpanded(false);
+    if (!hasValue && !editable) setExpanded(false);
   };
 
   const detailTab = expanded ? 0 : -1;
@@ -101,6 +101,7 @@ export function HeroQuoteForm({
           autoComplete="off"
           data-w-id={dataWId}
           style={style}
+          {...editableAttrs(editable, "heroForm.panel", { color: true })}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onSubmit={async (e) => {
@@ -115,7 +116,7 @@ export function HeroQuoteForm({
               if (res.ok) {
                 pushQuoteSubmit(); // GTM: quote_submit → GA4 + Google Ads conversion
                 formRef.current?.reset();
-                setExpanded(false);
+                if (!editable) setExpanded(false);
                 setState("done");
               } else {
                 setState("error");
@@ -143,7 +144,7 @@ export function HeroQuoteForm({
             <div className="hero-quote_bar">
               <div className="input_wrap">
                 <label className="text_input-label label-large" htmlFor="quote-name">
-                  <span className={dict.required.name ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.name.label", { text: { maxLength: 80 } })}>{dict.name}</span>
+                  <span className={dict.required.name ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.name.label", { text: { maxLength: 80 }, color: "heroForm.name" })}>{dict.name}</span>
                 </label>
                 <input
                   className="text-field w-input"
@@ -159,7 +160,7 @@ export function HeroQuoteForm({
               </div>
               <div className="input_wrap">
                 <label className="text_input-label label-large" htmlFor="quote-email">
-                  <span className={dict.required.email ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.email.label", { text: { maxLength: 80 } })}>{dict.email}</span>
+                  <span className={dict.required.email ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.email.label", { text: { maxLength: 80 }, color: "heroForm.email" })}>{dict.email}</span>
                 </label>
                 <input
                   className="text-field w-input"
@@ -175,7 +176,7 @@ export function HeroQuoteForm({
               </div>
               <div className="input_wrap">
                 <label className="text_input-label label-large" htmlFor="quote-phone">
-                  <span className={dict.required.phone ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.phone.label", { text: { maxLength: 80 } })}>{dict.phone}</span>
+                  <span className={dict.required.phone ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.phone.label", { text: { maxLength: 80 }, color: "heroForm.phone" })}>{dict.phone}</span>
                 </label>
                 <input
                   className="text-field w-input"
@@ -203,7 +204,7 @@ export function HeroQuoteForm({
               <div className="hero-form_collapsible-inner">
                 <div className="hero-quote_grid hero-quote_grid--3">
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-quantity"><span className={dict.required.quantity ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.quantity.label", { text: { maxLength: 80 } })}>{dict.quantity}</span></label>
+                    <label className="text_input-label label-large" htmlFor="quote-quantity"><span className={dict.required.quantity ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.quantity.label", { text: { maxLength: 80 }, color: "heroForm.quantity" })}>{dict.quantity}</span></label>
                     <input
                       className="text-field w-input"
                       data-name="Quantity"
@@ -216,7 +217,7 @@ export function HeroQuoteForm({
                     />
                   </div>
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-standard"><span className={dict.required.standard ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.standard.label", { text: { maxLength: 80 } })}>{dict.standard}</span></label>
+                    <label className="text_input-label label-large" htmlFor="quote-standard"><span className={dict.required.standard ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.standard.label", { text: { maxLength: 80 }, color: "heroForm.standard" })}>{dict.standard}</span></label>
                     <select
                       className="text-field select w-select"
                       data-name="Standard"
@@ -235,7 +236,7 @@ export function HeroQuoteForm({
                     </select>
                   </div>
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-height"><span className={dict.required.height ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.height.label", { text: { maxLength: 80 } })}>{dict.height}</span></label>
+                    <label className="text_input-label label-large" htmlFor="quote-height"><span className={dict.required.height ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.height.label", { text: { maxLength: 80 }, color: "heroForm.height" })}>{dict.height}</span></label>
                     <input
                       className="text-field w-input"
                       data-name="Height"
@@ -249,7 +250,7 @@ export function HeroQuoteForm({
                     />
                   </div>
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-width"><span className={dict.required.width ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.width.label", { text: { maxLength: 80 } })}>{dict.width}</span></label>
+                    <label className="text_input-label label-large" htmlFor="quote-width"><span className={dict.required.width ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.width.label", { text: { maxLength: 80 }, color: "heroForm.width" })}>{dict.width}</span></label>
                     <input
                       className="text-field w-input"
                       data-name="Width"
@@ -263,7 +264,7 @@ export function HeroQuoteForm({
                     />
                   </div>
                   <div className="input_wrap">
-                    <label className="text_input-label label-large" htmlFor="quote-thickness"><span className={dict.required.thickness ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.thickness.label", { text: { maxLength: 80 } })}>{dict.thickness}</span></label>
+                    <label className="text_input-label label-large" htmlFor="quote-thickness"><span className={dict.required.thickness ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.thickness.label", { text: { maxLength: 80 }, color: "heroForm.thickness" })}>{dict.thickness}</span></label>
                     <input
                       className="text-field w-input"
                       data-name="Thickness"
@@ -277,7 +278,7 @@ export function HeroQuoteForm({
                     />
                   </div>
                   <div className="input_wrap">
-                    <div className="text_input-label label-large"><span className={dict.required.upload ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.upload.label", { text: { maxLength: 80 } })}>{dict.upload}</span></div>
+                    <div className="text_input-label label-large"><span className={dict.required.upload ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.upload.label", { text: { maxLength: 80 }, color: "heroForm.upload" })}>{dict.upload}</span></div>
                     {/* Dashed dropzone when empty; thumbnail/file chip + change/remove
                         once a file is picked. Keeps tabIndex for the progressive-
                         disclosure tab gating. */}
@@ -293,7 +294,7 @@ export function HeroQuoteForm({
                   </div>
                 </div>
                 <div className="input_wrap">
-                  <label className="text_input-label label-large" htmlFor="quote-message"><span className={dict.required.message ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.message.label", { text: { maxLength: 80 } })}>{dict.message}</span></label>
+                  <label className="text_input-label label-large" htmlFor="quote-message"><span className={dict.required.message ? "sx-required" : undefined} {...editableAttrs(editable, "formConfig.fields.message.label", { text: { maxLength: 80 }, color: "heroForm.message" })}>{dict.message}</span></label>
                   <textarea
                     className="text-field w-input hero-quote_message"
                     data-name="Message"

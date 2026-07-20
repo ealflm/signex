@@ -127,6 +127,9 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
       media: resolveMedia(b.hero.image, lang, assetUrl, (l) => t(l, lang)),
       // hero.overlay is Overlay? — raw passthrough; the component resolves it via overlayCss.
       overlay: b.hero.overlay,
+      // r3: hide-form toggle + uniform form-label colour (raw passthrough; component renders).
+      showQuoteForm: b.hero.showQuoteForm,
+      formLabelColor: b.hero.formLabelColor,
     },
     form: {
       name: t(fFields.name.label, lang),

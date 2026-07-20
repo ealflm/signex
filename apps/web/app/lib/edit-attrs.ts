@@ -78,8 +78,12 @@ export interface EditableOpts {
    * What this flag buys is the STABLE ANCHOR: `data-sx-c="<field>"` (emitted on the public render
    * too), which buildSelector prefers as the per-element override's CSS target because a hand-given
    * id survives markup edits that a generated structural path does not.
+   *
+   * `true` uses the field path as the `data-sx-c` id. A STRING gives an explicit id — needed when
+   * the same snapshot field renders in two places (hero form + contact form both render
+   * `formConfig.fields.<k>.label`): distinct ids keep a per-element override from painting both.
    */
-  color?: true;
+  color?: true | string;
 }
 
 /**
@@ -101,7 +105,8 @@ export function editable(
   // Annotated, not inferred: the ternary would otherwise widen to
   // `{ "data-sx-c": string } | { "data-sx-c"?: undefined }`, and that `undefined` is not assignable
   // to this function's Record<string, string> index signature.
-  const anchor: Record<string, string> = opts.color ? { "data-sx-c": field } : {};
+  const anchor: Record<string, string> =
+    opts.color ? { "data-sx-c": typeof opts.color === "string" ? opts.color : field } : {};
   if (!flag) return anchor;
 
   const caps: EditCap[] = [];
