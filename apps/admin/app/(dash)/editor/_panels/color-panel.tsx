@@ -591,7 +591,8 @@ export function ColorPanel({ target, palette, broken, onChange, onReset }: Color
             <fieldset className="flex flex-col gap-2 rounded-lg border border-destructive/50 p-4">
               <legend className="px-1 text-sm font-medium text-destructive">Màu không còn áp dụng</legend>
               <p className="text-xs text-muted-foreground">
-                Phần tử gắn màu này không còn trên trang (thường do thêm/bớt mục trong danh sách).
+                Phần tử gắn màu này không còn trên trang này (thường do thêm/bớt mục trong danh sách,
+                hoặc phần tử đã bị xoá/đổi cấu trúc). Màu thuộc trang khác không bị liệt kê ở đây.
               </p>
               {/* `wrap-anywhere`, and NOT `truncate` — the delete button's reachability rides on it.
                   Radix's ScrollArea viewport wraps content in a display:table box, and a table is

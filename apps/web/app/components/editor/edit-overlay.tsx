@@ -67,6 +67,7 @@ import {
 // names and the selector-generation filter that must ignore them are one decision, and a literal
 // spelled at the point of use is how they drift apart. See the rule stated there.
 import { CLASS_COLOR_HOVER, CLASS_FLASH } from "./_lib/overlay-classes";
+import { brokenSelectors } from "./_lib/selector-audit";
 
 const SOURCE = "signex-editor";
 
@@ -792,22 +793,14 @@ export function EditOverlay() {
         return;
       }
 
-      // auditSelectors: which of the palette's stored override selectors no longer point at exactly
-      // one element? Only this frame can answer — the admin has no DOM for the page. A selector
-      // DRIFTS: it was proven unique when it was minted, and then a nav link was added, or a list
-      // item removed, and an `:nth-of-type` in it stopped meaning what it meant. Reported, never
-      // auto-removed: deleting a colour the user chose, because a selector drifted, would be worse
-      // than showing it broken — so the admin lists them and the user decides.
+      // auditSelectors: which stored override selectors are BROKEN ON THIS PAGE? Page-aware since
+      // r3 — see _lib/selector-audit.ts for the classification (off-page scopes are excluded, and
+      // multi-match no longer counts as broken). Reported, never auto-removed: the user decides.
       if (data.type === "auditSelectors" && Array.isArray(data.selectors)) {
-        const broken = (data.selectors as string[]).filter((sel) => {
-          try {
-            // !== 1, not === 0: a selector matching SEVERAL elements is broken too — it now paints
-            // things the user never picked, which is the failure that looks like it works.
-            return document.querySelectorAll(sel).length !== 1;
-          } catch {
-            return true; // unparseable here = dead here
-          }
-        });
+        const broken = brokenSelectors(
+          data.selectors as string[],
+          (s) => document.querySelectorAll(s).length,
+        );
         window.parent.postMessage({ source: SOURCE, type: "selectorAudit", broken }, "*");
         return;
       }
