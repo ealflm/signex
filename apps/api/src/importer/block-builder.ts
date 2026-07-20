@@ -4,6 +4,7 @@ import {
   BLOCK_KIND_BY_KEY,
   type BlockKey,
   type BlockKind as SharedBlockKind,
+  type FloatingButtonsBlock,
 } from '@signex/shared';
 import type { RawDict } from './dict-source';
 import { lt, ltArray, twoTone, type LT } from './zip';
@@ -494,6 +495,12 @@ function buildContactPage(
   };
 }
 
+function buildFloatingButtons(): FloatingButtonsBlock {
+  // New sites seed empty links → the web falls back to the businessContact phone derivation.
+  // Operators set real links later in the admin ("Floating buttons").
+  return { callHref: '', zaloHref: '' };
+}
+
 function buildNotFound(E: any, V: any, assets: Map<string, FrozenAssetEntry>) {
   // notFoundBlock: { eyebrow, title: TwoToneTitle, body, cta: {label, href}, image: AssetRef }
   const n = E.notFound;
@@ -540,6 +547,7 @@ export function buildBlocks(
     aboutPage: buildAboutPage(E, V, assets),
     contactPage: buildContactPage(E, V, assets),
     notFound: buildNotFound(E, V, assets),
+    floatingButtons: buildFloatingButtons(),
   };
 
   // Conformance gate: parseBlock validates each block against its registry schema.
