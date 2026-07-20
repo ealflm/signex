@@ -294,10 +294,14 @@ assert.deepEqual(
 
 ```css
 /* Uniform hero-form label colour (hero.formLabelColor → --sx-form-label set inline on the panel).
-   `inherit` keeps today's colour bit-for-bit when unset. Per-label per-element overrides still
-   win: the palette <style> (injected after app CSS) targets the anchored SPAN directly, and the
-   span's own colour beats what it would inherit from this label rule. */
-.hero-quote_panel .text_input-label { color: var(--sx-form-label, inherit); }
+   The nested-var fallback reproduces the template's own base rule (.text_input-label { color:
+   var(--_🎨-color--tokens---input--label) }, caladan-template …css:5539) EXACTLY when unset — so
+   today's look is bit-for-bit unchanged. (`inherit` would NOT be a no-op: our selector out-specifies
+   the base rule, and `inherit` pulls a brighter ancestor colour instead of the input--label token —
+   verified in-browser. Use the token, never `inherit`.) Per-label per-element overrides still win:
+   the palette <style> (injected after app CSS) targets the anchored SPAN directly, and the span's
+   own colour beats what it would inherit from this label rule. */
+.hero-quote_panel .text_input-label { color: var(--sx-form-label, var(--_🎨-color--tokens---input--label)); }
 ```
 
 - [ ] **Step 9: Anchors + editor expansion in the hero form**
