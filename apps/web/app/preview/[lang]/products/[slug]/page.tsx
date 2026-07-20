@@ -17,6 +17,7 @@ import { getPreviewSnapshot } from "@/app/lib/content";
 import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PaletteStyle } from "@/app/components/editor/palette-style";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
 import { FloatingContact } from "@/app/components/floating-contact";
 
@@ -42,6 +43,7 @@ async function PreviewCategory({
 
   return (
     <div className="page-wrapper">
+      <PaletteStyle palette={dict.palette} />
       <Navbar dict={dict.nav} editable />
       <main id="main" className="main-wrapper">
         {/* Category hero — blog-b's "featured" block, repurposed to present the category itself. */}

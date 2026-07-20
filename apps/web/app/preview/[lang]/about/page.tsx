@@ -13,6 +13,7 @@ import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { AboutSections } from "@/app/components/about/about-sections";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PaletteStyle } from "@/app/components/editor/palette-style";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
 import { FloatingContact } from "@/app/components/floating-contact";
 
@@ -33,6 +34,7 @@ async function PreviewAbout({
 
   return (
     <div className="page-wrapper">
+      <PaletteStyle palette={dict.palette} />
       <Navbar dict={dict.nav} editable />
       <main id="main" className="main-wrapper">
         <AboutSections dict={dict} editable />

@@ -15,6 +15,7 @@ import { Footer } from "@/app/components/footer";
 import { Contact } from "@/app/components/home/contact";
 import { ContactHeroMedia } from "@/app/components/contact-hero-media";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PaletteStyle } from "@/app/components/editor/palette-style";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
 import { editable as editableAttrs } from "@/app/lib/edit-attrs";
 import { FloatingContact } from "@/app/components/floating-contact";
@@ -66,6 +67,7 @@ async function PreviewContact({
 
   return (
     <div className="page-wrapper">
+      <PaletteStyle palette={dict.palette} />
       <Navbar dict={dict.nav} editable />
       <main id="main" className="main-wrapper">
         <section className="section_hero-contact-c" data-w-id="ad1a3029-1630-4dbd-9a8f-fd5ea3c4eb18" data-sx-block="contactPage">

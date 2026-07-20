@@ -13,6 +13,7 @@ import { Navbar } from "@/app/components/navbar";
 import { Footer } from "@/app/components/footer";
 import { NotFoundPreview } from "@/app/components/not-found-preview";
 import { EditOverlay } from "@/app/components/editor/edit-overlay";
+import { PaletteStyle } from "@/app/components/editor/palette-style";
 import { PreviewRuntime } from "@/app/preview/preview-runtime";
 import { FloatingContact } from "@/app/components/floating-contact";
 
@@ -33,6 +34,7 @@ async function Preview404({
 
   return (
     <div className="page-wrapper">
+      <PaletteStyle palette={dict.palette} />
       <Navbar dict={dict.nav} editable />
       <main id="main" className="main-wrapper">
         <NotFoundPreview dict={dict} locale={locale} editable />
