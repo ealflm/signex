@@ -1538,9 +1538,10 @@ body .w-webflow-badge {
 
 /* Floating quick-contact stack (call + Zalo), fixed bottom-right on every page. z-index 900:
    above page content, below the editor hotspot layer. Call bg follows the primary-button token;
-   Zalo keeps its brand blue. r3: 3× size on desktop (~1.5× on mobile), infinite pulse ring
-   ("nhấp nháy" — off under reduced motion), and a hover/focus label pill to the LEFT whose text
-   derives from the configured link (see floating-contact.tsx). */
+   Zalo keeps its brand blue. r3: ×3-area size on desktop (~1.5× area on mobile), a lively
+   attention animation = continuous radar ping + periodic ring-shake ("nhấp nháy"/rung — off under
+   reduced motion), and a hover/focus label pill to the LEFT whose text derives from the configured
+   link (see floating-contact.tsx). */
 .sx-float-contact {
   position: fixed;
   right: 1.25rem;
@@ -1561,11 +1562,17 @@ body .w-webflow-badge {
   border-radius: 50%;
   color: #fff;
   box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28);
-  transition: transform 0.15s ease;
-  animation: sx-float-pulse 2s ease-out infinite;
+  /* Two layered animations for a livelier, attention-grabbing button: an expanding "radar" ping
+     (box-shadow) that runs continuously, PLUS a periodic ring-shake (transform) — the button rests,
+     then jolts like a ringing phone every few seconds. Pivot low so it reads like a swinging handset. */
+  transform-origin: center 72%;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+  animation: sx-float-ping 2s ease-out infinite, sx-float-shake 3.4s ease-in-out infinite;
 }
-.sx-float-item:nth-child(2) .sx-float-btn { animation-delay: 1s; } /* de-sync the two rings */
-.sx-float-btn:hover { transform: scale(1.05); }
+/* Desync BOTH animations on the 2nd button (negative delays = start already mid-cycle) so the pair
+   never pings or jolts in lockstep. */
+.sx-float-item:nth-child(2) .sx-float-btn { animation-delay: -1s, -1.9s; }
+.sx-float-btn:hover { filter: brightness(1.12) saturate(1.05); box-shadow: 0 10px 28px rgba(7, 21, 34, 0.42); }
 .sx-float-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .sx-float-btn.is-call {
   background-color: var(--_🎨-color--tokens---button--primary--default--background, #0b1f33);
@@ -1577,10 +1584,22 @@ body .w-webflow-badge {
   font-size: 1.4rem;   /* scaled to the 90px button (was 2.4rem at 156px) */
   letter-spacing: 0.01em;
 }
-@keyframes sx-float-pulse {
-  0%   { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 0 rgba(255, 255, 255, 0.45); }
-  70%  { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 1.1rem rgba(255, 255, 255, 0); }
+@keyframes sx-float-ping {
+  0%   { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 0 rgba(255, 255, 255, 0.6); }
+  70%  { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 1.5rem rgba(255, 255, 255, 0); }
   100% { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+/* Rest for ~66% of the cycle, then a quick scale-pop + damped wobble (a "ring"), settling back.
+   Concentrating the motion into a short burst is what catches the eye without constant nagging. */
+@keyframes sx-float-shake {
+  0%, 66%, 100% { transform: scale(1) rotate(0deg); }
+  70% { transform: scale(1.16) rotate(-14deg); }
+  74% { transform: scale(1.16) rotate(12deg); }
+  78% { transform: scale(1.14) rotate(-10deg); }
+  82% { transform: scale(1.11) rotate(7deg); }
+  87% { transform: scale(1.07) rotate(-4deg); }
+  92% { transform: scale(1.03) rotate(2deg); }
+  96% { transform: scale(1.01) rotate(-1deg); }
 }
 .sx-float-label {
   position: absolute;
@@ -1605,8 +1624,8 @@ body .w-webflow-badge {
   .sx-float-label { display: none; } /* no hover concept — tap acts immediately */
 }
 @media (prefers-reduced-motion: reduce) {
-  .sx-float-btn { transition: none; animation: none; }
-  .sx-float-btn:hover { transform: none; }
+  .sx-float-btn { animation: none; transition: none; transform: none; }
+  .sx-float-btn:hover { filter: none; box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28); }
   .sx-float-label { transition: none; }
 }
 
