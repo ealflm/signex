@@ -1556,8 +1556,8 @@ body .w-webflow-badge {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 9.75rem;   /* 3 × 3.25rem */
-  height: 9.75rem;
+  width: 5.625rem;  /* ×3 AREA (not ×3 diameter): 3.25rem × √3 ≈ 90px */
+  height: 5.625rem;
   border-radius: 50%;
   color: #fff;
   box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28);
@@ -1574,7 +1574,7 @@ body .w-webflow-badge {
 .sx-float-btn.is-zalo {
   background-color: #0068ff;
   font-weight: 800;
-  font-size: 2.4rem;
+  font-size: 1.4rem;   /* scaled to the 90px button (was 2.4rem at 156px) */
   letter-spacing: 0.01em;
 }
 @keyframes sx-float-pulse {
@@ -1600,8 +1600,8 @@ body .w-webflow-badge {
 .sx-float-item:hover .sx-float-label,
 .sx-float-item:focus-within .sx-float-label { opacity: 1; transform: none; }
 @media (max-width: 767px) {
-  .sx-float-btn { width: 4.875rem; height: 4.875rem; } /* ~1.5× — user decision for mobile */
-  .sx-float-btn.is-zalo { font-size: 1.2rem; }
+  .sx-float-btn { width: 4rem; height: 4rem; } /* mobile: 64px (~1.5× area), smaller than desktop */
+  .sx-float-btn.is-zalo { font-size: 1rem; }
   .sx-float-label { display: none; } /* no hover concept — tap acts immediately */
 }
 @media (prefers-reduced-motion: reduce) {
