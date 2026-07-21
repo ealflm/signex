@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   PaletteSchema,
+  PaletteOverrideSchema,
   PaletteSeedsSchema,
   PaletteTokensSchema,
   PALETTE_VARS,
@@ -336,5 +337,21 @@ describe("INERT_SEED_KEYS", () => {
         `${PALETTE_VARS[k].cssVar}:#123456`,
       );
     }
+  });
+});
+
+describe("PaletteOverride hover fields", () => {
+  it("accepts optional hoverBg/hoverText (HexA)", () => {
+    const o = PaletteOverrideSchema.parse({
+      selector: '[data-sx-c="x"]', bg: "#112233", hoverBg: "#445566ff", hoverText: "#ffffff",
+    });
+    expect(o.hoverBg).toBe("#445566ff");
+    expect(o.hoverText).toBe("#ffffff");
+  });
+  it("still rejects unknown keys (.strict preserved)", () => {
+    expect(() => PaletteOverrideSchema.parse({ selector: '[data-sx-c="x"]', nope: "#000000" })).toThrow();
+  });
+  it("rejects a non-hex hover value", () => {
+    expect(() => PaletteOverrideSchema.parse({ selector: '[data-sx-c="x"]', hoverBg: "red" })).toThrow();
   });
 });

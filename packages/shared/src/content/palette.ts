@@ -197,6 +197,10 @@ export const PaletteOverrideSchema = z
     bg: HexA.optional(),
     text: HexA.optional(),
     border: HexA.optional(),
+    // Per-element HOVER colours. The emitter appends `:hover` to the (validated) selector — the
+    // stored selector stays pseudo-class-free, so the grammar/stored-XSS defense is unchanged.
+    hoverBg: HexA.optional(),
+    hoverText: HexA.optional(),
   })
   .strict();
 

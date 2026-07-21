@@ -80,6 +80,16 @@ export function paletteStyle(palette: Palette | undefined | null): string | null
       if (isHexA(val)) decls.push(`${prop}:${val}`);
     }
     if (decls.length) rules.push(`${ov.selector}{${decls.join(";")}}`);
+
+    // Per-element hover: same role→prop map, minus border (YAGNI). `:hover` is a fixed literal on
+    // the already-validated selector — never user input — so no pseudo-class enters the grammar.
+    const HOVER_PROP = { hoverBg: "background-color", hoverText: "color" } as const;
+    const hoverDecls: string[] = [];
+    for (const [role, prop] of Object.entries(HOVER_PROP) as [keyof typeof HOVER_PROP, string][]) {
+      const val = ov[role];
+      if (isHexA(val)) hoverDecls.push(`${prop}:${val}`);
+    }
+    if (hoverDecls.length) rules.push(`${ov.selector}:hover{${hoverDecls.join(";")}}`);
   }
 
   let css = rootDecls.length ? `${ROOT_SELECTOR}{${rootDecls.join(";")}}` : "";

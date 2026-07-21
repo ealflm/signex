@@ -173,3 +173,21 @@ describe("paletteStyle", () => {
     });
   });
 });
+
+describe("paletteStyle hover rule", () => {
+  it("emits a selector:hover rule from hoverBg/hoverText", () => {
+    const css = paletteStyle({ overrides: [
+      { selector: '[data-sx-c="heroForm.cta"] .btn-bg', bg: "#0b1f33", hoverBg: "#16324f" },
+    ] });
+    expect(css).toContain('[data-sx-c="heroForm.cta"] .btn-bg{background-color:#0b1f33}');
+    expect(css).toContain('[data-sx-c="heroForm.cta"] .btn-bg:hover{background-color:#16324f}');
+  });
+  it("emits no hover rule when no hover field is set", () => {
+    const css = paletteStyle({ overrides: [{ selector: '[data-sx-c="x"]', bg: "#0b1f33" }] });
+    expect(css).not.toContain(":hover");
+  });
+  it("drops a non-hex hover value (defense in depth)", () => {
+    const css = paletteStyle({ overrides: [{ selector: '[data-sx-c="x"]', hoverBg: "red" as never }] });
+    expect(css ?? "").not.toContain(":hover");
+  });
+});
