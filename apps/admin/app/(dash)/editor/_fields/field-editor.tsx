@@ -728,7 +728,6 @@ export function FieldEditor({
         value={value as Overlay | undefined}
         onChange={onChange}
         label={field.label}
-        idPrefix={field.name}
       />
     );
   } else if (field.kind === "boolean") {

@@ -71,7 +71,9 @@ export const OverlayStop = OverlayFill.extend({ pos: z.number().min(0).max(100) 
 /**
  * A media slot's overlay. ABSENT (the field is optional) means transparent — the default. A present
  * value is a solid fill or a 2–4 stop linear gradient. `kind` discriminates; nothing to migrate
- * because the absence itself is the "none" case.
+ * because the absence itself is the "none" case. Tagged `.describe("overlay")` below so the admin's
+ * zodform-fields deriver classifies it as FieldKind `"overlay"` (renders OverlayField) instead of
+ * falling back to raw JSON — keep that tag if this schema is ever refactored.
  */
 export const Overlay = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("solid"), fill: OverlayFill }),

@@ -40,21 +40,16 @@ interface OverlayFieldProps {
   value: Overlay | undefined;
   onChange: (next: Overlay | undefined) => void;
   label?: string;
-  idPrefix?: string;
 }
 
-// idPrefix is part of the contract (namespacing ids on a busy form), but none of the controls
-// below carry a DOM id today, so this relocation has nothing to prefix yet — a future consumer
-// that adds ids should thread it through.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function OverlayField({ value, onChange, label = "Lớp phủ", idPrefix }: OverlayFieldProps) {
+export function OverlayField({ value, onChange, label = "Lớp phủ" }: OverlayFieldProps) {
   return (
     <div className="mx-6 mb-3 flex flex-col gap-3 rounded-md border border-border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs font-medium text-foreground">{label}</span>
         <div
           role="group"
-          aria-label="Lớp phủ"
+          aria-label={`${label} — lớp phủ`}
           className="inline-flex items-center rounded-md border border-input bg-background p-0.5"
         >
           <button
@@ -118,7 +113,7 @@ export function OverlayField({ value, onChange, label = "Lớp phủ", idPrefix 
               const next: Overlay = { ...value, fill: { ...value.fill, color: e.target.value } };
               onChange(next);
             }}
-            aria-label="Màu lớp phủ"
+            aria-label={`${label} — màu lớp phủ`}
             className="h-9 w-9 shrink-0 cursor-pointer rounded-md border border-input p-0.5"
           />
           <span className="shrink-0 text-xs text-muted-foreground">Độ mờ</span>
@@ -135,7 +130,7 @@ export function OverlayField({ value, onChange, label = "Lớp phủ", idPrefix 
               };
               onChange(next);
             }}
-            aria-label="Độ mờ lớp phủ"
+            aria-label={`${label} — độ mờ lớp phủ`}
             className="min-w-0 flex-1"
           />
           <span className="w-9 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
@@ -158,7 +153,7 @@ export function OverlayField({ value, onChange, label = "Lớp phủ", idPrefix 
                 const next: Overlay = { ...value, angle: Number(e.target.value) };
                 onChange(next);
               }}
-              aria-label="Góc gradient"
+              aria-label={`${label} — góc gradient`}
               className="min-w-0 flex-1"
             />
             <span className="w-10 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
@@ -185,7 +180,7 @@ export function OverlayField({ value, onChange, label = "Lớp phủ", idPrefix 
                     };
                     onChange(next);
                   }}
-                  aria-label={`Màu điểm dừng ${i + 1}`}
+                  aria-label={`${label} — màu điểm dừng ${i + 1}`}
                   className="h-8 w-8 shrink-0 cursor-pointer rounded-md border border-input p-0.5"
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -206,7 +201,7 @@ export function OverlayField({ value, onChange, label = "Lớp phủ", idPrefix 
                         };
                         onChange(next);
                       }}
-                      aria-label={`Độ mờ điểm dừng ${i + 1}`}
+                      aria-label={`${label} — độ mờ điểm dừng ${i + 1}`}
                       className="min-w-0 flex-1"
                     />
                     <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
@@ -230,7 +225,7 @@ export function OverlayField({ value, onChange, label = "Lớp phủ", idPrefix 
                         };
                         onChange(next);
                       }}
-                      aria-label={`Vị trí điểm dừng ${i + 1}`}
+                      aria-label={`${label} — vị trí điểm dừng ${i + 1}`}
                       className="min-w-0 flex-1"
                     />
                     <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
@@ -247,7 +242,7 @@ export function OverlayField({ value, onChange, label = "Lớp phủ", idPrefix 
                     const next = removeStop(value, i);
                     onChange(next);
                   }}
-                  aria-label={`Xoá điểm dừng ${i + 1}`}
+                  aria-label={`${label} — xoá điểm dừng ${i + 1}`}
                   className="shrink-0 text-muted-foreground"
                 >
                   Xoá

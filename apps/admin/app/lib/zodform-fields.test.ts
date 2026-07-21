@@ -139,6 +139,9 @@ describe("deriveFields", () => {
     const features = deriveFields(BLOCK_REGISTRY.features as z.ZodTypeAny);
     expect(child(features, "featured", "image")).toBe("mediaRef");
     expect(child(features, "video", "media")).toBe("mediaRef");
+    // features.video.overlay is a NESTED overlay (object-depth 1) — regression lock that the
+    // "overlay" FieldKind classification isn't limited to top-level fields.
+    expect(child(features, "video", "overlay")).toBe("overlay");
 
     // aboutPage.hero.video is now a flexible slot (mediaRef) ; aboutPage.testimonial.image is
     // unchanged — still a plain AssetRef.
@@ -161,7 +164,7 @@ describe("deriveFields", () => {
   });
 
   it("classifies the real productsHeader catalog washes as overlay", () => {
-    const plan = deriveFields(BLOCK_REGISTRY.productsHeader);
+    const plan = deriveFields(BLOCK_REGISTRY.productsHeader as z.ZodTypeAny);
     for (const name of ["homeCardOverlay", "categoryImageOverlay", "productImageOverlay"]) {
       expect(plan).toContainEqual({ name, kind: "overlay", label: name });
     }
