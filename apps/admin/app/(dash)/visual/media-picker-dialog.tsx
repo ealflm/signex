@@ -28,7 +28,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { UploadCloud, ImageUp } from "lucide-react";
-import { overlayCss, type Overlay } from "@signex/shared";
+import type { Overlay } from "@signex/shared";
 import {
   Dialog,
   DialogContent,
@@ -43,9 +43,7 @@ import { cn } from "@/lib/utils";
 import { uploadAsset, type UploadPhase } from "@/app/lib/upload-asset";
 import { AssetGrid } from "./asset-grid";
 import { fieldLabel } from "./aspect-presets";
-// Aliased: FlexibleBody already has a local `kind`/`setKind` pair for the Ảnh/Video toggle, so the
-// pure "none"|"solid"|"gradient" setter import needs a distinct name in this file.
-import { setKind as setOverlayKind, addStop, removeStop } from "./overlay-edit";
+import { OverlayField } from "./overlay-field";
 
 // CropView is lazy-loaded so react-easy-crop stays out of the initial bundle (only the Upload→crop
 // path needs it). It's a client-only surface — no SSR.
@@ -539,26 +537,6 @@ function VideoBody({
   );
 }
 
-// A small preview swatch for the "Lớp phủ" section: a checkerboard backdrop (color-panel.tsx's
-// Swatch recipe — `bg-[repeating-conic-gradient(…)]`) so a translucent fill reads as translucent,
-// not as a lighter opaque colour sitting on the panel's flat background. The inner div is styled
-// by overlayCss — the SAME resolver the public site and the live preview use — so what this box
-// shows is exactly what the overlay will render as, "Không" included (overlayCss(undefined) = {},
-// i.e. bare checkerboard).
-function OverlayPreview({ overlay }: { overlay: Overlay | undefined }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-xs text-muted-foreground">Xem trước</span>
-      <div
-        aria-hidden
-        className="relative h-16 w-full overflow-hidden rounded-md border border-border bg-[repeating-conic-gradient(var(--muted)_0_25%,transparent_0_50%)] bg-[length:8px_8px]"
-      >
-        <div className="absolute inset-0" style={overlayCss(overlay)} />
-      </div>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Flexible body — an Ảnh/Video segmented toggle above the image or video body, for the four slots
 // that accept either kind (hero.image, features.featured.image, features.video.media,
@@ -645,242 +623,13 @@ function FlexibleBody({
           preview page via onOverlayPreview on every change below, while only reaching `pending`
           (the saved value) once, on Apply — inside onApply's payload, alongside whichever MediaRef
           (or none) the user chose. */}
-      <div className="mx-6 mb-3 flex flex-col gap-3 rounded-md border border-border p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs font-medium text-foreground">Lớp phủ</span>
-          <div
-            role="group"
-            aria-label="Lớp phủ"
-            className="inline-flex items-center rounded-md border border-input bg-background p-0.5"
-          >
-            <button
-              type="button"
-              aria-pressed={overlay === undefined}
-              onClick={() => {
-                const next = setOverlayKind(overlay, "none");
-                setOverlay(next);
-                onOverlayPreview?.(next);
-              }}
-              className={cn(
-                "rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                overlay === undefined
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Không
-            </button>
-            <button
-              type="button"
-              aria-pressed={overlay?.kind === "solid"}
-              onClick={() => {
-                const next = setOverlayKind(overlay, "solid");
-                setOverlay(next);
-                onOverlayPreview?.(next);
-              }}
-              className={cn(
-                "rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                overlay?.kind === "solid"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Màu đặc
-            </button>
-            <button
-              type="button"
-              aria-pressed={overlay?.kind === "gradient"}
-              onClick={() => {
-                const next = setOverlayKind(overlay, "gradient");
-                setOverlay(next);
-                onOverlayPreview?.(next);
-              }}
-              className={cn(
-                "rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                overlay?.kind === "gradient"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Gradient
-            </button>
-          </div>
-        </div>
-
-        {overlay?.kind === "solid" && (
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={overlay.fill.color}
-              onChange={(e) => {
-                if (overlay?.kind !== "solid") return;
-                const next: Overlay = { ...overlay, fill: { ...overlay.fill, color: e.target.value } };
-                setOverlay(next);
-                onOverlayPreview?.(next);
-              }}
-              aria-label="Màu lớp phủ"
-              className="h-9 w-9 shrink-0 cursor-pointer rounded-md border border-input p-0.5"
-            />
-            <span className="shrink-0 text-xs text-muted-foreground">Độ mờ</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={overlay.fill.opacity}
-              onChange={(e) => {
-                if (overlay?.kind !== "solid") return;
-                const next: Overlay = {
-                  ...overlay,
-                  fill: { ...overlay.fill, opacity: Number(e.target.value) },
-                };
-                setOverlay(next);
-                onOverlayPreview?.(next);
-              }}
-              aria-label="Độ mờ lớp phủ"
-              className="min-w-0 flex-1"
-            />
-            <span className="w-9 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
-              {overlay.fill.opacity}%
-            </span>
-          </div>
-        )}
-
-        {overlay?.kind === "gradient" && (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="shrink-0 text-xs text-muted-foreground">Góc</span>
-              <input
-                type="range"
-                min={0}
-                max={360}
-                value={overlay.angle}
-                onChange={(e) => {
-                  if (overlay?.kind !== "gradient") return;
-                  const next: Overlay = { ...overlay, angle: Number(e.target.value) };
-                  setOverlay(next);
-                  onOverlayPreview?.(next);
-                }}
-                aria-label="Góc gradient"
-                className="min-w-0 flex-1"
-              />
-              <span className="w-10 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                {overlay.angle}°
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              {overlay.stops.map((stop, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 rounded-md border border-border/60 p-2"
-                >
-                  <input
-                    type="color"
-                    value={stop.color}
-                    onChange={(e) => {
-                      if (overlay?.kind !== "gradient") return;
-                      const next: Overlay = {
-                        ...overlay,
-                        stops: overlay.stops.map((s, idx) =>
-                          idx === i ? { ...s, color: e.target.value } : s,
-                        ),
-                      };
-                      setOverlay(next);
-                      onOverlayPreview?.(next);
-                    }}
-                    aria-label={`Màu điểm dừng ${i + 1}`}
-                    className="h-8 w-8 shrink-0 cursor-pointer rounded-md border border-input p-0.5"
-                  />
-                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-9 shrink-0 text-[11px] text-muted-foreground">Độ mờ</span>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={stop.opacity}
-                        onChange={(e) => {
-                          if (overlay?.kind !== "gradient") return;
-                          const next: Overlay = {
-                            ...overlay,
-                            stops: overlay.stops.map((s, idx) =>
-                              idx === i ? { ...s, opacity: Number(e.target.value) } : s,
-                            ),
-                          };
-                          setOverlay(next);
-                          onOverlayPreview?.(next);
-                        }}
-                        aria-label={`Độ mờ điểm dừng ${i + 1}`}
-                        className="min-w-0 flex-1"
-                      />
-                      <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
-                        {stop.opacity}%
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-9 shrink-0 text-[11px] text-muted-foreground">Vị trí</span>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={stop.pos}
-                        onChange={(e) => {
-                          if (overlay?.kind !== "gradient") return;
-                          const next: Overlay = {
-                            ...overlay,
-                            stops: overlay.stops.map((s, idx) =>
-                              idx === i ? { ...s, pos: Number(e.target.value) } : s,
-                            ),
-                          };
-                          setOverlay(next);
-                          onOverlayPreview?.(next);
-                        }}
-                        aria-label={`Vị trí điểm dừng ${i + 1}`}
-                        className="min-w-0 flex-1"
-                      />
-                      <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
-                        {stop.pos}%
-                      </span>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={overlay.stops.length <= 2}
-                    onClick={() => {
-                      const next = removeStop(overlay, i);
-                      setOverlay(next);
-                      onOverlayPreview?.(next);
-                    }}
-                    aria-label={`Xoá điểm dừng ${i + 1}`}
-                    className="shrink-0 text-muted-foreground"
-                  >
-                    Xoá
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={overlay.stops.length >= 4}
-              onClick={() => {
-                const next = addStop(overlay);
-                setOverlay(next);
-                onOverlayPreview?.(next);
-              }}
-              className="self-start"
-            >
-              + Thêm điểm
-            </Button>
-          </div>
-        )}
-
-        <OverlayPreview overlay={overlay} />
-      </div>
+      <OverlayField
+        value={overlay}
+        onChange={(next) => {
+          setOverlay(next);
+          onOverlayPreview?.(next);
+        }}
+      />
 
       {kind === "video" ? (
         <VideoBody
