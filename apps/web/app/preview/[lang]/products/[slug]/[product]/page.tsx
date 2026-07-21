@@ -79,7 +79,7 @@ async function PreviewProduct({
                     <p className="tone-medium product-detail_desc">{item.desc}</p>
                   )}
                   {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Webflow-runtime nav, not next/link */}
-                  <a button="" className="cta_primary w-inline-block" data-wf--cta-primary--variant="primary" href="/contact">
+                  <a button="" className="cta_primary w-inline-block" data-wf--cta-primary--variant="primary" href="/contact" data-sx-c="product.cta.color">
                     <div className="button_text-mask">
                       <div button-text="" className="text-button">
                         {pl.cta}

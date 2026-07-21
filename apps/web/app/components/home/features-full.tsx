@@ -52,7 +52,7 @@ export function FeaturesFull({
               </h2>
             </div>
             <div className="right_features-headline">
-              <a button="" className="cta_primary w-inline-block" data-wf--cta-primary--variant="primary" href="#quote-form">
+              <a button="" className="cta_primary w-inline-block" data-wf--cta-primary--variant="primary" href="#quote-form" {...editableAttrs(editable, "features.cta.color", { color: true })}>
                 <div className="button_text-mask">
                   <div button-text="" className="text-button">
                     <span {...editableAttrs(editable, "features.cta.label", { text: { maxLength: 80 } })}>{t.cta}</span>

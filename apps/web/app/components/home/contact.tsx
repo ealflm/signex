@@ -235,7 +235,7 @@ export function Contact({
                   </div>
                   <div button="" className="button_submit-static">
                     <input className="button_submit w-button" data-wait={t.submitting} type="submit" value={t.submit} />
-                    <a button="" className="cta_primary w-inline-block" data-cta="contact-quote" data-wf--cta-primary--variant="primary" href="#">
+                    <a button="" className="cta_primary w-inline-block" data-cta="contact-quote" data-wf--cta-primary--variant="primary" href="#" {...editableAttrs(editable, "contactForm.cta", { color: true })}>
                       <div className="button_text-mask">
                         <div button-text="" className="text-button">
                           <span {...editableAttrs(editable, "formConfig.submit", { text: { maxLength: 80 } })}>{t.submit}</span>

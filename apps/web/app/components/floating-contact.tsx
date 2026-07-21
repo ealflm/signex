@@ -30,6 +30,7 @@ export function FloatingContact({ dict }: { dict: Dictionary }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={zaloLabel}
+            data-sx-c="floatBtn.zalo"
           >
             Zalo
           </a>
@@ -42,6 +43,7 @@ export function FloatingContact({ dict }: { dict: Dictionary }) {
             className="sx-float-btn is-call"
             href={call}
             aria-label={callLabel}
+            data-sx-c="floatBtn.call"
             {...(callNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           >
             <svg aria-hidden="true" fill="none" height="22" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg">

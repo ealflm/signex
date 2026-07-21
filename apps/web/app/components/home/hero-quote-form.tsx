@@ -88,6 +88,7 @@ export function HeroQuoteForm({
         data-wf--cta-primary--variant="primary"
         href="#"
         tabIndex={tabIndex}
+        {...editableAttrs(editable, "heroForm.cta", { color: true })}
       >
         <div className="button_text-mask">
           <div button-text="" className="text-button">
