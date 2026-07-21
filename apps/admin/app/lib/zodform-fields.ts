@@ -185,3 +185,19 @@ export function deriveFields(schema: z.ZodTypeAny): FieldPlan[] {
     classify(name, v as z.ZodTypeAny, 0)
   );
 }
+
+// The full dotted paths of every kind:"overlay" field in a derived plan, nested ones included
+// (e.g. deriveFields(features) → ["video.overlay", "featured.overlay"]). The editor uses this to
+// live-repaint a block-form overlay edit's [data-sx-overlay] wash node — the media picker already
+// does this for slots it owns, but the catalog washes have no media slot, so the form is their
+// only editor. Paths join with "." exactly as the FieldEditor object recursion builds field names,
+// so `${blockKey}.${path}` equals the wash node's data-sx-overlay value.
+export function overlayFieldPaths(fields: FieldPlan[], prefix = ""): string[] {
+  return fields.flatMap((f) => {
+    const path = prefix ? `${prefix}.${f.name}` : f.name;
+    return [
+      ...(f.kind === "overlay" ? [path] : []),
+      ...(f.children ? overlayFieldPaths(f.children, path) : []),
+    ];
+  });
+}

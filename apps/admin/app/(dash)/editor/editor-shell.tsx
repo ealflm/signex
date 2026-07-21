@@ -28,11 +28,13 @@ import {
   paletteStyle,
   isVideoRef,
   overlayCss,
+  BLOCK_REGISTRY,
   type BlockKey,
   type MediaRef as SharedMediaRef,
   type Overlay,
   type ReleaseSnapshot,
 } from "@signex/shared";
+import { deriveFields, overlayFieldPaths } from "@/app/lib/zodform-fields";
 
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -576,6 +578,20 @@ export function EditorShell(props: EditorShellProps) {
   // Coalescing to the LATEST value per frame (cancel the pending frame, schedule a fresh one) keeps
   // the canvas visually in sync with the drag without saturating postMessage.
   const overlayRafRef = useRef<number | null>(null);
+  // RAF-coalesced live repaint of ONE overlay field's [data-sx-overlay] wash node. `fieldPath` is
+  // the full `blockKey.…` dotted path, which equals that node's data-sx-overlay value. Shared by
+  // the media picker's overlay control AND the block-settings form: the latter's overlay edits used
+  // to reach only `pending`, so the wash never repainted until save — worst for the 3 catalog
+  // washes, which have no media slot to open the picker from and so no other live-preview path.
+  const previewOverlayField = useCallback(
+    (fieldPath: string, overlay: Overlay | undefined) => {
+      if (overlayRafRef.current != null) cancelAnimationFrame(overlayRafRef.current);
+      overlayRafRef.current = requestAnimationFrame(() => {
+        bridge.postApplyEdits([{ field: fieldPath, kind: "overlay", css: overlayCss(overlay) }]);
+      });
+    },
+    [bridge],
+  );
   const previewOverlay = useCallback(
     (overlay: Overlay | undefined) => {
       // Only a flexible target has a live overlay field to repaint — mirrors the `if
@@ -583,13 +599,17 @@ export function EditorShell(props: EditorShellProps) {
       // that closed mid-drag (mediaTarget null) same as every other mediaTarget-reading callback.
       if (!mediaTarget?.flexible) return;
       const [blockKey, ...rest] = mediaTarget.field.split(".") as [BlockKey, ...string[]];
-      const overlayField = [blockKey, ...rest.slice(0, -1), "overlay"].join(".");
-      if (overlayRafRef.current != null) cancelAnimationFrame(overlayRafRef.current);
-      overlayRafRef.current = requestAnimationFrame(() => {
-        bridge.postApplyEdits([{ field: overlayField, kind: "overlay", css: overlayCss(overlay) }]);
-      });
+      previewOverlayField([blockKey, ...rest.slice(0, -1), "overlay"].join("."), overlay);
     },
-    [mediaTarget, bridge],
+    [mediaTarget, previewOverlayField],
+  );
+  // Overlay-field dotted paths (nested included) for the selected block — the set a block-form
+  // field edit is matched against to live-repaint the corresponding wash (see onFieldChange).
+  // Keyed on the block alone (not the whole `selection`) so it recomputes only when the block changes.
+  const selBlockKey = selection?.blockKey ?? null;
+  const selectedOverlayPaths = useMemo(
+    () => (selBlockKey ? overlayFieldPaths(deriveFields(BLOCK_REGISTRY[selBlockKey])) : []),
+    [selBlockKey],
   );
 
   // ── Step 3: selection → panel + (page-backed) iframe navigation ──────────────
@@ -1231,7 +1251,21 @@ export function EditorShell(props: EditorShellProps) {
                 blockData={selection ? workingBlockData(selection.blockKey) : {}}
                 assets={initialAssets}
                 onFieldChange={(name, v) => {
-                  if (selection) applyFieldEdit(selection.blockKey, name, v);
+                  if (!selection) return;
+                  applyFieldEdit(selection.blockKey, name, v);
+                  // Live wash repaint: for every overlay leaf at or under the edited field, repaint
+                  // its [data-sx-overlay] node now — the same postApplyEdits the media picker fires,
+                  // which the block form otherwise never did (so overlay edits, and the catalog
+                  // washes in particular, only appeared after a save).
+                  for (const p of selectedOverlayPaths) {
+                    if (p === name || p.startsWith(`${name}.`)) {
+                      const rel = p === name ? "" : p.slice(name.length + 1);
+                      const ov = (rel ? getPath(v as Record<string, unknown>, rel) : v) as
+                        | Overlay
+                        | undefined;
+                      previewOverlayField(`${selection.blockKey}.${p}`, ov);
+                    }
+                  }
                 }}
                 onPickMedia={(name, kind) => {
                   if (selection) openMediaPicker(`${selection.blockKey}.${name}`, kind);

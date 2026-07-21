@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { z, BLOCK_REGISTRY, Overlay } from "@signex/shared";
-import { deriveFields } from "./zodform-fields";
+import { deriveFields, overlayFieldPaths } from "./zodform-fields";
 
 const localized = z.object({ en: z.string(), vi: z.string() });
 const localizedArray = z.object({ en: z.array(z.string()), vi: z.array(z.string()) });
@@ -168,5 +168,30 @@ describe("deriveFields", () => {
     for (const name of ["homeCardOverlay", "categoryImageOverlay", "productImageOverlay"]) {
       expect(plan).toContainEqual({ name, kind: "overlay", label: name });
     }
+  });
+});
+
+describe("overlayFieldPaths", () => {
+  it("lists top-level overlay fields (the 3 productsHeader catalog washes)", () => {
+    const paths = overlayFieldPaths(deriveFields(BLOCK_REGISTRY.productsHeader));
+    expect([...paths].sort()).toEqual([
+      "categoryImageOverlay",
+      "homeCardOverlay",
+      "productImageOverlay",
+    ]);
+  });
+
+  it("lists a top-level 'overlay' field (hero)", () => {
+    expect(overlayFieldPaths(deriveFields(BLOCK_REGISTRY.hero))).toEqual(["overlay"]);
+  });
+
+  it("lists NESTED overlay fields with their full dotted path (features.video/featured)", () => {
+    const paths = overlayFieldPaths(deriveFields(BLOCK_REGISTRY.features));
+    expect(paths).toContain("video.overlay");
+    expect(paths).toContain("featured.overlay");
+  });
+
+  it("returns [] for a block with no overlay field", () => {
+    expect(overlayFieldPaths(deriveFields(BLOCK_REGISTRY.nav))).toEqual([]);
   });
 });
