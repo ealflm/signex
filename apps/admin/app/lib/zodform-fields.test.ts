@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { z, BLOCK_REGISTRY } from "@signex/shared";
+import { z, BLOCK_REGISTRY, Overlay } from "@signex/shared";
 import { deriveFields } from "./zodform-fields";
 
 const localized = z.object({ en: z.string(), vi: z.string() });
@@ -153,5 +153,17 @@ describe("deriveFields", () => {
     });
     const [f] = deriveFields(schema);
     expect(f).toMatchObject({ name: "formLabelColor", kind: "color" });
+  });
+
+  it("classifies an Overlay field as kind:overlay (not raw json)", () => {
+    const plan = deriveFields(z.object({ overlay: Overlay.optional() }));
+    expect(plan).toContainEqual({ name: "overlay", kind: "overlay", label: "overlay" });
+  });
+
+  it("classifies the real productsHeader catalog washes as overlay", () => {
+    const plan = deriveFields(BLOCK_REGISTRY.productsHeader);
+    for (const name of ["homeCardOverlay", "categoryImageOverlay", "productImageOverlay"]) {
+      expect(plan).toContainEqual({ name, kind: "overlay", label: name });
+    }
   });
 });

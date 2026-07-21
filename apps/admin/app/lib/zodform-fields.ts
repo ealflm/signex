@@ -3,6 +3,7 @@ import { z } from "@signex/shared";
 export type FieldKind =
   | "string"
   | "color"
+  | "overlay"
   | "localized"
   | "localizedArray"
   | "stringArray"
@@ -134,6 +135,9 @@ function classify(name: string, raw: z.ZodTypeAny, depth = 0): FieldPlan {
   // A colour hex field (a shared HexA marked `.describe("color")`). MUST precede the string
   // check or it degrades to a plain text input.
   if (s.description === "color") return { name, kind: "color", label: name };
+  // An Overlay field (the shared discriminated union tagged `.describe("overlay")`). MUST precede
+  // the structural checks / json fallback, which would otherwise classify it as raw JSON.
+  if (s.description === "overlay") return { name, kind: "overlay", label: name };
   if (isStringSchema(s)) return { name, kind: "string", label: name };
   if (typeName(s) === "ZodBoolean") return { name, kind: "boolean", label: name };
   if (isLocalizedArray(s)) return { name, kind: "localizedArray", label: name };
