@@ -11,9 +11,20 @@ describe("floatingButtons admin surface", () => {
     expect(SURFACE_PATH_BY_BLOCK.floatingButtons).toBe(null);
   });
 
-  it("derives exactly two string fields (callHref, zaloHref)", () => {
+  it("derives four fields: the two hrefs stay string, the two ring colours are the colour picker", () => {
     const fields = deriveFields(BLOCK_REGISTRY.floatingButtons);
-    expect(fields.map((f) => f.name).sort()).toEqual(["callHref", "zaloHref"]);
-    expect(fields.every((f) => f.kind === "string")).toBe(true);
+    expect(fields.map((f) => f.name).sort()).toEqual([
+      "callHref",
+      "callRingColor",
+      "zaloHref",
+      "zaloRingColor",
+    ]);
+    const kindByName = Object.fromEntries(fields.map((f) => [f.name, f.kind]));
+    expect(kindByName).toEqual({
+      callHref: "string",
+      zaloHref: "string",
+      callRingColor: "color",
+      zaloRingColor: "color",
+    });
   });
 });
