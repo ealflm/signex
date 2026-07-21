@@ -176,3 +176,29 @@ describe("rebasePalette (the 409 retry)", () => {
     });
   });
 });
+
+describe("per-element hover roles", () => {
+  const SEL = '[data-sx-c="heroForm.cta"] .btn-bg';
+  it("setOverride writes hoverBg onto the same selector entry as bg", () => {
+    let p = setOverride({}, SEL, "bg", "#0b1f33");
+    p = setOverride(p, SEL, "hoverBg", "#16324f");
+    const o = p.overrides!.find((x) => x.selector === SEL)!;
+    expect(o.bg).toBe("#0b1f33");
+    expect(o.hoverBg).toBe("#16324f");
+    expect(p.overrides!.length).toBe(1); // one entry, two roles
+  });
+  it("clearOverrideRole('bg') keeps the entry alive while hoverBg remains", () => {
+    let p = setOverride({}, SEL, "bg", "#0b1f33");
+    p = setOverride(p, SEL, "hoverBg", "#16324f");
+    p = clearOverrideRole(p, SEL, "bg");
+    const o = p.overrides!.find((x) => x.selector === SEL);
+    expect(o).toBeDefined();
+    expect(o!.bg).toBeUndefined();
+    expect(o!.hoverBg).toBe("#16324f");
+  });
+  it("clearing the last remaining role drops the entry", () => {
+    let p = setOverride({}, SEL, "hoverBg", "#16324f");
+    p = clearOverrideRole(p, SEL, "hoverBg");
+    expect((p.overrides ?? []).length).toBe(0);
+  });
+});

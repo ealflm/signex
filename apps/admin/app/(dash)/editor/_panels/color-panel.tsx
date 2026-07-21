@@ -61,8 +61,9 @@ import {
   clearOverride,
   clearOverrideRole,
   type PaletteWorkingSet,
+  type OverrideRole,
 } from "../_lib/palette-working-set";
-import { ROLE_LABEL, tokenLabel, type ColorRole, type ColorTarget, type RoleInfo } from "../_lib/color-target";
+import { ROLE_LABEL, tokenLabel, type ColorTarget, type RoleInfo } from "../_lib/color-target";
 
 // The two storable formats, taken from the schemas that will actually validate the save rather than
 // re-typed here — a third copy of the regex is how the panel and the API drift into disagreeing
@@ -504,7 +505,7 @@ export interface ColorPanelProps {
 }
 
 export function ColorPanel({ target, palette, broken, onChange, onReset }: ColorPanelProps) {
-  const overrideFor = (selector: string | undefined, role: ColorRole) =>
+  const overrideFor = (selector: string | undefined, role: OverrideRole) =>
     selector ? palette.overrides?.find((o) => o.selector === selector)?.[role] : undefined;
 
   const tokenValueFor = (tokenKey: string | undefined) => {
@@ -582,6 +583,45 @@ export function ColorPanel({ target, palette, broken, onChange, onReset }: Color
                   </p>
                 </div>
               )}
+
+              {/* Per-element hover. Distinct from the site-wide TOKEN rows above: those repaint every
+                  primary button, this repaints only the clicked element — bound to the same selector
+                  its default-state bg/text role already resolved, since :hover cannot be click-resolved
+                  on its own (roles are measured from the DEFAULT state's CSSOM). Shown only when a role
+                  resolved a selector, same refusal rule as the per-element rows above. */}
+              {(() => {
+                const bgSel = target.roles.find((r) => r.role === "bg")?.selector;
+                const textSel = target.roles.find((r) => r.role === "text")?.selector;
+                if (!bgSel && !textSel) return null;
+                return (
+                  <div className="flex flex-col gap-3 rounded-md border border-border/60 p-3">
+                    <span className="text-sm font-medium text-foreground">Khi rê chuột (hover)</span>
+                    {bgSel && (
+                      <ColorRow
+                        id="color-hover-bg"
+                        label="Nền (hover)"
+                        value={overrideFor(bgSel, "hoverBg")}
+                        alpha
+                        onCommit={(hex) => onChange(setOverride(palette, bgSel, "hoverBg", hex))}
+                        onClear={() => onChange(clearOverrideRole(palette, bgSel, "hoverBg"))}
+                      />
+                    )}
+                    {textSel && (
+                      <ColorRow
+                        id="color-hover-text"
+                        label="Chữ (hover)"
+                        value={overrideFor(textSel, "hoverText")}
+                        alpha
+                        onCommit={(hex) => onChange(setOverride(palette, textSel, "hoverText", hex))}
+                        onClear={() => onChange(clearOverrideRole(palette, textSel, "hoverText"))}
+                      />
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Màu khi rê chuột vào — chỉ riêng nút này.
+                    </p>
+                  </div>
+                );
+              })()}
             </fieldset>
           ) : (
             <p className="p-4 text-sm text-muted-foreground">Bấm vào một phần tử trên trang để đổi màu.</p>

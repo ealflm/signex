@@ -20,6 +20,9 @@ import { PALETTE_VARS, TOKEN_VARS, type Palette } from "@signex/shared";
 
 export type PaletteWorkingSet = Palette;
 
+/** The roles an override can carry — the three default-state roles plus the two hover roles. */
+export type OverrideRole = "bg" | "text" | "border" | "hoverBg" | "hoverText";
+
 export function setSeed(p: PaletteWorkingSet, key: string, hex: string): PaletteWorkingSet {
   return { ...p, seeds: { ...(p.seeds ?? {}), [key]: hex } };
 }
@@ -47,7 +50,7 @@ export function setTokenColor(p: PaletteWorkingSet, tokenKey: string, hex: strin
 export function setOverride(
   p: PaletteWorkingSet,
   selector: string,
-  role: "bg" | "text" | "border",
+  role: OverrideRole,
   hex: string,
 ): PaletteWorkingSet {
   const list = p.overrides ?? [];
@@ -76,7 +79,7 @@ export function setOverride(
 export function clearOverrideRole(
   p: PaletteWorkingSet,
   selector: string,
-  role: "bg" | "text" | "border",
+  role: OverrideRole,
 ): PaletteWorkingSet {
   const next: PaletteWorkingSet["overrides"] = [];
   for (const o of p.overrides ?? []) {
@@ -87,7 +90,10 @@ export function clearOverrideRole(
     const rest = { ...o };
     delete rest[role];
     // `rest` still holds `selector`; the ROLES are what decide whether the entry survives.
-    if (rest.bg !== undefined || rest.text !== undefined || rest.border !== undefined) next.push(rest);
+    if (
+      rest.bg !== undefined || rest.text !== undefined || rest.border !== undefined ||
+      rest.hoverBg !== undefined || rest.hoverText !== undefined
+    ) next.push(rest);
   }
   return { ...p, overrides: next };
 }
