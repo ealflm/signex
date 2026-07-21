@@ -1561,10 +1561,10 @@ body .w-webflow-badge {
   height: 5.625rem;
   border-radius: 50%;
   color: #fff;
-  /* Radar-ring colour as an rgb triple (fed into rgba() in the sx-float-ping keyframe). Warm gold so
-     the ring stays visible on BOTH light/white and dark sections — a white ring vanished on the
-     site's white bands. Override per-button below if a different glow is wanted. */
-  --sx-ring: 240, 168, 48;
+  /* Radar-ring colour as an rgb triple (fed into rgba() in the sx-float-ping keyframe). Each button
+     OVERRIDES this to match its own background (see .is-zalo / .is-call) so the glow is in sync with
+     the button; this base value is only a fallback. (A white ring used to vanish on white bands.) */
+  --sx-ring: 11, 31, 51;
   box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28);
   /* Two layered animations for a livelier, attention-grabbing button: an expanding "radar" ping
      (box-shadow) that runs continuously, PLUS a periodic ring-shake (transform) — the button rests,
@@ -1580,10 +1580,12 @@ body .w-webflow-badge {
 .sx-float-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .sx-float-btn.is-call {
   background-color: var(--_🎨-color--tokens---button--primary--default--background, #0b1f33);
+  --sx-ring: 11, 31, 51; /* the call button's navy (#0b1f33) — ring tone matches the button */
 }
 .sx-float-btn.is-call svg { width: 42%; height: 42%; }
 .sx-float-btn.is-zalo {
   background-color: #0068ff;
+  --sx-ring: 0, 104, 255; /* Zalo blue (#0068ff) — ring tone matches the button */
   font-weight: 800;
   font-size: 1.4rem;   /* scaled to the 90px button (was 2.4rem at 156px) */
   letter-spacing: 0.01em;
