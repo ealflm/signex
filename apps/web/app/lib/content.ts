@@ -118,6 +118,8 @@ function resolveForLang(snap: ReleaseSnapshot, catalog: CatalogLike, lang: Local
     floatingButtons: {
       callHref: b.floatingButtons.callHref,
       zaloHref: b.floatingButtons.zaloHref,
+      zaloRingColor: b.floatingButtons.zaloRingColor,
+      callRingColor: b.floatingButtons.callRingColor,
     },
     hero: {
       titleTop: t(b.hero.titleTop, lang),

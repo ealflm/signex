@@ -4,7 +4,7 @@
 // hover label pill whose number DERIVES from the configured link (displayNumber) — never
 // hardcoded. Server component, no JS.
 import type { Dictionary } from "@/app/[lang]/dictionaries";
-import { resolveCallHref, resolveZaloHref, displayNumber } from "./floating-contact.links";
+import { resolveCallHref, resolveZaloHref, displayNumber, hexToRgbTriple } from "./floating-contact.links";
 
 export function FloatingContact({ dict }: { dict: Dictionary }) {
   const phones = dict.businessContact.phones;
@@ -13,6 +13,10 @@ export function FloatingContact({ dict }: { dict: Dictionary }) {
   const call = resolveCallHref(dict.floatingButtons.callHref, telPhone);
   const zalo = resolveZaloHref(dict.floatingButtons.zaloHref, zaloPhone);
   const callNewTab = /^https?:/i.test(call);
+  // Radar-ring colour override (optional): absent → no inline style → the CSS default
+  // (.is-zalo / .is-call --sx-ring) applies.
+  const zaloRing = dict.floatingButtons.zaloRingColor ? hexToRgbTriple(dict.floatingButtons.zaloRingColor) : null;
+  const callRing = dict.floatingButtons.callRingColor ? hexToRgbTriple(dict.floatingButtons.callRingColor) : null;
   if (!call && !zalo) return null;
   const vi = dict.locale !== "en";
   const zaloNum = zalo ? displayNumber(zalo) : null;
@@ -31,6 +35,7 @@ export function FloatingContact({ dict }: { dict: Dictionary }) {
             rel="noopener noreferrer"
             aria-label={zaloLabel}
             data-sx-c="floatBtn.zalo"
+            style={zaloRing ? ({ "--sx-ring": zaloRing } as React.CSSProperties) : undefined}
           >
             Zalo
           </a>
@@ -44,6 +49,7 @@ export function FloatingContact({ dict }: { dict: Dictionary }) {
             href={call}
             aria-label={callLabel}
             data-sx-c="floatBtn.call"
+            style={callRing ? ({ "--sx-ring": callRing } as React.CSSProperties) : undefined}
             {...(callNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           >
             <svg aria-hidden="true" fill="none" height="22" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg">

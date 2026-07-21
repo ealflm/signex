@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HexA } from "../palette";
 
 /**
  * FLOATING BUTTONS — links for the two fixed bottom-right quick-contact buttons
@@ -19,6 +20,10 @@ export const floatingButtonsBlock = z
   .object({
     callHref: z.string().default(""),
     zaloHref: z.string().default(""),
+    // Radar-ring colour per button (the sx-float-ping glow). Optional; absent = the CSS default
+    // (Zalo blue / call navy). `.describe("color")` → admin colour-picker field (r3 FieldKind).
+    zaloRingColor: HexA.describe("color").optional(),
+    callRingColor: HexA.describe("color").optional(),
   })
   .default({ callHref: "", zaloHref: "" });
 

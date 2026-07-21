@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveCallHref, resolveZaloHref, displayNumber } from "./floating-contact.links.ts";
+import { resolveCallHref, resolveZaloHref, displayNumber, hexToRgbTriple } from "./floating-contact.links.ts";
 
 test("empty explicit -> derive tel: from the phone", () => {
   assert.equal(resolveCallHref("", "(+84) 979 700 072"), "tel:+84979700072");
@@ -44,4 +44,14 @@ test("displayNumber: the user-facing number behind a resolved href (labels deriv
   // scheme is case-insensitive (an admin may paste an uppercase-scheme override; resolveCallHref
   // passes SAFE_HREF matches through verbatim), matching the zalo.me branch's own /i.
   assert.equal(displayNumber("TEL:+84982633377"), "0982633377");
+});
+
+test("hexToRgbTriple: hex colour -> rgb triple for rgba(var(--sx-ring), a)", () => {
+  // hexToRgbTriple: "#rrggbb" (or #rgb) → "r, g, b" for rgba(var(--sx-ring), a); null if not a hex.
+  assert.equal(hexToRgbTriple("#0068ff"), "0, 104, 255");
+  assert.equal(hexToRgbTriple("#0B1F33"), "11, 31, 51");
+  assert.equal(hexToRgbTriple("#fff"), "255, 255, 255");
+  assert.equal(hexToRgbTriple("#0068ffcc"), "0, 104, 255"); // 8-digit: ignore alpha for the triple
+  assert.equal(hexToRgbTriple("blue"), null);
+  assert.equal(hexToRgbTriple(""), null);
 });
