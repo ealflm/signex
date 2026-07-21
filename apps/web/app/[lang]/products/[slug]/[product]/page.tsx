@@ -62,7 +62,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const image = item.image.url;
 
   return (
-    <section className="section_product-detail">
+    <section className="section_product-detail" data-sx-block="productsHeader">
       <AnalyticsView kind="product_view" catalogSlug={slug} productSlug={product} />
       <div className="padding-global">
         <div className="w-layout-blockcontainer container-large w-container">

@@ -191,3 +191,31 @@ describe("paletteStyle hover rule", () => {
     expect(css ?? "").not.toContain(":hover");
   });
 });
+
+describe("paletteStyle bare-anchor specificity boost", () => {
+  // A bare anchor selector `[data-sx-c="x"]` is (0,1,0). The float buttons paint their own
+  // background on the anchor itself (`.sx-float-btn.is-zalo` / `.is-call`, a 2-class base rule at
+  // (0,2,0)), so the bare override loses the cascade even though our <style> is injected last.
+  // Doubling the attribute at EMIT time — `[data-sx-c="x"][data-sx-c="x"]` — reaches (0,2,0), so
+  // the override ties on specificity and wins by source order. The stored selector (validated by
+  // selector.ts) is untouched; this is emit-only, exactly like the `:hover` literal appended below.
+  it("doubles a bare-anchor override selector so it emits at (0,2,0), on both the default and hover rule", () => {
+    const css = paletteStyle({
+      overrides: [{ selector: '[data-sx-c="floatBtn.zalo"]', bg: "#0068ff", hoverBg: "#3388ff" }],
+    })!;
+    expect(css).toContain(
+      '[data-sx-c="floatBtn.zalo"][data-sx-c="floatBtn.zalo"]{background-color:#0068ff}',
+    );
+    expect(css).toContain(
+      '[data-sx-c="floatBtn.zalo"][data-sx-c="floatBtn.zalo"]:hover{background-color:#3388ff}',
+    );
+  });
+
+  it("leaves a non-bare (block-walk) selector UNCHANGED — no doubling", () => {
+    const css = paletteStyle({
+      overrides: [{ selector: '[data-sx-block="hero"] .btn-bg', bg: "#111111" }],
+    })!;
+    expect(css).toContain('[data-sx-block="hero"] .btn-bg{background-color:#111111}');
+    expect(css).not.toContain(".btn-bg .btn-bg");
+  });
+});

@@ -50,7 +50,7 @@ async function PreviewProduct({
       <PaletteStyle palette={dict.palette} />
       <Navbar dict={dict.nav} editable />
       <main id="main" className="main-wrapper">
-        <section className="section_product-detail">
+        <section className="section_product-detail" data-sx-block="productsHeader">
           <div className="padding-global">
             <div className="w-layout-blockcontainer container-large w-container">
               <a className="product-detail_back link-underline tone-medium" href={`/products/${cat.slug}`}>

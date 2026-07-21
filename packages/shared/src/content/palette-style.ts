@@ -69,6 +69,20 @@ export function paletteStyle(palette: Palette | undefined | null): string | null
   }
 
   const ROLE_PROP = { bg: "background-color", text: "color", border: "border-color" } as const;
+  // Per-element hover: same role→prop map, minus border (YAGNI). `:hover` is a fixed literal on
+  // the already-validated selector — never user input — so no pseudo-class enters the grammar.
+  const HOVER_PROP = { hoverBg: "background-color", hoverText: "color" } as const;
+
+  // A bare anchor selector `[data-sx-c="x"]` is (0,1,0). Most override targets are a block-walk
+  // descendant path (e.g. `[data-sx-block="hero"] .btn-bg`, ≥(0,2,0)) so they out-specify the
+  // template unaided, but the float buttons paint their OWN background on the anchor itself, and
+  // its base rule is a 2-class selector (`.sx-float-btn.is-zalo` / `.is-call`, (0,2,0)) — the bare
+  // override loses even though our <style> is injected last in <head>. Doubling the attribute at
+  // EMIT time — `[data-sx-c="x"][data-sx-c="x"]` — reaches (0,2,0) so the override ties on
+  // specificity and wins by source order. Emit-time only, exactly like the `:hover` literal below:
+  // the STORED selector (validated by selector.ts) is unchanged, so no grammar change and no
+  // re-validation issue. Non-bare selectors (already ≥(0,2,0)) pass through untouched.
+  const boost = (sel: string) => (/^\[data-sx-c="[^"]*"\]$/.test(sel) ? sel + sel : sel);
 
   const rules: string[] = [];
   for (const ov of palette.overrides ?? []) {
@@ -79,17 +93,14 @@ export function paletteStyle(palette: Palette | undefined | null): string | null
       const val = ov[role];
       if (isHexA(val)) decls.push(`${prop}:${val}`);
     }
-    if (decls.length) rules.push(`${ov.selector}{${decls.join(";")}}`);
+    if (decls.length) rules.push(`${boost(ov.selector)}{${decls.join(";")}}`);
 
-    // Per-element hover: same role→prop map, minus border (YAGNI). `:hover` is a fixed literal on
-    // the already-validated selector — never user input — so no pseudo-class enters the grammar.
-    const HOVER_PROP = { hoverBg: "background-color", hoverText: "color" } as const;
     const hoverDecls: string[] = [];
     for (const [role, prop] of Object.entries(HOVER_PROP) as [keyof typeof HOVER_PROP, string][]) {
       const val = ov[role];
       if (isHexA(val)) hoverDecls.push(`${prop}:${val}`);
     }
-    if (hoverDecls.length) rules.push(`${ov.selector}:hover{${hoverDecls.join(";")}}`);
+    if (hoverDecls.length) rules.push(`${boost(ov.selector)}:hover{${hoverDecls.join(";")}}`);
   }
 
   let css = rootDecls.length ? `${ROOT_SELECTOR}{${rootDecls.join(";")}}` : "";
