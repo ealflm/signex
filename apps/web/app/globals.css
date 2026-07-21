@@ -1561,6 +1561,10 @@ body .w-webflow-badge {
   height: 5.625rem;
   border-radius: 50%;
   color: #fff;
+  /* Radar-ring colour as an rgb triple (fed into rgba() in the sx-float-ping keyframe). Warm gold so
+     the ring stays visible on BOTH light/white and dark sections — a white ring vanished on the
+     site's white bands. Override per-button below if a different glow is wanted. */
+  --sx-ring: 240, 168, 48;
   box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28);
   /* Two layered animations for a livelier, attention-grabbing button: an expanding "radar" ping
      (box-shadow) that runs continuously, PLUS a periodic ring-shake (transform) — the button rests,
@@ -1585,9 +1589,9 @@ body .w-webflow-badge {
   letter-spacing: 0.01em;
 }
 @keyframes sx-float-ping {
-  0%   { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 0 rgba(255, 255, 255, 0.6); }
-  70%  { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 1.5rem rgba(255, 255, 255, 0); }
-  100% { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 0 rgba(255, 255, 255, 0); }
+  0%   { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 0 rgba(var(--sx-ring), 0.7); }
+  70%  { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 1.5rem rgba(var(--sx-ring), 0); }
+  100% { box-shadow: 0 6px 20px rgba(7, 21, 34, 0.28), 0 0 0 0 rgba(var(--sx-ring), 0); }
 }
 /* Rest for ~66% of the cycle, then a quick scale-pop + damped wobble (a "ring"), settling back.
    Concentrating the motion into a short burst is what catches the eye without constant nagging. */
