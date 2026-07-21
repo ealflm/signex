@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
-import { isVideoRef, type MediaRef } from "@signex/shared";
+import { isVideoRef, type MediaRef, type Overlay } from "@signex/shared";
+import { OverlayField } from "../../visual/overlay-field";
 import type { FieldPlan } from "@/app/lib/zodform-fields";
 import { Field } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -34,6 +35,8 @@ function defaultForField(plan: FieldPlan): unknown {
       return Object.fromEntries(
         (plan.children ?? []).map((c) => [c.name, defaultForField(c)]),
       );
+    case "overlay":
+      return undefined; // optional overlay defaults to absent ("Không")
     default:
       return null;
   }
@@ -719,6 +722,15 @@ export function FieldEditor({
     inner = <StringField field={field} value={value} onChange={onChange} />;
   } else if (field.kind === "color") {
     inner = <ColorField field={field} value={value} onChange={onChange} />;
+  } else if (field.kind === "overlay") {
+    inner = (
+      <OverlayField
+        value={value as Overlay | undefined}
+        onChange={onChange}
+        label={field.label}
+        idPrefix={field.name}
+      />
+    );
   } else if (field.kind === "boolean") {
     inner = <BooleanField field={field} value={value} onChange={onChange} />;
   } else if (field.kind === "localized") {
