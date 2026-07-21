@@ -126,4 +126,6 @@ describe("Overlay", () => {
   it("rejects opacity > 100", () => expect(() => Overlay.parse({ kind: "solid", fill: { color: "#000000", opacity: 140 } })).toThrow());
   it("rejects a non-hex colour", () => expect(() => Overlay.parse({ kind: "solid", fill: { color: "black", opacity: 10 } })).toThrow());
   it("rejects more than 4 stops", () => expect(() => Overlay.parse({ ...grad, stops: [grad.stops[0], grad.stops[1], grad.stops[0], grad.stops[1], grad.stops[0]] })).toThrow());
+  it("carries the overlay describe tag (drives the admin overlay FieldKind)", () =>
+    expect(Overlay.description).toBe("overlay"));
 });

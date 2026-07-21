@@ -76,5 +76,5 @@ export const OverlayStop = OverlayFill.extend({ pos: z.number().min(0).max(100) 
 export const Overlay = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("solid"), fill: OverlayFill }),
   z.object({ kind: z.literal("gradient"), angle: z.number().min(0).max(360), stops: z.array(OverlayStop).min(2).max(4) }),
-]);
+]).describe("overlay");
 export type Overlay = z.infer<typeof Overlay>;
