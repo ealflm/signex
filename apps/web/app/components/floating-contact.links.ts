@@ -57,13 +57,14 @@ export function displayNumber(href: string): string | null {
   return /^\d{9,11}$/.test(d) ? d : null;
 }
 
-/** "#rrggbb" / "#rgb" / "#rrggbbaa" → "r, g, b" for `rgba(var(--sx-ring), α)`; null if not a hex.
- *  Alpha (8-digit) is ignored — the triple is the colour; the keyframe supplies the alpha. */
+/** "#rrggbb" / "#rgb" / "#rrggbbaa" / "#rgba" → "r, g, b" for `rgba(var(--sx-ring), α)`; null if not a
+ *  hex. Alpha (4- or 8-digit) is ignored — the triple is the colour; the keyframe supplies the alpha.
+ *  Accepts every length HexA accepts (schema-valid ⇒ this must parse it too). */
 export function hexToRgbTriple(hex: string): string | null {
-  const m = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec((hex ?? "").trim());
+  const m = /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec((hex ?? "").trim());
   if (!m) return null;
   let h = m[1];
-  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  if (h.length <= 4) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]; // #rgb / #rgba → expand rgb, ignore alpha
   const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
   return `${r}, ${g}, ${b}`;
 }

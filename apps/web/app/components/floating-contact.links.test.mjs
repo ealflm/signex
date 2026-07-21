@@ -52,6 +52,7 @@ test("hexToRgbTriple: hex colour -> rgb triple for rgba(var(--sx-ring), a)", () 
   assert.equal(hexToRgbTriple("#0B1F33"), "11, 31, 51");
   assert.equal(hexToRgbTriple("#fff"), "255, 255, 255");
   assert.equal(hexToRgbTriple("#0068ffcc"), "0, 104, 255"); // 8-digit: ignore alpha for the triple
+  assert.equal(hexToRgbTriple("#f0a5"), "255, 0, 170"); // 4-digit #rgba: ff,00,aa; alpha 5 ignored
   assert.equal(hexToRgbTriple("blue"), null);
   assert.equal(hexToRgbTriple(""), null);
 });

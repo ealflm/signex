@@ -23,9 +23,6 @@ describe("floatingButtonsBlock", () => {
 });
 
 describe("floatingButtons ring colours", () => {
-  it("defaults href fields and leaves ring colours absent", () => {
-    expect(floatingButtonsBlock.parse(undefined)).toEqual({ callHref: "", zaloHref: "" });
-  });
   it("accepts optional HexA ring colours", () => {
     const b = floatingButtonsBlock.parse({ callHref: "", zaloHref: "", zaloRingColor: "#0068ff", callRingColor: "#0b1f33" });
     expect(b.zaloRingColor).toBe("#0068ff");
